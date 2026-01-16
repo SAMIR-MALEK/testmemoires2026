@@ -48,12 +48,12 @@ if "memo_type" not in st.session_state:
 # =========================================================
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-credentials = Credentials.from_service_account_info(
-    st.secrets["service_account"],
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
     scopes=SCOPES
 )
 
-service = build("sheets", "v4", credentials=credentials)
+service = build("sheets", "v4", credentials=creds)
 
 SPREADSHEET_ID = st.secrets["spreadsheet_id"]
 
@@ -72,17 +72,16 @@ def read_sheet(sheet_name):
 
     return pd.DataFrame(values[1:], columns=values[0])
 
-
-def append_sheet(sheet_name, row):
-    service.spreadsheets().values().append(
+def update_cell(sheet, cell, value):
+    service.spreadsheets().values().update(
         spreadsheetId=SPREADSHEET_ID,
-        range=sheet_name,
-        valueInputOption="USER_ENTERED",
-        body={"values": [row]}
+        range=f"{sheet}!{cell}",
+        valueInputOption="RAW",
+        body={"values": [[value]]}
     ).execute()
 
 # =========================================================
-# تحميل الشيتات (لا تغيّر الأسماء)
+# قراءة الشيتات (لا تغيّر الأسماء)
 # =========================================================
 df_students = read_sheet("تجريب الطلبة")
 df_memoires = read_sheet("تجريب حالة تسجيل المذكرات")
@@ -92,59 +91,55 @@ df_teachers = read_sheet("تجريب المذكرات - الأساتذة")
 # التحقق من الطالب
 # =========================================================
 def verify_student(username, password, df):
-    row = df[df["اسم المستخدم"].astype(str).str.strip() == username.strip()]
+    row = df[df["اسم المستخدم"] == username]
 
     if row.empty:
-        return False, "اسم المستخدم غير موجود"
+        return False, "اسم المستخدم غير موجود", None
 
-    if row.iloc[0]["كلمة السر"].strip() != password.strip():
-        return False, "كلمة السر غير صحيحة"
+    if row.iloc[0]["كلمة السر"] != password:
+        return False, "كلمة السر غير صحيحة", None
 
-    return True, row.iloc[0].to_dict()
+    return True, row.iloc[0].to_dict(), row.index[0] + 2
 
 # =========================================================
 # واجهة تسجيل الدخول (دخول حقيقي)
 # =========================================================
 if not st.session_state.logged_in:
+
     st.title("🔐 تسجيل الدخول")
 
     username = st.text_input("اسم المستخدم")
     password = st.text_input("كلمة السر", type="password")
 
     if st.button("تسجيل الدخول"):
-        valid1, student1 = verify_student(username, password, df_students)
+        valid, student, row_index = verify_student(username, password, df_students)
 
-        if not valid1:
+        if not valid:
             st.markdown(
-                f'<p class="message">❌ {student1}</p>',
+                f'<p class="message">❌ {student}</p>',
                 unsafe_allow_html=True
             )
             st.stop()
 
         st.session_state.logged_in = True
-        st.session_state.student = student1
-        st.rerun()
+        st.session_state.student = student
+        st.session_state.student["_row"] = row_index
 
-# =========================================================
-# حماية التطبيق (مهم جدا)
-# =========================================================
-if not st.session_state.logged_in:
     st.stop()
-
-student = st.session_state.student
 
 # =========================================================
 # فضاء الطالب
 # =========================================================
+student = st.session_state.student
+
 st.title("🎓 فضاء الطالب")
 st.success(f"مرحبًا {student['الاسم واللقب']}")
 
 # =========================================================
-# هل الطالب مسجل مسبقًا؟
+# تحقق: هل الطالب مسجل مسبقًا؟
 # =========================================================
 existing = df_memoires[
-    df_memoires["اسم المستخدم"].astype(str).str.strip()
-    == student["اسم المستخدم"].strip()
+    df_memoires["اسم المستخدم"] == student["اسم المستخدم"]
 ]
 
 if not existing.empty:
@@ -161,17 +156,16 @@ if not existing.empty:
 # =========================================================
 st.subheader("📌 اختيار نوع المذكرة")
 
-memo_type = st.radio(
+st.session_state.memo_type = st.radio(
     "نوع المذكرة",
     ["فردية", "ثنائية"]
 )
 
-st.session_state.memo_type = memo_type
-
 # =========================================================
-# شرط المذكرة الفردية (كما طلبت حرفيًا)
+# شرط المذكرة الفردية (نفس الكود الذي فرضته)
 # =========================================================
 if st.session_state.memo_type == "فردية":
+
     value = str(student.get("فردية", "")).strip().lower()
 
     if value not in ["1", "نعم"]:
@@ -185,7 +179,7 @@ if st.session_state.memo_type == "فردية":
         st.stop()
 
 # =========================================================
-# نموذج تسجيل المذكرة
+# تسجيل المذكرة
 # =========================================================
 st.subheader("📝 تسجيل المذكرة")
 
@@ -193,21 +187,26 @@ title = st.text_input("عنوان المذكرة")
 
 teacher = st.selectbox(
     "الأستاذ المشرف",
-    df_teachers["اسم الأستاذ"].dropna().unique()
+    df_teachers["اسم الأستاذ"]
 )
 
 if st.button("📌 تسجيل المذكرة"):
-    append_sheet(
-        "تجريب حالة تسجيل المذكرات",
-        [
-            student["اسم المستخدم"],
-            student["الاسم واللقب"],
-            st.session_state.memo_type,
-            title,
-            teacher,
-            datetime.now().strftime("%Y-%m-%d %H:%M")
-        ]
-    )
+
+    service.spreadsheets().values().append(
+        spreadsheetId=SPREADSHEET_ID,
+        range="تجريب حالة تسجيل المذكرات",
+        valueInputOption="RAW",
+        body={
+            "values": [[
+                student["اسم المستخدم"],
+                student["الاسم واللقب"],
+                st.session_state.memo_type,
+                title,
+                teacher,
+                datetime.now().strftime("%Y-%m-%d %H:%M")
+            ]]
+        }
+    ).execute()
 
     st.success("✅ تم تسجيل المذكرة بنجاح")
-    st.rerun()
+    st.stop()
