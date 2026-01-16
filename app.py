@@ -70,7 +70,7 @@ PROF_MEMOS_RANGE = "Feuille 1!A1:L1000"
 try:
     EMAIL_ADDRESS = st.secrets["email_address"]
     EMAIL_PASSWORD = st.secrets["email_password"]
-    EMAIL_ENABLED = bool(EMAIL_ADDRESS and EMAIL_PASSWORD)
+    EMAIL_ENABLED = True
     logger.info(f"✅ البريد الإلكتروني مفعّل: {EMAIL_ADDRESS}")
 except Exception as e:
     EMAIL_ENABLED = False
