@@ -25,9 +25,9 @@ button:hover { background-color:#2C89A0 !important; }
 .message { font-size:18px; font-weight:bold; text-align:center; margin:10px 0; color:#FFFFFF;}
 .logout-btn { background-color:#8B0000 !important; }
 .logout-btn:hover { background-color:#A52A2A !important; }
-.success-msg { background-color: #2D5016; padding: 15px; border-radius: 8px; border-left: 4px solid #4CAF50; margin: 10px 0; }
-.error-msg { background-color: #5C1010; padding: 15px; border-radius: 8px; border-left: 4px solid #f44336; margin: 10px 0; }
-.info-msg { background-color: #1A3A52; padding: 15px; border-radius: 8px; border-left: 4px solid #2196F3; margin: 10px 0; }
+.success-msg { color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 4px solid #FFD700; margin: 10px 0; }
+.error-msg { color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 4px solid #FFD700; margin: 10px 0; }
+.info-msg { color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 4px solid #FFD700; margin: 10px 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -70,10 +70,6 @@ def validate_username(username):
     username = sanitize_input(username)
     if not username:
         return False, "⚠️ اسم المستخدم فارغ"
-    if len(username) < 3:
-        return False, "⚠️ اسم المستخدم يجب أن يكون 3 أحرف على الأقل"
-    if len(username) > 50:
-        return False, "⚠️ اسم المستخدم طويل جداً"
     return True, username
 
 def validate_note_number(note_number):
