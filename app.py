@@ -4,6 +4,9 @@ import pandas as pd
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # ---------------- إعداد Logging ----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,6 +31,24 @@ button:hover { background-color:#2C89A0 !important; }
 .success-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; }
 .error-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; }
 .info-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; }
+.memo-item { 
+    background-color: #2C3E50; 
+    padding: 15px; 
+    margin: 10px 0; 
+    border-radius: 8px; 
+    border-left: 4px solid #256D85;
+}
+.memo-number { 
+    color: #FFD700; 
+    font-size: 20px; 
+    font-weight: bold; 
+    margin-bottom: 5px;
+}
+.memo-title { 
+    color: #FFFFFF; 
+    font-size: 16px; 
+    line-height: 1.5;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -45,20 +66,30 @@ STUDENTS_RANGE = "Feuille 1!A1:L1000"
 MEMOS_RANGE = "Feuille 1!A1:N1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:L1000"
 
+# ---------------- إعداد البريد الإلكتروني ----------------
+# استخدم secrets لتخزين بيانات الإيميل
+try:
+    EMAIL_ADDRESS = st.secrets.get("email_address", "")
+    EMAIL_PASSWORD = st.secrets.get("email_password", "")
+    EMAIL_ENABLED = bool(EMAIL_ADDRESS and EMAIL_PASSWORD)
+except:
+    EMAIL_ENABLED = False
+    logger.warning("البريد الإلكتروني غير مفعّل - تأكد من إضافة email_address و email_password في secrets")
+
 # ---------------- دوال مساعدة ----------------
 def col_letter(n):
-    """تحويل رقم العمود إلى حرف (يدعم أكثر من 26 عمود)"""
+    """تحويل رقم العمود إلى حرف (محسّن)"""
     result = ""
     while n > 0:
-        n, remainder = divmod(n - 1, 26)
-        result = chr(65 + remainder) + result
+        n -= 1
+        result = chr(65 + (n % 26)) + result
+        n //= 26
     return result
 
 def sanitize_input(text):
     """تنقية المدخلات من الأحرف الخطرة"""
     if not text:
         return ""
-    # إزالة الأحرف الخاصة الخطرة
     dangerous_chars = ['<', '>', '"', "'", ';', '&', '|', '`']
     cleaned = str(text).strip()
     for char in dangerous_chars:
@@ -141,13 +172,130 @@ def load_prof_memos():
 
 def clear_cache_and_reload():
     """مسح الكاش وإعادة تحميل البيانات"""
-    st.cache_data.clear()
-    logger.info("تم مسح الكاش")
+    try:
+        st.cache_data.clear()
+        logger.info("تم مسح الكاش بنجاح")
+        return True
+    except Exception as e:
+        logger.error(f"خطأ في مسح الكاش: {str(e)}")
+        return False
+
+# ---------------- دالة إرسال البريد الإلكتروني ----------------
+def send_email_to_professor(prof_email, prof_name, memo_number, memo_title, 
+                           student1_name, student2_name, used_password, 
+                           remaining_passwords):
+    """إرسال بريد إلكتروني للأستاذ بتفاصيل التسجيل"""
+    
+    if not EMAIL_ENABLED:
+        logger.warning("البريد الإلكتروني غير مفعّل")
+        return False, "البريد الإلكتروني غير مفعّل"
+    
+    if not prof_email or '@' not in prof_email:
+        logger.warning(f"بريد إلكتروني غير صالح للأستاذ: {prof_name}")
+        return False, "البريد الإلكتروني غير صالح"
+    
+    try:
+        # إنشاء الرسالة
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f'تأكيد تسجيل مذكرة - {memo_number}'
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = prof_email
+        
+        # محتوى البريد بصيغة HTML
+        students_info = f"<li><strong>الطالب الأول:</strong> {student1_name}</li>"
+        if student2_name:
+            students_info += f"<li><strong>الطالب الثاني:</strong> {student2_name}</li>"
+        
+        # قائمة كلمات السر المتبقية
+        remaining_pass_list = ""
+        if remaining_passwords:
+            for pwd in remaining_passwords:
+                remaining_pass_list += f"<li style='background-color:#f0f0f0; padding:8px; margin:5px 0; border-radius:4px; font-family:monospace;'>{pwd}</li>"
+        else:
+            remaining_pass_list = "<li style='color:#ff0000;'>لا توجد كلمات سر متبقية</li>"
+        
+        html_content = f"""
+        <html dir="rtl">
+        <head>
+            <style>
+                body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
+                .container {{ background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
+                .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
+                .content {{ padding: 20px; }}
+                .info-box {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #256D85; }}
+                .password-used {{ background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #ffc107; }}
+                .passwords-remaining {{ background-color: #d4edda; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #28a745; }}
+                ul {{ list-style: none; padding: 0; }}
+                li {{ padding: 8px 0; }}
+                .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>🎓 تأكيد تسجيل مذكرة ماستر</h2>
+                </div>
+                
+                <div class="content">
+                    <p>السلام عليكم الأستاذ(ة) <strong>{prof_name}</strong>،</p>
+                    <p>نود إعلامكم بأنه تم تسجيل مذكرة جديدة تحت إشرافكم:</p>
+                    
+                    <div class="info-box">
+                        <h3>📄 تفاصيل المذكرة:</h3>
+                        <ul>
+                            <li><strong>رقم المذكرة:</strong> {memo_number}</li>
+                            <li><strong>عنوان المذكرة:</strong> {memo_title}</li>
+                            {students_info}
+                            <li><strong>تاريخ التسجيل:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="password-used">
+                        <h3>🔑 كلمة السر المستخدمة:</h3>
+                        <p style="font-family: monospace; font-size: 18px; background-color: white; padding: 10px; border-radius: 5px; text-align: center;">
+                            <strong>{used_password}</strong>
+                        </p>
+                        <p style="color: #856404; font-size: 14px;">⚠️ هذه الكلمة تم استخدامها ولا يمكن استعمالها مرة أخرى</p>
+                    </div>
+                    
+                    <div class="passwords-remaining">
+                        <h3>🔐 كلمات السر المتبقية:</h3>
+                        <ul>
+                            {remaining_pass_list}
+                        </ul>
+                    </div>
+                    
+                    <p style="margin-top: 20px;">للاستفسارات، يرجى التواصل مع إدارة الكلية.</p>
+                </div>
+                
+                <div class="footer">
+                    <p>جامعة محمد البشير الإبراهيمي</p>
+                    <p>كلية الحقوق والعلوم السياسية</p>
+                    <p>© 2026 - نظام تسجيل مذكرات الماستر</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        html_part = MIMEText(html_content, 'html', 'utf-8')
+        msg.attach(html_part)
+        
+        # إرسال البريد
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(msg)
+        
+        logger.info(f"تم إرسال بريد إلكتروني للأستاذ {prof_name} على {prof_email}")
+        return True, "تم إرسال البريد الإلكتروني بنجاح"
+        
+    except Exception as e:
+        logger.error(f"خطأ في إرسال البريد الإلكتروني: {str(e)}")
+        return False, f"فشل إرسال البريد: {str(e)}"
 
 # ---------------- التحقق ----------------
 def verify_student(username, password, df_students):
     """التحقق من بيانات الطالب"""
-    # التحقق من صحة المدخلات
     valid, result = validate_username(username)
     if not valid:
         logger.warning(f"محاولة دخول بـ username غير صالح: {username}")
@@ -176,20 +324,25 @@ def verify_students_batch(students_data, df_students):
     """التحقق من بيانات عدة طلاب دفعة واحدة"""
     verified_students = []
     
+    if df_students.empty:
+        return False, "❌ خطأ في تحميل بيانات الطلاب"
+    
     for username, password in students_data:
-        if not username:  # تخطي الطلاب الفارغين
+        if not username or not username.strip():
             continue
             
         valid, student = verify_student(username, password, df_students)
         if not valid:
-            return False, student  # إرجاع رسالة الخطأ
+            return False, student
         verified_students.append(student)
+    
+    if not verified_students:
+        return False, "❌ لم يتم إدخال بيانات صحيحة"
     
     return True, verified_students
 
 def verify_professor_password(note_number, prof_password, df_memos, df_prof_memos):
-    """التحقق من كلمة سر الأستاذ"""
-    # التحقق من صحة رقم المذكرة
+    """التحقق من كلمة سر الأستاذ (محسّن)"""
     valid, result = validate_note_number(note_number)
     if not valid:
         return False, None, result
@@ -200,7 +353,8 @@ def verify_professor_password(note_number, prof_password, df_memos, df_prof_memo
     if df_memos.empty or df_prof_memos.empty:
         return False, None, "❌ خطأ في تحميل البيانات"
     
-    memo_row = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == note_number]
+    df_memos['رقم المذكرة'] = df_memos['رقم المذكرة'].astype(str).str.strip()
+    memo_row = df_memos[df_memos['رقم المذكرة'] == note_number]
     
     if memo_row.empty:
         logger.warning(f"محاولة تسجيل برقم مذكرة غير موجود: {note_number}")
@@ -208,22 +362,30 @@ def verify_professor_password(note_number, prof_password, df_memos, df_prof_memo
     
     memo_row = memo_row.iloc[0]
     
-    # التحقق من أن المذكرة غير مسجلة مسبقاً
-    if str(memo_row.get("تم التسجيل", "")).strip() == "نعم":
+    registered_status = str(memo_row.get("تم التسجيل", "")).strip()
+    if registered_status == "نعم":
         logger.warning(f"محاولة تسجيل مذكرة مسجلة مسبقاً: {note_number}")
         return False, None, "❌ هذه المذكرة مسجلة مسبقاً لطالب آخر"
     
+    prof_name = str(memo_row.get("الأستاذ", "")).strip()
+    if not prof_name:
+        return False, None, "❌ خطأ في بيانات المذكرة"
+    
+    df_prof_memos['الأستاذ'] = df_prof_memos['الأستاذ'].astype(str).str.strip()
+    df_prof_memos['كلمة سر التسجيل'] = df_prof_memos['كلمة سر التسجيل'].astype(str).str.strip()
+    
     prof_row = df_prof_memos[
-        (df_prof_memos["الأستاذ"].astype(str).str.strip() == memo_row["الأستاذ"].strip()) &
-        (df_prof_memos["كلمة سر التسجيل"].astype(str).str.strip() == prof_password)
+        (df_prof_memos['الأستاذ'] == prof_name) &
+        (df_prof_memos['كلمة سر التسجيل'] == prof_password)
     ]
     
     if prof_row.empty:
         logger.warning(f"كلمة سر مشرف خاطئة للمذكرة: {note_number}")
-        return False, None, "❌ كلمة سر المشرف غير صحيحة أو غير مخصصة لهذه المذكرة"
+        return False, None, "❌ كلمة سر المشرف غير صحيحة"
     
-    if str(prof_row.iloc[0].get("تم التسجيل", "")).strip() == "نعم":
-        logger.warning(f"محاولة استخدام كلمة سر مستخدمة مسبقاً للمذكرة: {note_number}")
+    prof_registered = str(prof_row.iloc[0].get("تم التسجيل", "")).strip()
+    if prof_registered == "نعم":
+        logger.warning(f"محاولة استخدام كلمة سر مستخدمة مسبقاً")
         return False, None, "❌ هذه كلمة السر تم استعمالها مسبقًا"
     
     logger.info(f"تحقق ناجح من كلمة سر المشرف للمذكرة: {note_number}")
@@ -231,105 +393,174 @@ def verify_professor_password(note_number, prof_password, df_memos, df_prof_memo
 
 # ---------------- تحديث المذكرات ----------------
 def update_registration(note_number, student1, student2=None):
-    """تحديث تسجيل المذكرة في جميع الجداول"""
+    """تحديث تسجيل المذكرة في جميع الجداول (محسّن)"""
     try:
-        # إعادة تحميل البيانات الطازجة
+        st.cache_data.clear()
+        
         df_memos = load_memos()
         df_prof_memos = load_prof_memos()
         df_students = load_students()
-
-        prof_name = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()]["الأستاذ"].iloc[0].strip()
-        prof_row_idx = df_prof_memos[
-            (df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name) &
-            (df_prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم")
-        ].index[0] + 2
-
+        
+        if df_memos.empty or df_prof_memos.empty or df_students.empty:
+            raise Exception("فشل تحميل البيانات")
+        
+        note_number_clean = str(note_number).strip()
+        df_memos['رقم المذكرة'] = df_memos['رقم المذكرة'].astype(str).str.strip()
+        
+        memo_match = df_memos[df_memos['رقم المذكرة'] == note_number_clean]
+        if memo_match.empty:
+            raise Exception("لم يتم العثور على المذكرة")
+        
+        memo_info = memo_match.iloc[0]
+        prof_name = str(memo_info['الأستاذ']).strip()
+        memo_title = str(memo_info.get('عنوان المذكرة', '')).strip()
+        
+        df_prof_memos['الأستاذ'] = df_prof_memos['الأستاذ'].astype(str).str.strip()
+        df_prof_memos['تم التسجيل'] = df_prof_memos['تم التسجيل'].astype(str).str.strip()
+        
+        prof_match = df_prof_memos[
+            (df_prof_memos['الأستاذ'] == prof_name) &
+            (df_prof_memos['تم التسجيل'] != "نعم")
+        ]
+        
+        if prof_match.empty:
+            raise Exception("لم يتم العثور على بيانات الأستاذ")
+        
+        # الحصول على كلمة السر المستخدمة
+        used_password = str(st.session_state.prof_password).strip()
+        
+        # الحصول على كلمات السر المتبقية للأستاذ
+        remaining_passwords_df = df_prof_memos[
+            (df_prof_memos['الأستاذ'] == prof_name) &
+            (df_prof_memos['تم التسجيل'] != "نعم") &
+            (df_prof_memos['كلمة سر التسجيل'].astype(str).str.strip() != used_password)
+        ]
+        remaining_passwords = remaining_passwords_df['كلمة سر التسجيل'].astype(str).str.strip().tolist()
+        
+        # الحصول على الإيميل
+        prof_email = str(prof_match.iloc[0].get('الإيميل', '')).strip()
+        
+        prof_row_idx = prof_match.index[0] + 2
         col_names = df_prof_memos.columns.tolist()
         
-        # استخدام دالة col_letter المحسنة
-        updates = [
-            {"range": f"Feuille 1!{col_letter(col_names.index('الطالب الأول')+1)}{prof_row_idx}",
-             "values": [[student1['اللقب'] + ' ' + student1['الإسم']]]},
-            {"range": f"Feuille 1!{col_letter(col_names.index('تم التسجيل')+1)}{prof_row_idx}",
-             "values": [["نعم"]]},
-            {"range": f"Feuille 1!{col_letter(col_names.index('تاريخ التسجيل')+1)}{prof_row_idx}",
-             "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]},
-            {"range": f"Feuille 1!{col_letter(col_names.index('رقم المذكرة')+1)}{prof_row_idx}",
-             "values": [[note_number]]}
-        ]
+        student1_name = f"{student1['اللقب']} {student1['الإسم']}"
         
-        if student2 is not None:
+        updates = []
+        for col_name, value in [
+            ('الطالب الأول', student1_name),
+            ('تم التسجيل', 'نعم'),
+            ('تاريخ التسجيل', datetime.now().strftime('%Y-%m-%d %H:%M')),
+            ('رقم المذكرة', note_number_clean)
+        ]:
+            if col_name in col_names:
+                col_idx = col_names.index(col_name) + 1
+                updates.append({
+                    "range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}",
+                    "values": [[value]]
+                })
+        
+        student2_name = None
+        if student2 is not None and 'الطالب الثاني' in col_names:
+            student2_name = f"{student2['اللقب']} {student2['الإسم']}"
+            col_idx = col_names.index('الطالب الثاني') + 1
             updates.append({
-                "range": f"Feuille 1!{col_letter(col_names.index('الطالب الثاني')+1)}{prof_row_idx}",
-                "values": [[student2['اللقب'] + ' ' + student2['الإسم']]]
+                "range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}",
+                "values": [[student2_name]]
             })
         
-        # تحديث شيت الأساتذة
-        sheets_service.spreadsheets().values().batchUpdate(
-            spreadsheetId=PROF_MEMOS_SHEET_ID,
-            body={"valueInputOption": "USER_ENTERED", "data": updates}
-        ).execute()
+        if updates:
+            sheets_service.spreadsheets().values().batchUpdate(
+                spreadsheetId=PROF_MEMOS_SHEET_ID,
+                body={"valueInputOption": "USER_ENTERED", "data": updates}
+            ).execute()
+            logger.info(f"تم تحديث شيت الأساتذة للمذكرة: {note_number}")
         
-        logger.info(f"تم تحديث شيت الأساتذة للمذكرة: {note_number}")
-
-        # تحديث شيت المذكرات
-        memo_row_idx = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()].index[0] + 2
+        memo_row_idx = df_memos[df_memos['رقم المذكرة'] == note_number_clean].index[0] + 2
         memo_cols = df_memos.columns.tolist()
         
-        updates2 = [
-            {"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الأول')+1)}{memo_row_idx}",
-             "values": [[student1['اللقب'] + ' ' + student1['الإسم']]]},
-            {"range": f"Feuille 1!{col_letter(memo_cols.index('تم التسجيل')+1)}{memo_row_idx}",
-             "values": [["نعم"]]},
-            {"range": f"Feuille 1!{col_letter(memo_cols.index('تاريخ التسجيل')+1)}{memo_row_idx}",
-             "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]}
-        ]
+        updates2 = []
+        for col_name, value in [
+            ('الطالب الأول', student1_name),
+            ('تم التسجيل', 'نعم'),
+            ('تاريخ التسجيل', datetime.now().strftime('%Y-%m-%d %H:%M'))
+        ]:
+            if col_name in memo_cols:
+                col_idx = memo_cols.index(col_name) + 1
+                updates2.append({
+                    "range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}",
+                    "values": [[value]]
+                })
         
-        if student2 is not None:
+        if student2 is not None and 'الطالب الثاني' in memo_cols:
+            col_idx = memo_cols.index('الطالب الثاني') + 1
             updates2.append({
-                "range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الثاني')+1)}{memo_row_idx}",
-                "values": [[student2['اللقب'] + ' ' + student2['الإسم']]]
+                "range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}",
+                "values": [[student2_name]]
             })
         
-        sheets_service.spreadsheets().values().batchUpdate(
-            spreadsheetId=MEMOS_SHEET_ID,
-            body={"valueInputOption": "USER_ENTERED", "data": updates2}
-        ).execute()
+        if updates2:
+            sheets_service.spreadsheets().values().batchUpdate(
+                spreadsheetId=MEMOS_SHEET_ID,
+                body={"valueInputOption": "USER_ENTERED", "data": updates2}
+            ).execute()
+            logger.info(f"تم تحديث شيت المذكرات للمذكرة: {note_number}")
         
-        logger.info(f"تم تحديث شيت المذكرات للمذكرة: {note_number}")
-
-        # تحديث شيت الطلاب
         students_cols = df_students.columns.tolist()
-        student1_row_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student1['اسم المستخدم'].strip()].index[0] + 2
+        if 'رقم المذكرة' not in students_cols:
+            raise Exception("عمود 'رقم المذكرة' غير موجود")
         
-        sheets_service.spreadsheets().values().update(
-            spreadsheetId=STUDENTS_SHEET_ID,
-            range=f"Feuille 1!{col_letter(students_cols.index('رقم المذكرة')+1)}{student1_row_idx}",
-            valueInputOption="USER_ENTERED",
-            body={"values": [[note_number]]}
-        ).execute()
+        df_students['اسم المستخدم'] = df_students['اسم المستخدم'].astype(str).str.strip()
         
-        logger.info(f"تم تحديث بيانات الطالب الأول: {student1['اسم المستخدم']}")
-
-        if student2 is not None:
-            student2_row_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student2['اسم المستخدم'].strip()].index[0] + 2
+        student1_match = df_students[df_students['اسم المستخدم'] == student1['اسم المستخدم'].strip()]
+        if not student1_match.empty:
+            student1_row_idx = student1_match.index[0] + 2
+            col_idx = students_cols.index('رقم المذكرة') + 1
+            
             sheets_service.spreadsheets().values().update(
                 spreadsheetId=STUDENTS_SHEET_ID,
-                range=f"Feuille 1!{col_letter(students_cols.index('رقم المذكرة')+1)}{student2_row_idx}",
+                range=f"Feuille 1!{col_letter(col_idx)}{student1_row_idx}",
                 valueInputOption="USER_ENTERED",
-                body={"values": [[note_number]]}
+                body={"values": [[note_number_clean]]}
             ).execute()
-            
-            logger.info(f"تم تحديث بيانات الطالب الثاني: {student2['اسم المستخدم']}")
-
-        # مسح الكاش بعد التحديث الناجح
-        clear_cache_and_reload()
-        logger.info(f"✅ تم تسجيل المذكرة {note_number} بنجاح")
+            logger.info(f"تم تحديث بيانات الطالب الأول")
         
+        if student2 is not None:
+            student2_match = df_students[df_students['اسم المستخدم'] == student2['اسم المستخدم'].strip()]
+            if not student2_match.empty:
+                student2_row_idx = student2_match.index[0] + 2
+                
+                sheets_service.spreadsheets().values().update(
+                    spreadsheetId=STUDENTS_SHEET_ID,
+                    range=f"Feuille 1!{col_letter(col_idx)}{student2_row_idx}",
+                    valueInputOption="USER_ENTERED",
+                    body={"values": [[note_number_clean]]}
+                ).execute()
+                logger.info(f"تم تحديث بيانات الطالب الثاني")
+        
+        st.cache_data.clear()
+        
+        # إرسال البريد الإلكتروني للأستاذ
+        if prof_email and EMAIL_ENABLED:
+            email_success, email_msg = send_email_to_professor(
+                prof_email=prof_email,
+                prof_name=prof_name,
+                memo_number=note_number_clean,
+                memo_title=memo_title,
+                student1_name=student1_name,
+                student2_name=student2_name,
+                used_password=used_password,
+                remaining_passwords=remaining_passwords
+            )
+            if email_success:
+                logger.info(f"تم إرسال إيميل للأستاذ {prof_name}")
+            else:
+                logger.warning(f"فشل إرسال الإيميل: {email_msg}")
+        
+        logger.info(f"✅ تم تسجيل المذكرة {note_number} بنجاح")
         return True, "✅ تم تسجيل المذكرة بنجاح!"
         
     except Exception as e:
-        logger.error(f"خطأ في تحديث التسجيل: {str(e)}")
+        logger.error(f"خطأ في تحديث التسجيل: {str(e)}", exc_info=True)
         return False, f"❌ حدث خطأ أثناء التسجيل: {str(e)}"
 
 # ---------------- Session State ----------------
@@ -373,9 +604,8 @@ df_students = load_students()
 df_memos = load_memos()
 df_prof_memos = load_prof_memos()
 
-# التحقق من تحميل البيانات
 if df_students.empty or df_memos.empty or df_prof_memos.empty:
-    st.error("❌ خطأ في تحميل البيانات. يرجى المحاولة لاحقاً أو الاتصال بالدعم الفني.")
+    st.error("❌ خطأ في تحميل البيانات. يرجى المحاولة لاحقاً.")
     st.stop()
 
 # ---------------- واجهة الدخول ----------------
@@ -401,26 +631,21 @@ if not st.session_state.logged_in:
         password2 = st.text_input("كلمة السر الطالب الثاني", type="password", max_chars=50)
 
     if st.button("تسجيل الدخول"):
-        # التحقق من المذكرة الثنائية
         if st.session_state.memo_type == "ثنائية":
-            # التحقق من إدخال بيانات الطالب الثاني
             if not username2 or not password2:
                 st.markdown('<div class="error-msg">⚠️ يرجى إدخال بيانات الطالب الثاني كاملة</div>', unsafe_allow_html=True)
                 logger.warning("محاولة تسجيل ثنائي بدون بيانات الطالب الثاني")
                 st.stop()
             
-            # التحقق من عدم تكرار نفس الطالب
             if username1.strip().lower() == username2.strip().lower():
                 st.markdown('<div class="error-msg">❌ لا يمكن أن يكون الطالب الأول والثاني نفس الشخص!</div>', unsafe_allow_html=True)
                 logger.warning(f"محاولة تسجيل ثنائي بنفس اسم المستخدم: {username1}")
                 st.stop()
         
-        # إعداد بيانات الطلاب للتحقق
         students_data = [(username1, password1)]
         if st.session_state.memo_type == "ثنائية" and username2:
             students_data.append((username2, password2))
         
-        # التحقق من الطلاب دفعة واحدة
         valid, result = verify_students_batch(students_data, df_students)
         
         if not valid:
@@ -430,23 +655,20 @@ if not st.session_state.logged_in:
             st.session_state.student1 = verified_students[0]
             st.session_state.student2 = verified_students[1] if len(verified_students) > 1 else None
             
-            # ***** معالجة حالة المذكرة الثنائية *****
             if st.session_state.memo_type == "ثنائية" and st.session_state.student2 is not None:
                 s1_note = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
                 s2_note = str(st.session_state.student2.get('رقم المذكرة', '')).strip()
                 s1_specialty = str(st.session_state.student1.get('التخصص', '')).strip()
                 s2_specialty = str(st.session_state.student2.get('التخصص', '')).strip()
                 
-                # الحالة 4: تخصصات مختلفة
                 if s1_specialty != s2_specialty:
                     st.markdown('<div class="error-msg">❌ لا يمكن التسجيل الثنائي. الطالبان في تخصصين مختلفين</div>', unsafe_allow_html=True)
-                    logger.warning(f"محاولة تسجيل ثنائي بتخصصات مختلفة: {username1} ({s1_specialty}) و {username2} ({s2_specialty})")
+                    logger.warning(f"محاولة تسجيل ثنائي بتخصصات مختلفة")
                     st.session_state.logged_in = False
                     st.session_state.student1 = None
                     st.session_state.student2 = None
                     st.stop()
                 
-                # الحالة 1: أحد الطالبين مسجل والآخر لا
                 if (s1_note and not s2_note) or (not s1_note and s2_note):
                     registered_student = None
                     if s1_note:
@@ -455,42 +677,38 @@ if not st.session_state.logged_in:
                         registered_student = f"{st.session_state.student2['اللقب']} {st.session_state.student2['الإسم']}"
                     
                     st.markdown(f'<div class="error-msg">❌ أحد الطالبين مسجل مسبقاً: {registered_student}<br>لا يمكن المتابعة</div>', unsafe_allow_html=True)
-                    logger.warning(f"محاولة تسجيل ثنائي مع طالب مسجل: {registered_student}")
+                    logger.warning(f"محاولة تسجيل ثنائي مع طالب مسجل")
                     st.session_state.logged_in = False
                     st.session_state.student1 = None
                     st.session_state.student2 = None
                     st.stop()
                 
-                # الحالة 3: الطالبان مسجلان في مذكرتين مختلفتين
                 if s1_note and s2_note and s1_note != s2_note:
-                    st.markdown(f'<div class="error-msg">❌ الطالبان مسجلان في مذكرتين مختلفتين<br>الطالب الأول في المذكرة: {s1_note}<br>الطالب الثاني في المذكرة: {s2_note}<br>لا يمكن المتابعة</div>', unsafe_allow_html=True)
-                    logger.warning(f"محاولة دخول ثنائي بمذكرتين مختلفتين: {s1_note} و {s2_note}")
+                    st.markdown(f'<div class="error-msg">❌ الطالبان مسجلان في مذكرتين مختلفتين</div>', unsafe_allow_html=True)
+                    logger.warning(f"محاولة دخول ثنائي بمذكرتين مختلفتين")
                     st.session_state.logged_in = False
                     st.session_state.student1 = None
                     st.session_state.student2 = None
                     st.stop()
                 
-                # الحالة 2: الطالبان مسجلان معاً في نفس المذكرة
                 if s1_note and s2_note and s1_note == s2_note:
                     st.session_state.mode = "view"
-                    logger.info(f"دخول ثنائي لمذكرة مسجلة: {username1} و {username2}")
+                    logger.info(f"دخول ثنائي لمذكرة مسجلة")
                     st.session_state.logged_in = True
                     st.rerun()
             
-            # ***** معالجة حالة المذكرة الفردية *****
             if st.session_state.memo_type == "فردية":
                 fardiya_value = str(st.session_state.student1.get('فردية', '')).strip()
                 if fardiya_value not in ["1", "نعم"]:
-                    st.markdown('<div class="error-msg">❌ لا يمكنك تسجيل مذكرة فردية. يرجى الاتصال بمسؤول الميدان</div>', unsafe_allow_html=True)
-                    logger.warning(f"محاولة تسجيل فردي ممنوع: {username1} (قيمة فردية: {fardiya_value})")
+                    st.markdown('<div class="error-msg">❌ لا يمكنك تسجيل مذكرة فردية</div>', unsafe_allow_html=True)
+                    logger.warning(f"محاولة تسجيل فردي ممنوع")
                     st.stop()
             
-            # التحقق من التسجيل المسبق
             note_number = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
             
             if note_number:
                 st.session_state.mode = "view"
-                logger.info(f"الطالب مسجل مسبقاً: {username1}")
+                logger.info(f"الطالب مسجل مسبقاً")
             else:
                 st.session_state.mode = "register"
             
@@ -506,7 +724,6 @@ if st.session_state.logged_in:
     
     st.markdown('<div class="block-container">', unsafe_allow_html=True)
     
-    # رأس الصفحة مع زر الخروج
     col1, col2 = st.columns([3, 1])
     with col1:
         st.markdown("<h2 style='text-align:center;'>📘 فضاء الطالب</h2>", unsafe_allow_html=True)
@@ -520,7 +737,6 @@ if st.session_state.logged_in:
     if s2 is not None:
         st.markdown(f"👤 الطالب الثاني: **{s2['اللقب']} {s2['الإسم']}**")
 
-    # عرض معلومات المذكرة المسجلة
     if st.session_state.mode == "view":
         note_number = str(s1.get('رقم المذكرة', '')).strip()
         memo_info = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == note_number]
@@ -537,17 +753,15 @@ if st.session_state.logged_in:
             st.markdown('</div>', unsafe_allow_html=True)
             
             st.markdown('<div class="info-msg">', unsafe_allow_html=True)
-            st.markdown("ℹ️ **ملاحظة:** لا يمكن تسجيل مذكرة أخرى. إذا كان هناك خطأ، يرجى الاتصال بالإدارة.")
+            st.markdown("ℹ️ **ملاحظة:** لا يمكن تسجيل مذكرة أخرى.")
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # عملية تسجيل مذكرة جديدة
     elif st.session_state.mode == "register":
         st.markdown('<div class="info-msg">', unsafe_allow_html=True)
         st.markdown("### 📝 تسجيل مذكرة جديدة")
         st.markdown("⚠️ اختر الأستاذ المشرف والمذكرة التي ترغب في تسجيلها")
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # اختيار الأستاذ
         all_profs = sorted(df_memos["الأستاذ"].dropna().unique())
         selected_prof = st.selectbox("🧑‍🏫 اختر الأستاذ المشرف:", [""] + all_profs)
         
@@ -562,15 +776,19 @@ if st.session_state.logged_in:
             if not available_memos_df.empty:
                 st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة لتخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
                 
-                # عرض المذكرات كقائمة نصية مرقمة
+                # عرض المذكرات بتنسيق محسّن مع الأرقام
                 for idx, row in available_memos_df.iterrows():
-                    st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
+                    st.markdown(f"""
+                        <div class="memo-item">
+                            <div class="memo-number">📌 رقم المذكرة: {row['رقم المذكرة']}</div>
+                            <div class="memo-title">{row['عنوان المذكرة']}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
             else:
                 st.markdown('<div class="error-msg">❌ لا توجد مذكرات متاحة لهذا الأستاذ مع تخصصك.</div>', unsafe_allow_html=True)
 
         st.markdown("---")
         
-        # إدخال بيانات التسجيل
         col1, col2 = st.columns(2)
         with col1:
             st.session_state.note_number = st.text_input(
@@ -585,7 +803,6 @@ if st.session_state.logged_in:
                 max_chars=50
             )
 
-        # زر التأكيد مع رسالة تحذير
         if not st.session_state.show_confirmation:
             if st.button("📝 المتابعة للتأكيد", type="primary", use_container_width=True):
                 if not st.session_state.note_number or not st.session_state.prof_password:
@@ -594,7 +811,6 @@ if st.session_state.logged_in:
                     st.session_state.show_confirmation = True
                     st.rerun()
         else:
-            # صفحة التأكيد النهائي
             st.markdown('<div class="info-msg">', unsafe_allow_html=True)
             st.markdown("### ⚠️ تأكيد التسجيل")
             st.markdown(f"**رقم المذكرة:** {st.session_state.note_number}")
@@ -607,7 +823,6 @@ if st.session_state.logged_in:
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("✅ تأكيد نهائي", type="primary", use_container_width=True):
-                    # التحقق من كلمة سر المشرف
                     valid_memo, prof_row, error_msg = verify_professor_password(
                         st.session_state.note_number, 
                         st.session_state.prof_password, 
@@ -619,7 +834,6 @@ if st.session_state.logged_in:
                         st.markdown(f'<div class="error-msg">{error_msg}</div>', unsafe_allow_html=True)
                         st.session_state.show_confirmation = False
                     else:
-                        # تنفيذ التسجيل
                         with st.spinner('⏳ جاري تسجيل المذكرة...'):
                             success, message = update_registration(
                                 st.session_state.note_number, 
@@ -633,7 +847,6 @@ if st.session_state.logged_in:
                             st.session_state.mode = "view"
                             st.session_state.show_confirmation = False
                             
-                            # الانتظار قليلاً ثم إعادة التحميل
                             import time
                             time.sleep(2)
                             st.rerun()
@@ -648,7 +861,6 @@ if st.session_state.logged_in:
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ---------------- Footer ----------------
 st.markdown("---")
 st.markdown("""
     <div style='text-align:center; color:#888; font-size:12px; padding:20px;'>
