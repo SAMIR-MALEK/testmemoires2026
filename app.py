@@ -73,7 +73,7 @@ try:
     EMAIL_ENABLED = True
     logger.info(f"✅ البريد الإلكتروني مفعّل: {EMAIL_ADDRESS}")
 except Exception as e:
-    EMAIL_ENABLED = False
+    EMAIL_ENABLED = True
     EMAIL_ADDRESS = ""
     EMAIL_PASSWORD = ""
     logger.warning(f"⚠️ البريد الإلكتروني غير مفعّل: {str(e)}")
