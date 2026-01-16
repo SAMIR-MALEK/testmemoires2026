@@ -183,24 +183,31 @@ def clear_cache_and_reload():
 
 # ---------------- دالة إرسال البريد الإلكتروني 
 
+
+
+
+
+# ---------------- إعداد البريد الإلكتروني ----------------
+EMAIL_ENABLED = True
+EMAIL_ADDRESS = "domaine.dsp@univ-bba.dz"   # بريدك
+EMAIL_PASSWORD = "oevruyiztgikwzah"           # App Password بدون فواصل
+
+# ---------------- دالة إرسال البريد ----------------
 def send_email_to_professor(prof_email, prof_name, memo_number, memo_title, 
-                           student1_name, student2_name, used_password, 
-                           remaining_passwords):
-    """إرسال بريد إلكتروني مباشر للأستاذ بتفاصيل التسجيل"""
-    if not EMAIL_ENABLED:
-        return False, "البريد الإلكتروني غير مفعّل"
-    
-    if not prof_email or '@' not in prof_email:
-        return False, "البريد الإلكتروني غير صالح"
-    
-    # نص الرسالة البسيط
-    students_info = f"الطالب الأول: {student1_name}"
-    if student2_name:
-        students_info += f"\nالطالب الثاني: {student2_name}"
-    
-    remaining = "لا توجد كلمات سر متبقية" if not remaining_passwords else "\n".join(remaining_passwords)
-    
-    body = f"""
+                            student1_name, student2_name, used_password, remaining_passwords):
+    """إرسال بريد إلكتروني مباشر للأستاذ بعد التسجيل"""
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+
+        # تحضير نص الرسالة
+        students_info = f"الطالب الأول: {student1_name}"
+        if student2_name:
+            students_info += f"\nالطالب الثاني: {student2_name}"
+
+        remaining = "لا توجد كلمات سر متبقية" if not remaining_passwords else "\n".join(remaining_passwords)
+
+        body = f"""
 السلام عليكم الأستاذ(ة) {prof_name}،
 
 تم تسجيل مذكرة جديدة تحت إشرافكم:
@@ -216,25 +223,23 @@ def send_email_to_professor(prof_email, prof_name, memo_number, memo_title,
 
 مع تحيات إدارة الكلية
 """
-    try:
-        from email.mime.text import MIMEText
-        import smtplib
 
+        # إنشاء الرسالة
         msg = MIMEText(body, 'plain', 'utf-8')
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = prof_email
         msg['Subject'] = f"تأكيد تسجيل مذكرة - {memo_number}"
-        
+
+        # إرسال البريد
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.send_message(msg)
         server.quit()
-        
+
         return True, f"✅ تم إرسال البريد الإلكتروني للأستاذ {prof_name}"
     except Exception as e:
         return False, f"❌ فشل إرسال البريد: {e}"
-
 
 
 
@@ -519,6 +524,30 @@ def update_registration(note_number, student1, student2, memo_row, prof_row):
         elif not prof_email or '@' not in prof_email:
             logger.warning(f"⚠️ الإيميل غير صالح للأستاذ: {prof_name}")
             email_status_msg = "\n⚠️ بريد الأستاذ غير متوفر"
+
+
+
+# ---------------- إرسال البريد الإلكتروني بعد التسجيل ----------------
+email_status_msg = ""
+if EMAIL_ENABLED and prof_email and '@' in prof_email:
+    email_success, email_msg = send_email_to_professor(
+        prof_email=prof_email,
+        prof_name=prof_name,
+        memo_number=note_number_clean,
+        memo_title=memo_title,
+        student1_name=student1_name,
+        student2_name=student2_name,
+        used_password=used_password,
+        remaining_passwords=remaining_passwords
+    )
+
+    if email_success:
+        st.success(email_msg)
+        logger.info(email_msg)
+    else:
+        st.error(email_msg)
+        logger.warning(email_msg)
+
         
         logger.info(f"✅ تم تسجيل المذكرة {note_number} بنجاح")
         return True, f"✅ تم تسجيل المذكرة بنجاح!{email_status_msg}"
