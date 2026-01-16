@@ -773,15 +773,17 @@ if st.session_state.logged_in:
                 (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")
             ][["رقم المذكرة", "عنوان المذكرة"]]
             
+       
+
+
             if not available_memos_df.empty:
                 st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة لتخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
                 
-                # عرض المذكرات بتنسيق محسّن مع الأرقام
+                # عرض المذكرات بتنسيق محسّن مع أرقامها الفعلية
                 for idx, row in available_memos_df.iterrows():
                     st.markdown(f"""
                         <div class="memo-item">
-                            <div class="memo-number">📌 رقم المذكرة: {row['رقم المذكرة']}</div>
-                            <div class="memo-title">{row['عنوان المذكرة']}</div>
+                            <div class="memo-number">{row['رقم المذكرة']}. {row['عنوان المذكرة']}</div>
                         </div>
                     """, unsafe_allow_html=True)
             else:
