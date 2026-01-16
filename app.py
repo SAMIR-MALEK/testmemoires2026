@@ -4,6 +4,9 @@ import pandas as pd
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # ---------------- إعداد Logging ----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -44,6 +47,12 @@ PROF_MEMOS_SHEET_ID = "15u6N7XLFUKvTEmNtUNKVytpqVAQLaL19cAM8xZB_u3A"
 STUDENTS_RANGE = "Feuille 1!A1:L1000"
 MEMOS_RANGE = "Feuille 1!A1:N1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:L1000"
+
+# ---------------- Email Configuration ----------------
+EMAIL_SENDER = "domaine.dsp@univ-bba.dz"
+EMAIL_PASSWORD = "oevruyiztgikwzah"
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
 
 # ---------------- دوال مساعدة ----------------
 def col_letter(n):
@@ -143,6 +152,123 @@ def clear_cache_and_reload():
     """مسح الكاش وإعادة تحميل البيانات"""
     st.cache_data.clear()
     logger.info("تم مسح الكاش")
+
+# ---------------- إرسال البريد الإلكتروني ----------------
+def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2=None):
+    """إرسال بريد إلكتروني للأستاذ عند تسجيل مذكرة"""
+    try:
+        # إعادة تحميل البيانات لحساب الإحصائيات
+        df_prof_memos = load_prof_memos()
+        
+        # حساب عدد المذكرات المسجلة والمتبقية
+        prof_memos = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
+        total_memos = len(prof_memos)
+        registered_memos = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+        remaining_memos = total_memos - registered_memos
+        
+        # جمع كلمات السر المستخدمة والمتاحة
+        used_passwords = []
+        available_passwords = []
+        
+        for idx, row in prof_memos.iterrows():
+            password = str(row.get("كلمة سر التسجيل", "")).strip()
+            if password:
+                if str(row.get("تم التسجيل", "")).strip() == "نعم":
+                    used_passwords.append(f"✅ {password}")
+                else:
+                    available_passwords.append(f"⏳ {password}")
+        
+        # إعداد محتوى البريد
+        student2_info = ""
+        if student2 is not None:
+            student2_info = f"\n👤 **الطالب الثاني:** {student2['اللقب']} {student2['الإسم']}"
+        
+        passwords_list = "\n".join(used_passwords + available_passwords) if (used_passwords or available_passwords) else "لا توجد كلمات سر مسجلة"
+        
+        email_body = f"""
+<html dir="rtl">
+<head>
+    <style>
+        body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
+        .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
+        .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
+        .header h2 {{ margin: 0; }}
+        .content {{ line-height: 1.8; color: #333; }}
+        .info-box {{ background-color: #f8f9fa; padding: 15px; border-right: 4px solid #256D85; margin: 15px 0; }}
+        .stats-box {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; }}
+        .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
+        .highlight {{ color: #256D85; font-weight: bold; }}
+        ul {{ list-style: none; padding: 0; }}
+        li {{ padding: 5px 0; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>✅ تسجيل مذكرة جديدة</h2>
+        </div>
+        
+        <div class="content">
+            <p>السلام عليكم الأستاذ(ة) الفاضل(ة) <span class="highlight">{prof_name}</span>،</p>
+            
+            <p>نحيطكم علماً بأنه تم تسجيل مذكرة جديدة تحت إشرافكم:</p>
+            
+            <div class="info-box">
+                <p>📄 <strong>رقم المذكرة:</strong> {memo_info['رقم المذكرة']}</p>
+                <p>📑 <strong>عنوان المذكرة:</strong> {memo_info['عنوان المذكرة']}</p>
+                <p>🎓 <strong>التخصص:</strong> {memo_info['التخصص']}</p>
+                <p>👤 <strong>الطالب الأول:</strong> {student1['اللقب']} {student1['الإسم']}{student2_info}</p>
+                <p>🕒 <strong>تاريخ التسجيل:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+            </div>
+            
+            <div class="stats-box">
+                <h3 style="color: #256D85; margin-top: 0;">📊 إحصائيات مذكراتك:</h3>
+                <ul>
+                    <li>📝 <strong>إجمالي المذكرات:</strong> {total_memos}</li>
+                    <li>✅ <strong>المذكرات المسجلة:</strong> {registered_memos}</li>
+                    <li>⏳ <strong>المذكرات المتبقية:</strong> {remaining_memos}</li>
+                </ul>
+            </div>
+            
+            <div class="info-box">
+                <h3 style="color: #256D85; margin-top: 0;">🔑 كلمات السر:</h3>
+                <ul style="white-space: pre-line;">{passwords_list}</ul>
+            </div>
+            
+            <p style="margin-top: 20px; color: #666;">للاستفسار أو الدعم، يرجى التواصل مع إدارة الكلية.</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2026 جامعة محمد البشير الإبراهيمي</p>
+            <p>كلية الحقوق والعلوم السياسية</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+        
+        # إنشاء الرسالة
+        msg = MIMEMultipart('alternative')
+        msg['From'] = EMAIL_SENDER
+        msg['To'] = prof_email
+        msg['Subject'] = f"✅ تسجيل مذكرة جديدة - رقم {memo_info['رقم المذكرة']}"
+        
+        # إرفاق محتوى HTML
+        html_part = MIMEText(email_body, 'html', 'utf-8')
+        msg.attach(html_part)
+        
+        # إرسال البريد
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+        
+        logger.info(f"✅ تم إرسال بريد إلكتروني للأستاذ {prof_name} على {prof_email}")
+        return True, "تم إرسال البريد الإلكتروني بنجاح"
+        
+    except Exception as e:
+        logger.error(f"❌ خطأ في إرسال البريد الإلكتروني: {str(e)}")
+        return False, f"فشل إرسال البريد: {str(e)}"
 
 # ---------------- التحقق ----------------
 def verify_student(username, password, df_students):
@@ -325,6 +451,33 @@ def update_registration(note_number, student1, student2=None):
         # مسح الكاش بعد التحديث الناجح
         clear_cache_and_reload()
         logger.info(f"✅ تم تسجيل المذكرة {note_number} بنجاح")
+        
+        # إرسال البريد الإلكتروني للأستاذ
+        memo_data = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()].iloc[0]
+        prof_name = memo_data["الأستاذ"].strip()
+        
+        # الحصول على إيميل الأستاذ من العمود L
+        prof_memo_data = df_prof_memos[
+            (df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name)
+        ].iloc[0]
+        
+        prof_email = str(prof_memo_data.get("الإيميل", "")).strip()
+        
+        if prof_email and "@" in prof_email:
+            email_sent, email_msg = send_email_to_professor(
+                prof_email, 
+                prof_name, 
+                memo_data, 
+                student1, 
+                student2
+            )
+            
+            if email_sent:
+                logger.info(f"📧 {email_msg}")
+            else:
+                logger.warning(f"⚠️ {email_msg}")
+        else:
+            logger.warning(f"⚠️ لا يوجد إيميل صالح للأستاذ {prof_name}")
         
         return True, "✅ تم تسجيل المذكرة بنجاح!"
         
