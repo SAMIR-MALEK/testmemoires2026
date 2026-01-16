@@ -1,5 +1,4 @@
 import streamlit as st
-EMAIL_ENABLED = False
 from datetime import datetime
 import pandas as pd
 from google.oauth2.service_account import Credentials
@@ -69,15 +68,20 @@ MEMOS_RANGE = "Feuille 1!A1:N1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:L1000"
 
 # ---------------- إعداد البريد الإلكتروني ----------------
+EMAIL_ENABLED = False
+EMAIL_ADDRESS = ""
+EMAIL_PASSWORD = ""
+
 try:
     EMAIL_ADDRESS = st.secrets["email_address"]
     EMAIL_PASSWORD = st.secrets["email_password"]
-    EMAIL_ENABLED = True
-    logger.info(f"✅ البريد الإلكتروني مفعّل: {EMAIL_ADDRESS}")
+    if EMAIL_ADDRESS and EMAIL_PASSWORD:
+        EMAIL_ENABLED = True
+        logger.info(f"✅ البريد الإلكتروني مفعّل: {EMAIL_ADDRESS}")
+    else:
+        logger.warning("⚠️ بيانات البريد الإلكتروني فارغة")
 except Exception as e:
     EMAIL_ENABLED = False
-    EMAIL_ADDRESS = ""
-    EMAIL_PASSWORD = ""
     logger.warning(f"⚠️ البريد الإلكتروني غير مفعّل: {str(e)}")
 
 # ---------------- دوال مساعدة ----------------
@@ -184,10 +188,6 @@ def clear_cache_and_reload():
         logger.error(f"خطأ في مسح الكاش: {str(e)}")
         return False
 
-
-
-
-
 # ---------------- دالة إرسال البريد الإلكتروني ----------------
 def send_email_to_professor(prof_email, prof_name, memo_number, memo_title, 
                            student1_name, student2_name, used_password, 
@@ -203,18 +203,15 @@ def send_email_to_professor(prof_email, prof_name, memo_number, memo_title,
         return False, "البريد الإلكتروني غير صالح"
     
     try:
-        # إنشاء الرسالة
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f'تأكيد تسجيل مذكرة - {memo_number}'
         msg['From'] = f"منصة تسجيل المذكرات <{EMAIL_ADDRESS}>"
         msg['To'] = prof_email
         
-        # محتوى البريد بصيغة HTML
         students_info = f"<li><strong>الطالب الأول:</strong> {student1_name}</li>"
         if student2_name:
             students_info += f"<li><strong>الطالب الثاني:</strong> {student2_name}</li>"
         
-        # قائمة كلمات السر المتبقية
         remaining_pass_list = ""
         if remaining_passwords:
             for pwd in remaining_passwords:
@@ -290,9 +287,7 @@ def send_email_to_professor(prof_email, prof_name, memo_number, memo_title,
         html_part = MIMEText(html_content, 'html', 'utf-8')
         msg.attach(html_part)
         
-        # إرسال البريد مع معالجة أفضل للأخطاء
         try:
-
             server = smtplib.SMTP("smtp.gmail.com", 587, timeout=15)
             server.ehlo()
             server.starttls()
@@ -367,58 +362,65 @@ def verify_students_batch(students_data, df_students):
     return True, verified_students
 
 def verify_professor_password(note_number, prof_password, df_memos, df_prof_memos):
-    """التحقق من كلمة سر الأستاذ (محسّن)"""
+    """التحقق من كلمة سر الأستاذ - محسّن ومصلح"""
     valid, result = validate_note_number(note_number)
     if not valid:
-        return False, None, result
+        return False, None, None, result
     
     note_number = result
     prof_password = sanitize_input(prof_password)
     
     if df_memos.empty or df_prof_memos.empty:
-        return False, None, "❌ خطأ في تحميل البيانات"
+        return False, None, None, "❌ خطأ في تحميل البيانات"
     
+    # البحث عن المذكرة
     df_memos['رقم المذكرة'] = df_memos['رقم المذكرة'].astype(str).str.strip()
     memo_row = df_memos[df_memos['رقم المذكرة'] == note_number]
     
     if memo_row.empty:
         logger.warning(f"محاولة تسجيل برقم مذكرة غير موجود: {note_number}")
-        return False, None, "❌ رقم المذكرة غير موجود"
+        return False, None, None, "❌ رقم المذكرة غير موجود"
     
     memo_row = memo_row.iloc[0]
     
+    # التحقق من التسجيل المسبق
     registered_status = str(memo_row.get("تم التسجيل", "")).strip()
     if registered_status == "نعم":
         logger.warning(f"محاولة تسجيل مذكرة مسجلة مسبقاً: {note_number}")
-        return False, None, "❌ هذه المذكرة مسجلة مسبقاً لطالب آخر"
+        return False, None, None, "❌ هذه المذكرة مسجلة مسبقاً لطالب آخر"
     
     prof_name = str(memo_row.get("الأستاذ", "")).strip()
     if not prof_name:
-        return False, None, "❌ خطأ في بيانات المذكرة"
+        return False, None, None, "❌ خطأ في بيانات المذكرة"
     
+    # البحث عن كلمة السر الصحيحة للأستاذ
     df_prof_memos['الأستاذ'] = df_prof_memos['الأستاذ'].astype(str).str.strip()
     df_prof_memos['كلمة سر التسجيل'] = df_prof_memos['كلمة سر التسجيل'].astype(str).str.strip()
+    df_prof_memos['تم التسجيل'] = df_prof_memos['تم التسجيل'].astype(str).str.strip()
     
+    # البحث عن السجل الصحيح: نفس الأستاذ + نفس كلمة السر
     prof_row = df_prof_memos[
         (df_prof_memos['الأستاذ'] == prof_name) &
         (df_prof_memos['كلمة سر التسجيل'] == prof_password)
     ]
     
     if prof_row.empty:
-        logger.warning(f"كلمة سر مشرف خاطئة للمذكرة: {note_number}")
-        return False, None, "❌ كلمة سر المشرف غير صحيحة"
+        logger.warning(f"كلمة سر مشرف خاطئة للمذكرة: {note_number}, الأستاذ: {prof_name}")
+        return False, None, None, "❌ كلمة سر المشرف غير صحيحة"
     
-    prof_registered = str(prof_row.iloc[0].get("تم التسجيل", "")).strip()
+    # التحقق من أن كلمة السر لم تُستخدم مسبقاً
+    prof_row = prof_row.iloc[0]
+    prof_registered = str(prof_row.get("تم التسجيل", "")).strip()
     if prof_registered == "نعم":
-        logger.warning(f"محاولة استخدام كلمة سر مستخدمة مسبقاً")
-        return False, None, "❌ هذه كلمة السر تم استعمالها مسبقًا"
+        logger.warning(f"محاولة استخدام كلمة سر مستخدمة مسبقاً: {prof_password}")
+        return False, None, None, "❌ هذه كلمة السر تم استعمالها مسبقًا"
     
-    logger.info(f"✅ تحقق ناجح من كلمة سر المشرف للمذكرة: {note_number}")
-    return True, prof_row.iloc[0], None
+    logger.info(f"✅ تحقق ناجح - المذكرة: {note_number}, الأستاذ: {prof_name}")
+    return True, prof_row, memo_row, None
 
 # ---------------- تحديث المذكرات ----------------
-def update_registration(note_number, student1, student2=None):
-    """تحديث تسجيل المذكرة في جميع الجداول (محسّن)"""
+def update_registration(note_number, student1, student2, memo_row, prof_row):
+    """تحديث تسجيل المذكرة في جميع الجداول - محسّن"""
     try:
         st.cache_data.clear()
         
@@ -430,46 +432,40 @@ def update_registration(note_number, student1, student2=None):
             raise Exception("فشل تحميل البيانات")
         
         note_number_clean = str(note_number).strip()
-        df_memos['رقم المذكرة'] = df_memos['رقم المذكرة'].astype(str).str.strip()
         
-        memo_match = df_memos[df_memos['رقم المذكرة'] == note_number_clean]
-        if memo_match.empty:
-            raise Exception("لم يتم العثور على المذكرة")
-        
-        memo_info = memo_match.iloc[0]
-        prof_name = str(memo_info['الأستاذ']).strip()
-        memo_title = str(memo_info.get('عنوان المذكرة', '')).strip()
-        
-        df_prof_memos['الأستاذ'] = df_prof_memos['الأستاذ'].astype(str).str.strip()
-        df_prof_memos['تم التسجيل'] = df_prof_memos['تم التسجيل'].astype(str).str.strip()
-        
-        prof_match = df_prof_memos[
-            (df_prof_memos['الأستاذ'] == prof_name) &
-            (df_prof_memos['تم التسجيل'] != "نعم")
-        ]
-        
-        if prof_match.empty:
-            raise Exception("لم يتم العثور على بيانات الأستاذ")
-        
-        # الحصول على كلمة السر المستخدمة
+        # استخراج معلومات الأستاذ والمذكرة من الصفوف الممررة
+        prof_name = str(prof_row['الأستاذ']).strip()
+        memo_title = str(memo_row.get('عنوان المذكرة', '')).strip()
+        prof_email = str(prof_row.get('الإيميل', '')).strip()
         used_password = str(st.session_state.prof_password).strip()
         
-        # الحصول على كلمات السر المتبقية للأستاذ
+        # الحصول على كلمات السر المتبقية
+        df_prof_memos['الأستاذ'] = df_prof_memos['الأستاذ'].astype(str).str.strip()
+        df_prof_memos['تم التسجيل'] = df_prof_memos['تم التسجيل'].astype(str).str.strip()
+        df_prof_memos['كلمة سر التسجيل'] = df_prof_memos['كلمة سر التسجيل'].astype(str).str.strip()
+        
         remaining_passwords_df = df_prof_memos[
             (df_prof_memos['الأستاذ'] == prof_name) &
             (df_prof_memos['تم التسجيل'] != "نعم") &
-            (df_prof_memos['كلمة سر التسجيل'].astype(str).str.strip() != used_password)
+            (df_prof_memos['كلمة سر التسجيل'] != used_password)
         ]
-        remaining_passwords = remaining_passwords_df['كلمة سر التسجيل'].astype(str).str.strip().tolist()
+        remaining_passwords = remaining_passwords_df['كلمة سر التسجيل'].tolist()
         
-        # الحصول على الإيميل
-        prof_email = str(prof_match.iloc[0].get('الإيميل', '')).strip()
+        # العثور على رقم صف الأستاذ في الشيت
+        prof_match = df_prof_memos[
+            (df_prof_memos['الأستاذ'] == prof_name) &
+            (df_prof_memos['كلمة سر التسجيل'] == used_password)
+        ]
+        
+        if prof_match.empty:
+            raise Exception("لم يتم العثور على سجل الأستاذ الصحيح")
         
         prof_row_idx = prof_match.index[0] + 2
         col_names = df_prof_memos.columns.tolist()
         
         student1_name = f"{student1['اللقب']} {student1['الإسم']}"
         
+        # تحديث شيت الأساتذة
         updates = []
         for col_name, value in [
             ('الطالب الأول', student1_name),
@@ -500,6 +496,8 @@ def update_registration(note_number, student1, student2=None):
             ).execute()
             logger.info(f"✅ تم تحديث شيت الأساتذة للمذكرة: {note_number}")
         
+        # تحديث شيت المذكرات
+        df_memos['رقم المذكرة'] = df_memos['رقم المذكرة'].astype(str).str.strip()
         memo_row_idx = df_memos[df_memos['رقم المذكرة'] == note_number_clean].index[0] + 2
         memo_cols = df_memos.columns.tolist()
         
@@ -530,6 +528,7 @@ def update_registration(note_number, student1, student2=None):
             ).execute()
             logger.info(f"✅ تم تحديث شيت المذكرات للمذكرة: {note_number}")
         
+        # تحديث شيت الطلاب
         students_cols = df_students.columns.tolist()
         if 'رقم المذكرة' not in students_cols:
             raise Exception("عمود 'رقم المذكرة' غير موجود")
@@ -564,17 +563,12 @@ def update_registration(note_number, student1, student2=None):
         
         st.cache_data.clear()
         
-        # إرسال البريد الإلكتروني للأستاذ
+        # إرسال البريد الإلكتروني
         email_status_msg = ""
-
-        st.error("🚨 وصلت إلى نقطة فحص الإيميل")
-
-        st.write("EMAIL_ENABLED =", EMAIL_ENABLED)
-        st.write("prof_email =", f"[{prof_email}]")
-
-
         
-        if prof_email and EMAIL_ENABLED:
+        logger.info(f"📧 التحقق من إمكانية إرسال البريد: EMAIL_ENABLED={EMAIL_ENABLED}, prof_email=[{prof_email}]")
+        
+        if EMAIL_ENABLED and prof_email and '@' in prof_email:
             email_success, email_msg = send_email_to_professor(
                 prof_email=prof_email,
                 prof_name=prof_name,
@@ -593,6 +587,10 @@ def update_registration(note_number, student1, student2=None):
                 email_status_msg = f"\n⚠️ تنبيه: لم يتم إرسال البريد الإلكتروني ({email_msg})"
         elif not EMAIL_ENABLED:
             logger.info("ℹ️ البريد الإلكتروني غير مفعّل")
+            email_status_msg = "\nℹ️ البريد الإلكتروني غير مفعّل"
+        elif not prof_email or '@' not in prof_email:
+            logger.warning(f"⚠️ الإيميل غير صالح للأستاذ: {prof_name}")
+            email_status_msg = "\n⚠️ بريد الأستاذ غير متوفر"
         
         logger.info(f"✅ تم تسجيل المذكرة {note_number} بنجاح")
         return True, f"✅ تم تسجيل المذكرة بنجاح!{email_status_msg}"
@@ -859,7 +857,7 @@ if st.session_state.logged_in:
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("✅ تأكيد نهائي", type="primary", use_container_width=True):
-                    valid_memo, prof_row, error_msg = verify_professor_password(
+                    valid_memo, prof_row, memo_row, error_msg = verify_professor_password(
                         st.session_state.note_number, 
                         st.session_state.prof_password, 
                         df_memos, 
@@ -874,7 +872,9 @@ if st.session_state.logged_in:
                             success, message = update_registration(
                                 st.session_state.note_number, 
                                 s1, 
-                                s2
+                                s2,
+                                memo_row,
+                                prof_row
                             )
                         
                         if success:
