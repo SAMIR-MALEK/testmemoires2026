@@ -181,130 +181,65 @@ def clear_cache_and_reload():
         logger.error(f"خطأ في مسح الكاش: {str(e)}")
         return False
 
-# ---------------- دالة إرسال البريد الإلكتروني ----------------
+# ---------------- دالة إرسال البريد الإلكتروني 
+
 def send_email_to_professor(prof_email, prof_name, memo_number, memo_title, 
                            student1_name, student2_name, used_password, 
                            remaining_passwords):
-    """إرسال بريد إلكتروني للأستاذ بتفاصيل التسجيل"""
-    
+    """إرسال بريد إلكتروني مباشر للأستاذ بتفاصيل التسجيل"""
     if not EMAIL_ENABLED:
-        logger.warning("البريد الإلكتروني غير مفعّل")
         return False, "البريد الإلكتروني غير مفعّل"
     
     if not prof_email or '@' not in prof_email:
-        logger.warning(f"بريد إلكتروني غير صالح للأستاذ: {prof_name}")
         return False, "البريد الإلكتروني غير صالح"
     
+    # نص الرسالة البسيط
+    students_info = f"الطالب الأول: {student1_name}"
+    if student2_name:
+        students_info += f"\nالطالب الثاني: {student2_name}"
+    
+    remaining = "لا توجد كلمات سر متبقية" if not remaining_passwords else "\n".join(remaining_passwords)
+    
+    body = f"""
+السلام عليكم الأستاذ(ة) {prof_name}،
+
+تم تسجيل مذكرة جديدة تحت إشرافكم:
+
+رقم المذكرة: {memo_number}
+عنوان المذكرة: {memo_title}
+
+{students_info}
+
+كلمة السر المستخدمة: {used_password}
+كلمات السر المتبقية:
+{remaining}
+
+مع تحيات إدارة الكلية
+"""
     try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = f'تأكيد تسجيل مذكرة - {memo_number}'
-        msg['From'] = f"منصة تسجيل المذكرات <{EMAIL_ADDRESS}>"
+        from email.mime.text import MIMEText
+        import smtplib
+
+        msg = MIMEText(body, 'plain', 'utf-8')
+        msg['From'] = EMAIL_ADDRESS
         msg['To'] = prof_email
+        msg['Subject'] = f"تأكيد تسجيل مذكرة - {memo_number}"
         
-        students_info = f"<li><strong>الطالب الأول:</strong> {student1_name}</li>"
-        if student2_name:
-            students_info += f"<li><strong>الطالب الثاني:</strong> {student2_name}</li>"
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
         
-        remaining_pass_list = ""
-        if remaining_passwords:
-            for pwd in remaining_passwords:
-                remaining_pass_list += f"<li style='background-color:#f0f0f0; padding:8px; margin:5px 0; border-radius:4px; font-family:monospace;'>{pwd}</li>"
-        else:
-            remaining_pass_list = "<li style='color:#ff0000;'>لا توجد كلمات سر متبقية</li>"
-        
-        html_content = f"""
-        <html dir="rtl">
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
-                .container {{ background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
-                .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
-                .content {{ padding: 20px; }}
-                .info-box {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #256D85; }}
-                .password-used {{ background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #ffc107; }}
-                .passwords-remaining {{ background-color: #d4edda; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #28a745; }}
-                ul {{ list-style: none; padding: 0; }}
-                li {{ padding: 8px 0; }}
-                .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h2>🎓 تأكيد تسجيل مذكرة ماستر</h2>
-                </div>
-                
-                <div class="content">
-                    <p>السلام عليكم الأستاذ(ة) <strong>{prof_name}</strong>،</p>
-                    <p>نود إعلامكم بأنه تم تسجيل مذكرة جديدة تحت إشرافكم:</p>
-                    
-                    <div class="info-box">
-                        <h3>📄 تفاصيل المذكرة:</h3>
-                        <ul>
-                            <li><strong>رقم المذكرة:</strong> {memo_number}</li>
-                            <li><strong>عنوان المذكرة:</strong> {memo_title}</li>
-                            {students_info}
-                            <li><strong>تاريخ التسجيل:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="password-used">
-                        <h3>🔑 كلمة السر المستخدمة:</h3>
-                        <p style="font-family: monospace; font-size: 18px; background-color: white; padding: 10px; border-radius: 5px; text-align: center;">
-                            <strong>{used_password}</strong>
-                        </p>
-                        <p style="color: #856404; font-size: 14px;">⚠️ هذه الكلمة تم استخدامها ولا يمكن استعمالها مرة أخرى</p>
-                    </div>
-                    
-                    <div class="passwords-remaining">
-                        <h3>🔐 كلمات السر المتبقية:</h3>
-                        <ul>
-                            {remaining_pass_list}
-                        </ul>
-                    </div>
-                    
-                    <p style="margin-top: 20px;">للاستفسارات، يرجى التواصل مع إدارة الكلية.</p>
-                </div>
-                
-                <div class="footer">
-                    <p>جامعة محمد البشير الإبراهيمي</p>
-                    <p>كلية الحقوق والعلوم السياسية</p>
-                    <p>© 2026 - نظام تسجيل مذكرات الماستر</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        html_part = MIMEText(html_content, 'html', 'utf-8')
-        msg.attach(html_part)
-        
-        try:
-            server = smtplib.SMTP("smtp.gmail.com", 587, timeout=15)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg)
-            server.quit()
-            
-            logger.info(f"✅ تم إرسال بريد إلكتروني للأستاذ {prof_name} على {prof_email}")
-            return True, "تم إرسال البريد الإلكتروني بنجاح"
-            
-        except smtplib.SMTPAuthenticationError:
-            logger.error("❌ خطأ في المصادقة - تحقق من email_address و email_password")
-            return False, "خطأ في المصادقة مع خادم البريد"
-        except smtplib.SMTPException as smtp_err:
-            logger.error(f"❌ خطأ SMTP: {str(smtp_err)}")
-            return False, f"خطأ في إرسال البريد: {str(smtp_err)}"
-        except Exception as conn_err:
-            logger.error(f"❌ خطأ في الاتصال: {str(conn_err)}")
-            return False, f"خطأ في الاتصال بخادم البريد: {str(conn_err)}"
-        
+        return True, f"✅ تم إرسال البريد الإلكتروني للأستاذ {prof_name}"
     except Exception as e:
-        logger.error(f"❌ خطأ عام في إرسال البريد الإلكتروني: {str(e)}")
-        return False, f"فشل إرسال البريد: {str(e)}"
+        return False, f"❌ فشل إرسال البريد: {e}"
+
+
+
+
+
+
 
 # ---------------- التحقق ----------------
 def verify_student(username, password, df_students):
