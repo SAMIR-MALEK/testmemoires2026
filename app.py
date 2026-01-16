@@ -345,7 +345,11 @@ if 'logged_in' not in st.session_state:
 
 def logout():
     """تسجيل الخروج"""
-    logger.info(f"تسجيل خروج: {st.session_state.student1.get('اسم المستخدم', 'unknown') if st.session_state.student1 else 'unknown'}")
+    username = 'unknown'
+    if st.session_state.student1 is not None:
+        username = st.session_state.student1.get('اسم المستخدم', 'unknown')
+    
+    logger.info(f"تسجيل خروج: {username}")
     st.session_state.logged_in = False
     st.session_state.student1 = None
     st.session_state.student2 = None
