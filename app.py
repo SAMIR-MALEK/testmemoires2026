@@ -75,7 +75,7 @@ EMAIL_PASSWORD = ""
 # ---------------- إعداد البريد المباشر ----------------
 EMAIL_ENABLED = True
 EMAIL_ADDRESS = "domaine.dsp@univ-bba.dz"        # ضع بريدك هنا
-EMAIL_PASSWORD = "etrvbsfuhbsbrdds"          # ضع App Password هنا
+EMAIL_PASSWORD = "..."          # ضع App Password هنا
 
 # ---------------- دوال مساعدة ----------------
 def col_letter(n):
