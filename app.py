@@ -732,11 +732,11 @@ if st.session_state.logged_in:
             logout()
     
     st.markdown(f"👤 الطالب الأول: **{s1['اللقب']} {s1['الإسم']}**")
-    st.markdown(f"🎓 التخصص: **{s1['التخصص']}**")
+    
     
     if s2 is not None:
         st.markdown(f"👤 الطالب الثاني: **{s2['اللقب']} {s2['الإسم']}**")
-
+    st.markdown(f"🎓 التخصص: **{s1['التخصص']}**")
     if st.session_state.mode == "view":
         note_number = str(s1.get('رقم المذكرة', '')).strip()
         memo_info = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == note_number]
