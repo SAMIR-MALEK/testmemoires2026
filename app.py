@@ -49,7 +49,7 @@ if "memo_type" not in st.session_state:
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 creds = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
+    st.secrets["service_account"],
     scopes=SCOPES
 )
 
