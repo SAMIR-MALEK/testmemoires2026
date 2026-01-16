@@ -350,11 +350,14 @@ def verify_professor_password(note_number, prof_password, df_memos, df_prof_memo
     return True, prof_row.iloc[0], None
 
 # ---------------- تحديث المذكرات ----------------
+
+
 def update_registration(note_number, student1, student2=None):
-    """تحديث تسجيل المذكرة في جميع الجداول (محسّن)"""
+    """تحديث تسجيل المذكرة في جميع الجداول وإرسال البريد الإلكتروني للأستاذ"""
     try:
         st.cache_data.clear()
         
+        # تحميل البيانات
         df_memos = load_memos()
         df_prof_memos = load_prof_memos()
         df_students = load_students()
@@ -384,10 +387,10 @@ def update_registration(note_number, student1, student2=None):
         if prof_match.empty:
             raise Exception("لم يتم العثور على بيانات الأستاذ")
         
-        # الحصول على كلمة السر المستخدمة
+        # كلمة السر المستخدمة
         used_password = str(st.session_state.prof_password).strip()
         
-        # الحصول على كلمات السر المتبقية للأستاذ
+        # كلمات السر المتبقية للأستاذ
         remaining_passwords_df = df_prof_memos[
             (df_prof_memos['الأستاذ'] == prof_name) &
             (df_prof_memos['تم التسجيل'] != "نعم") &
@@ -395,13 +398,16 @@ def update_registration(note_number, student1, student2=None):
         ]
         remaining_passwords = remaining_passwords_df['كلمة سر التسجيل'].astype(str).str.strip().tolist()
         
-        # الحصول على الإيميل
+        # البريد الإلكتروني للأستاذ
         prof_email = str(prof_match.iloc[0].get('الإيميل', '')).strip()
         
+        # إعداد أسماء الطلاب
+        student1_name = f"{student1['اللقب']} {student1['الإسم']}"
+        student2_name = f"{student2['اللقب']} {student2['الإسم']}" if student2 else None
+        
+        # ---------------- تحديث شيت الأساتذة ----------------
         prof_row_idx = prof_match.index[0] + 2
         col_names = df_prof_memos.columns.tolist()
-        
-        student1_name = f"{student1['اللقب']} {student1['الإسم']}"
         
         updates = []
         for col_name, value in [
@@ -412,19 +418,11 @@ def update_registration(note_number, student1, student2=None):
         ]:
             if col_name in col_names:
                 col_idx = col_names.index(col_name) + 1
-                updates.append({
-                    "range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}",
-                    "values": [[value]]
-                })
+                updates.append({"range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}", "values": [[value]]})
         
-        student2_name = None
-        if student2 is not None and 'الطالب الثاني' in col_names:
-            student2_name = f"{student2['اللقب']} {student2['الإسم']}"
+        if student2_name and 'الطالب الثاني' in col_names:
             col_idx = col_names.index('الطالب الثاني') + 1
-            updates.append({
-                "range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}",
-                "values": [[student2_name]]
-            })
+            updates.append({"range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}", "values": [[student2_name]]})
         
         if updates:
             sheets_service.spreadsheets().values().batchUpdate(
@@ -433,6 +431,7 @@ def update_registration(note_number, student1, student2=None):
             ).execute()
             logger.info(f"تم تحديث شيت الأساتذة للمذكرة: {note_number}")
         
+        # ---------------- تحديث شيت المذكرات ----------------
         memo_row_idx = df_memos[df_memos['رقم المذكرة'] == note_number_clean].index[0] + 2
         memo_cols = df_memos.columns.tolist()
         
@@ -444,17 +443,11 @@ def update_registration(note_number, student1, student2=None):
         ]:
             if col_name in memo_cols:
                 col_idx = memo_cols.index(col_name) + 1
-                updates2.append({
-                    "range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}",
-                    "values": [[value]]
-                })
+                updates2.append({"range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}", "values": [[value]]})
         
-        if student2 is not None and 'الطالب الثاني' in memo_cols:
+        if student2_name and 'الطالب الثاني' in memo_cols:
             col_idx = memo_cols.index('الطالب الثاني') + 1
-            updates2.append({
-                "range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}",
-                "values": [[student2_name]]
-            })
+            updates2.append({"range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}", "values": [[student2_name]]})
         
         if updates2:
             sheets_service.spreadsheets().values().batchUpdate(
@@ -463,72 +456,54 @@ def update_registration(note_number, student1, student2=None):
             ).execute()
             logger.info(f"تم تحديث شيت المذكرات للمذكرة: {note_number}")
         
+        # ---------------- تحديث شيت الطلاب ----------------
         students_cols = df_students.columns.tolist()
         if 'رقم المذكرة' not in students_cols:
             raise Exception("عمود 'رقم المذكرة' غير موجود")
         
         df_students['اسم المستخدم'] = df_students['اسم المستخدم'].astype(str).str.strip()
         
-        student1_match = df_students[df_students['اسم المستخدم'] == student1['اسم المستخدم'].strip()]
-        if not student1_match.empty:
-            student1_row_idx = student1_match.index[0] + 2
-            col_idx = students_cols.index('رقم المذكرة') + 1
-            
-            sheets_service.spreadsheets().values().update(
-                spreadsheetId=STUDENTS_SHEET_ID,
-                range=f"Feuille 1!{col_letter(col_idx)}{student1_row_idx}",
-                valueInputOption="USER_ENTERED",
-                body={"values": [[note_number_clean]]}
-            ).execute()
-            logger.info(f"تم تحديث بيانات الطالب الأول")
-        
-        if student2 is not None:
-            student2_match = df_students[df_students['اسم المستخدم'] == student2['اسم المستخدم'].strip()]
-            if not student2_match.empty:
-                student2_row_idx = student2_match.index[0] + 2
-                
-                sheets_service.spreadsheets().values().update(
-                    spreadsheetId=STUDENTS_SHEET_ID,
-                    range=f"Feuille 1!{col_letter(col_idx)}{student2_row_idx}",
-                    valueInputOption="USER_ENTERED",
-                    body={"values": [[note_number_clean]]}
-                ).execute()
-                logger.info(f"تم تحديث بيانات الطالب الثاني")
+        for student in [student1, student2]:
+            if student:
+                match = df_students[df_students['اسم المستخدم'] == student['اسم المستخدم'].strip()]
+                if not match.empty:
+                    row_idx = match.index[0] + 2
+                    col_idx = students_cols.index('رقم المذكرة') + 1
+                    sheets_service.spreadsheets().values().update(
+                        spreadsheetId=STUDENTS_SHEET_ID,
+                        range=f"Feuille 1!{col_letter(col_idx)}{row_idx}",
+                        valueInputOption="USER_ENTERED",
+                        body={"values": [[note_number_clean]]}
+                    ).execute()
+                    logger.info(f"تم تحديث بيانات الطالب {student['اللقب']} {student['الإسم']}")
         
         st.cache_data.clear()
         
-        # إرسال البريد الإلكتروني للأستاذ
+        # ---------------- إرسال البريد الإلكتروني للأستاذ ----------------
+        if prof_email and EMAIL_ENABLED:
+            email_success, email_msg = send_email_to_professor(
+                prof_email=prof_email,
+                prof_name=prof_name,
+                memo_number=note_number_clean,
+                memo_title=memo_title,
+                student1_name=student1_name,
+                student2_name=student2_name,
+                used_password=used_password,
+                remaining_passwords=remaining_passwords
+            )
+            if email_success:
+                logger.info(f"تم إرسال إيميل للأستاذ {prof_name}")
+            else:
+                logger.warning(f"فشل إرسال الإيميل: {email_msg}")
+        
+        return True, "تم تسجيل المذكرة بنجاح وإرسال البريد الإلكتروني"
+
+    except Exception as e:
+        logger.error(f"خطأ أثناء تحديث التسجيل: {str(e)}")
+        return False, f"❌ فشل تسجيل المذكرة: {str(e)}"
 
 
-# إرسال البريد الإلكتروني للأستاذ
-if prof_email and EMAIL_ENABLED:
-    email_success, email_msg = send_email_to_professor(
-        prof_email=prof_email,
-        prof_name=prof_name,
-        memo_number=note_number_clean,
-        memo_title=memo_title,
-        student1_name=student1_name,
-        student2_name=student2_name,
-        used_password=used_password,
-        remaining_passwords=remaining_passwords
-    )
-    if email_success:
-        logger.info(f"تم إرسال إيميل للأستاذ {prof_name}")
-    else:
-        logger.warning(f"فشل إرسال الإيميل: {email_msg}")
 
-
-
-# ---------------- Session State ----------------
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.student1 = None
-    st.session_state.student2 = None
-    st.session_state.memo_type = "فردية"
-    st.session_state.mode = "register"
-    st.session_state.note_number = ""
-    st.session_state.prof_password = ""
-    st.session_state.show_confirmation = False
 
 def logout():
     """تسجيل الخروج"""
