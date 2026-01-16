@@ -237,7 +237,6 @@ if st.session_state.logged_in:
     if st.session_state.mode == "view":
         # مسح الكاش وإعادة تحميل البيانات الطازجة
         clear_cache_and_reload()
-        import time
         time.sleep(3) 
 
 
