@@ -182,6 +182,10 @@ def clear_cache_and_reload():
         logger.error(f"خطأ في مسح الكاش: {str(e)}")
         return False
 
+
+
+st.write("📧 إيميل الأستاذ:", prof_email)
+
 # ---------------- دالة إرسال البريد الإلكتروني ----------------
 def send_email_to_professor(prof_email, prof_name, memo_number, memo_title, 
                            student1_name, student2_name, used_password, 
