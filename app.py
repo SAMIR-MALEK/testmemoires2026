@@ -191,7 +191,7 @@ def send_email_to_professor(prof_email, prof_name, memo_number, memo_title,
                            student1_name, student2_name, used_password, 
                            remaining_passwords):
     """إرسال بريد إلكتروني للأستاذ بتفاصيل التسجيل"""
-    st.write("📧 إيميل الأستاذ:", prof_email)
+    
     if not EMAIL_ENABLED:
         logger.warning("البريد الإلكتروني غير مفعّل")
         return False, "البريد الإلكتروني غير مفعّل"
@@ -559,6 +559,14 @@ def update_registration(note_number, student1, student2=None):
         
         # إرسال البريد الإلكتروني للأستاذ
         email_status_msg = ""
+
+        st.error("🚨 وصلت إلى نقطة فحص الإيميل")
+
+        st.write("EMAIL_ENABLED =", EMAIL_ENABLED)
+        st.write("prof_email =", f"[{prof_email}]")
+
+
+        
         if prof_email and EMAIL_ENABLED:
             email_success, email_msg = send_email_to_professor(
                 prof_email=prof_email,
