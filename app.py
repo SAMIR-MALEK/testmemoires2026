@@ -801,8 +801,17 @@ if st.session_state.logged_in:
             else:
                 st.markdown('<div class="error-msg">❌ لا توجد مذكرات متاحة لهذا الأستاذ في تخصصك.</div>', unsafe_allow_html=True)
 
-#نهاية
 
+            if not available_memos_df.empty:
+                st.markdown(f'<p style="color:#FFD700;">⚠️ هذه المذكرات متاحة فقط لتخصصك: {student_specialty}</p>', unsafe_allow_html=True)
+                st.markdown("📚 **المذكرات المتاحة:**")
+                for idx, row in available_memos_df.iterrows():
+                    st.markdown(f'<p style="color:white;">{row["رقم المذكرة"]} • {row["عنوان المذكرة"]}</p>', unsafe_allow_html=True)
+            else:
+                st.markdown("❌ لا توجد مذكرات متاحة لهذا الأستاذ مع تخصصك.", unsafe_allow_html=True)
+
+#نهاية
+        
 
         
         st.markdown("---")
