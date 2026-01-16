@@ -777,7 +777,7 @@ if st.session_state.logged_in:
 
 
             if not available_memos_df.empty:
-                st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة لتخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
+                st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة في تخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
                 
                 # عرض المذكرات بتنسيق محسّن مع أرقامها الفعلية
                 for idx, row in available_memos_df.iterrows():
@@ -787,7 +787,7 @@ if st.session_state.logged_in:
                         </div>
                     """, unsafe_allow_html=True)
             else:
-                st.markdown('<div class="error-msg">❌ لا توجد مذكرات متاحة لهذا الأستاذ مع تخصصك.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="error-msg">❌ لا توجد مذكرات متاحة لهذا الأستاذ في تخصصك.</div>', unsafe_allow_html=True)
 
         st.markdown("---")
         
