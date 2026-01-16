@@ -25,9 +25,9 @@ button:hover { background-color:#2C89A0 !important; }
 .message { font-size:18px; font-weight:bold; text-align:center; margin:10px 0; color:#FFFFFF;}
 .logout-btn { background-color:#8B0000 !important; }
 .logout-btn:hover { background-color:#A52A2A !important; }
-.success-msg { color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 4px solid #FFD700; margin: 10px 0; }
-.error-msg { color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 4px solid #FFD700; margin: 10px 0; }
-.info-msg { color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 4px solid #FFD700; margin: 10px 0; }
+.success-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; }
+.error-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; }
+.info-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -416,7 +416,54 @@ if not st.session_state.logged_in:
             st.session_state.student1 = verified_students[0]
             st.session_state.student2 = verified_students[1] if len(verified_students) > 1 else None
             
-            # التحقق من إمكانية التسجيل الفردي
+            # ***** معالجة حالة المذكرة الثنائية *****
+            if st.session_state.memo_type == "ثنائية" and st.session_state.student2 is not None:
+                s1_note = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
+                s2_note = str(st.session_state.student2.get('رقم المذكرة', '')).strip()
+                s1_specialty = str(st.session_state.student1.get('التخصص', '')).strip()
+                s2_specialty = str(st.session_state.student2.get('التخصص', '')).strip()
+                
+                # الحالة 4: تخصصات مختلفة
+                if s1_specialty != s2_specialty:
+                    st.markdown('<div class="error-msg">❌ لا يمكن التسجيل الثنائي. الطالبان في تخصصين مختلفين</div>', unsafe_allow_html=True)
+                    logger.warning(f"محاولة تسجيل ثنائي بتخصصات مختلفة: {username1} ({s1_specialty}) و {username2} ({s2_specialty})")
+                    st.session_state.logged_in = False
+                    st.session_state.student1 = None
+                    st.session_state.student2 = None
+                    st.stop()
+                
+                # الحالة 1: أحد الطالبين مسجل والآخر لا
+                if (s1_note and not s2_note) or (not s1_note and s2_note):
+                    registered_student = None
+                    if s1_note:
+                        registered_student = f"{st.session_state.student1['اللقب']} {st.session_state.student1['الإسم']}"
+                    else:
+                        registered_student = f"{st.session_state.student2['اللقب']} {st.session_state.student2['الإسم']}"
+                    
+                    st.markdown(f'<div class="error-msg">❌ أحد الطالبين مسجل مسبقاً: {registered_student}<br>لا يمكن المتابعة</div>', unsafe_allow_html=True)
+                    logger.warning(f"محاولة تسجيل ثنائي مع طالب مسجل: {registered_student}")
+                    st.session_state.logged_in = False
+                    st.session_state.student1 = None
+                    st.session_state.student2 = None
+                    st.stop()
+                
+                # الحالة 3: الطالبان مسجلان في مذكرتين مختلفتين
+                if s1_note and s2_note and s1_note != s2_note:
+                    st.markdown(f'<div class="error-msg">❌ الطالبان مسجلان في مذكرتين مختلفتين<br>الطالب الأول في المذكرة: {s1_note}<br>الطالب الثاني في المذكرة: {s2_note}<br>لا يمكن المتابعة</div>', unsafe_allow_html=True)
+                    logger.warning(f"محاولة دخول ثنائي بمذكرتين مختلفتين: {s1_note} و {s2_note}")
+                    st.session_state.logged_in = False
+                    st.session_state.student1 = None
+                    st.session_state.student2 = None
+                    st.stop()
+                
+                # الحالة 2: الطالبان مسجلان معاً في نفس المذكرة
+                if s1_note and s2_note and s1_note == s2_note:
+                    st.session_state.mode = "view"
+                    logger.info(f"دخول ثنائي لمذكرة مسجلة: {username1} و {username2}")
+                    st.session_state.logged_in = True
+                    st.rerun()
+            
+            # ***** معالجة حالة المذكرة الفردية *****
             if st.session_state.memo_type == "فردية":
                 fardiya_value = str(st.session_state.student1.get('فردية', '')).strip()
                 if fardiya_value not in ["1", "نعم"]:
@@ -501,11 +548,9 @@ if st.session_state.logged_in:
             if not available_memos_df.empty:
                 st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة لتخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
                 
-                # عرض المذكرات بشكل منظم
+                # عرض المذكرات كقائمة نصية مرقمة
                 for idx, row in available_memos_df.iterrows():
-                    with st.expander(f"📌 {row['رقم المذكرة']}", expanded=False):
-                        st.markdown(f"**العنوان:** {row['عنوان المذكرة']}")
-                        st.markdown(f"**الأستاذ:** {selected_prof}")
+                    st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
             else:
                 st.markdown('<div class="error-msg">❌ لا توجد مذكرات متاحة لهذا الأستاذ مع تخصصك.</div>', unsafe_allow_html=True)
 
