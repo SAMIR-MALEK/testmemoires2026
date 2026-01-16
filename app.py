@@ -345,11 +345,20 @@ if 'logged_in' not in st.session_state:
 
 def logout():
     """تسجيل الخروج"""
-    username = 'unknown'
-    if st.session_state.student1 is not None:
-        username = st.session_state.student1.get('اسم المستخدم', 'unknown')
+    username1 = 'unknown'
+    username2 = None
     
-    logger.info(f"تسجيل خروج: {username}")
+    if st.session_state.student1 is not None:
+        username1 = st.session_state.student1.get('اسم المستخدم', 'unknown')
+    
+    if st.session_state.student2 is not None:
+        username2 = st.session_state.student2.get('اسم المستخدم', 'unknown')
+    
+    if username2:
+        logger.info(f"تسجيل خروج: {username1} و {username2}")
+    else:
+        logger.info(f"تسجيل خروج: {username1}")
+    
     st.session_state.logged_in = False
     st.session_state.student1 = None
     st.session_state.student2 = None
@@ -407,6 +416,14 @@ if not st.session_state.logged_in:
             st.session_state.student1 = verified_students[0]
             st.session_state.student2 = verified_students[1] if len(verified_students) > 1 else None
             
+            # التحقق من إمكانية التسجيل الفردي
+            if st.session_state.memo_type == "فردية":
+                fardiya_value = str(st.session_state.student1.get('فردية', '')).strip()
+                if fardiya_value not in ["1", "نعم"]:
+                    st.markdown('<div class="error-msg">❌ لا يمكنك تسجيل مذكرة فردية. يرجى الاتصال بمسؤول الميدان</div>', unsafe_allow_html=True)
+                    logger.warning(f"محاولة تسجيل فردي ممنوع: {username1} (قيمة فردية: {fardiya_value})")
+                    st.stop()
+            
             # التحقق من التسجيل المسبق
             note_number = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
             
@@ -433,13 +450,13 @@ if st.session_state.logged_in:
     with col1:
         st.markdown("<h2 style='text-align:center;'>📘 فضاء الطالب</h2>", unsafe_allow_html=True)
     with col2:
-        if st.button("🚪 خروج", key="logout_btn", help="تسجيل الخروج"):
+        if st.button("🚪 خروج", key="logout_btn"):
             logout()
     
     st.markdown(f"👤 الطالب الأول: **{s1['اللقب']} {s1['الإسم']}**")
     st.markdown(f"🎓 التخصص: **{s1['التخصص']}**")
     
-    if s2:
+    if s2 is not None:
         st.markdown(f"👤 الطالب الثاني: **{s2['اللقب']} {s2['الإسم']}**")
 
     # عرض معلومات المذكرة المسجلة
@@ -500,15 +517,13 @@ if st.session_state.logged_in:
             st.session_state.note_number = st.text_input(
                 "📄 رقم المذكرة", 
                 value=st.session_state.note_number,
-                max_chars=20,
-                help="أدخل رقم المذكرة الذي اخترته"
+                max_chars=20
             )
         with col2:
             st.session_state.prof_password = st.text_input(
                 "🔑 كلمة سر المشرف", 
                 type="password",
-                max_chars=50,
-                help="كلمة السر التي أعطاها لك الأستاذ المشرف"
+                max_chars=50
             )
 
         # زر التأكيد مع رسالة تحذير
@@ -525,7 +540,7 @@ if st.session_state.logged_in:
             st.markdown("### ⚠️ تأكيد التسجيل")
             st.markdown(f"**رقم المذكرة:** {st.session_state.note_number}")
             st.markdown(f"**الطالب الأول:** {s1['اللقب']} {s1['الإسم']}")
-            if s2:
+            if s2 is not None:
                 st.markdown(f"**الطالب الثاني:** {s2['اللقب']} {s2['الإسم']}")
             st.markdown("**⚠️ تنبيه:** بعد التأكيد، لن تتمكن من تغيير المذكرة!")
             st.markdown('</div>', unsafe_allow_html=True)
