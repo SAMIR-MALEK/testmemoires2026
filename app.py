@@ -400,7 +400,19 @@ if not st.session_state.logged_in:
         username2 = st.text_input("اسم المستخدم الطالب الثاني", max_chars=50)
         password2 = st.text_input("كلمة السر الطالب الثاني", type="password", max_chars=50)
 
-    if st.button("تسجيل الدخول"):
+
+        if st.button("تسجيل الدخول"):
+        # التحقق من عدم تكرار نفس الطالب في المذكرة الثنائية
+        if st.session_state.memo_type == "ثنائية":
+            if not username2 or not password2:
+                st.markdown('<div class="error-msg">⚠️ يرجى إدخال بيانات الطالب الثاني</div>', unsafe_allow_html=True)
+                st.stop()
+            
+            if username1.strip() == username2.strip():
+                st.markdown('<div class="error-msg">❌ لا يمكن أن يكون الطالب الأول والثاني نفس الشخص!</div>', unsafe_allow_html=True)
+                logger.warning(f"محاولة تسجيل ثنائي بنفس اسم المستخدم: {username1}")
+                st.stop()
+        
         # إعداد بيانات الطلاب للتحقق
         students_data = [(username1, password1)]
         if st.session_state.memo_type == "ثنائية" and username2:
@@ -408,6 +420,11 @@ if not st.session_state.logged_in:
         
         # التحقق من الطلاب دفعة واحدة
         valid, result = verify_students_batch(students_data, df_students)
+
+
+
+
+        
         
         if not valid:
             st.markdown(f'<div class="error-msg">{result}</div>', unsafe_allow_html=True)
