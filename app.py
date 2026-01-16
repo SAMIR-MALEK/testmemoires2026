@@ -290,9 +290,14 @@ def send_email_to_professor(prof_email, prof_name, memo_number, memo_title,
         
         # إرسال البريد مع معالجة أفضل للأخطاء
         try:
-            with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10) as server:
-                server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-                server.send_message(msg)
+
+            server = smtplib.SMTP("smtp.gmail.com", 587, timeout=15)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(msg)
+            server.quit()
             
             logger.info(f"✅ تم إرسال بريد إلكتروني للأستاذ {prof_name} على {prof_email}")
             return True, "تم إرسال البريد الإلكتروني بنجاح"
