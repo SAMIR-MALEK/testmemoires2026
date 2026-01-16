@@ -90,7 +90,7 @@ def sanitize_input(text):
     """تنقية المدخلات من الأحرف الخطرة"""
     if not text:
         return ""
-    dangerous_chars = ['<', '>', '"', "'", ';', '&', '|', '`']
+    dangerous_chars = ['<', '>', '"', "'", ';', '&', '|', '']
     cleaned = str(text).strip()
     for char in dangerous_chars:
         cleaned = cleaned.replace(char, '')
@@ -181,75 +181,117 @@ def clear_cache_and_reload():
         return False
 
 # ---------------- دالة إرسال البريد الإلكتروني ----------------
-
-
 def send_email_to_professor(prof_email, prof_name, memo_number, memo_title, 
-                            student1_name, student2_name, used_password, 
-                            remaining_passwords):
-    """
-    إرسال بريد إلكتروني للأستاذ مع تفاصيل المذكرة وكلمات السر.
-    يدعم Gmail / GSuite باستخدام App Password.
-    """
+                           student1_name, student2_name, used_password, 
+                           remaining_passwords):
+    """إرسال بريد إلكتروني للأستاذ بتفاصيل التسجيل"""
+    
     if not EMAIL_ENABLED:
-        logger.warning("البريد الإلكتروني غير مفعل")
-        return False, "البريد الإلكتروني غير مفعل"
+        logger.warning("البريد الإلكتروني غير مفعّل")
+        return False, "البريد الإلكتروني غير مفعّل"
     
     if not prof_email or '@' not in prof_email:
         logger.warning(f"بريد إلكتروني غير صالح للأستاذ: {prof_name}")
         return False, "البريد الإلكتروني غير صالح"
     
     try:
-        # إعداد الرسالة بصيغة HTML
-        students_info = f"<li>{student1_name}</li>"
+        # إنشاء الرسالة
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f'تأكيد تسجيل مذكرة - {memo_number}'
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = prof_email
+        
+        # محتوى البريد بصيغة HTML
+        students_info = f"<li><strong>الطالب الأول:</strong> {student1_name}</li>"
         if student2_name:
-            students_info += f"<li>{student2_name}</li>"
-
-        remaining_pass_html = ""
+            students_info += f"<li><strong>الطالب الثاني:</strong> {student2_name}</li>"
+        
+        # قائمة كلمات السر المتبقية
+        remaining_pass_list = ""
         if remaining_passwords:
-            remaining_pass_html = "".join([f"<li>{pwd}</li>" for pwd in remaining_passwords])
+            for pwd in remaining_passwords:
+                remaining_pass_list += f"<li style='background-color:#f0f0f0; padding:8px; margin:5px 0; border-radius:4px; font-family:monospace;'>{pwd}</li>"
         else:
-            remaining_pass_html = "<li>لا توجد كلمات سر متبقية</li>"
-
+            remaining_pass_list = "<li style='color:#ff0000;'>لا توجد كلمات سر متبقية</li>"
+        
         html_content = f"""
         <html dir="rtl">
+        <head>
+            <style>
+                body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
+                .container {{ background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
+                .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
+                .content {{ padding: 20px; }}
+                .info-box {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #256D85; }}
+                .password-used {{ background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #ffc107; }}
+                .passwords-remaining {{ background-color: #d4edda; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #28a745; }}
+                ul {{ list-style: none; padding: 0; }}
+                li {{ padding: 8px 0; }}
+                .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
+            </style>
+        </head>
         <body>
-            <h2>🎓 تأكيد تسجيل مذكرة ماستر</h2>
-            <p>السلام عليكم الأستاذ(ة) <strong>{prof_name}</strong></p>
-            <p>تم تسجيل مذكرة جديدة تحت إشرافكم:</p>
-            <ul>
-                <li><strong>رقم المذكرة:</strong> {memo_number}</li>
-                <li><strong>عنوان المذكرة:</strong> {memo_title}</li>
-                {students_info}
-                <li><strong>كلمة السر المستخدمة:</strong> {used_password}</li>
-            </ul>
-            <h3>🔐 كلمات السر المتبقية:</h3>
-            <ul>{remaining_pass_html}</ul>
+            <div class="container">
+                <div class="header">
+                    <h2>🎓 تأكيد تسجيل مذكرة ماستر</h2>
+                </div>
+                
+                <div class="content">
+                    <p>السلام عليكم الأستاذ(ة) <strong>{prof_name}</strong>،</p>
+                    <p>نود إعلامكم بأنه تم تسجيل مذكرة جديدة تحت إشرافكم:</p>
+                    
+                    <div class="info-box">
+                        <h3>📄 تفاصيل المذكرة:</h3>
+                        <ul>
+                            <li><strong>رقم المذكرة:</strong> {memo_number}</li>
+                            <li><strong>عنوان المذكرة:</strong> {memo_title}</li>
+                            {students_info}
+                            <li><strong>تاريخ التسجيل:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="password-used">
+                        <h3>🔑 كلمة السر المستخدمة:</h3>
+                        <p style="font-family: monospace; font-size: 18px; background-color: white; padding: 10px; border-radius: 5px; text-align: center;">
+                            <strong>{used_password}</strong>
+                        </p>
+                        <p style="color: #856404; font-size: 14px;">⚠️ هذه الكلمة تم استخدامها ولا يمكن استعمالها مرة أخرى</p>
+                    </div>
+                    
+                    <div class="passwords-remaining">
+                        <h3>🔐 كلمات السر المتبقية:</h3>
+                        <ul>
+                            {remaining_pass_list}
+                        </ul>
+                    </div>
+                    
+                    <p style="margin-top: 20px;">للاستفسارات، يرجى التواصل مع إدارة الكلية.</p>
+                </div>
+                
+                <div class="footer">
+                    <p>جامعة محمد البشير الإبراهيمي</p>
+                    <p>كلية الحقوق والعلوم السياسية</p>
+                    <p>© 2026 - نظام تسجيل مذكرات الماستر</p>
+                </div>
+            </div>
         </body>
         </html>
         """
-
-        # إنشاء الرسالة
-        msg = MIMEMultipart("alternative")
-        msg['Subject'] = f"تأكيد تسجيل مذكرة - {memo_number}"
-        msg['From'] = EMAIL_ADDRESS
-        msg['To'] = prof_email
-        msg.attach(MIMEText(html_content, "html", "utf-8"))
-
-        # إرسال البريد عبر Gmail SMTP
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        
+        html_part = MIMEText(html_content, 'html', 'utf-8')
+        msg.attach(html_part)
+        
+        # إرسال البريد
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             server.send_message(msg)
-
-        logger.info(f"تم إرسال البريد للأستاذ {prof_name} على {prof_email}")
+        
+        logger.info(f"تم إرسال بريد إلكتروني للأستاذ {prof_name} على {prof_email}")
         return True, "تم إرسال البريد الإلكتروني بنجاح"
-
+        
     except Exception as e:
         logger.error(f"خطأ في إرسال البريد الإلكتروني: {str(e)}")
         return False, f"فشل إرسال البريد: {str(e)}"
-
-
-
-
 
 # ---------------- التحقق ----------------
 def verify_student(username, password, df_students):
@@ -350,14 +392,11 @@ def verify_professor_password(note_number, prof_password, df_memos, df_prof_memo
     return True, prof_row.iloc[0], None
 
 # ---------------- تحديث المذكرات ----------------
-
-
 def update_registration(note_number, student1, student2=None):
-    """تحديث تسجيل المذكرة في جميع الجداول وإرسال البريد الإلكتروني للأستاذ"""
+    """تحديث تسجيل المذكرة في جميع الجداول (محسّن)"""
     try:
         st.cache_data.clear()
         
-        # تحميل البيانات
         df_memos = load_memos()
         df_prof_memos = load_prof_memos()
         df_students = load_students()
@@ -387,10 +426,10 @@ def update_registration(note_number, student1, student2=None):
         if prof_match.empty:
             raise Exception("لم يتم العثور على بيانات الأستاذ")
         
-        # كلمة السر المستخدمة
+        # الحصول على كلمة السر المستخدمة
         used_password = str(st.session_state.prof_password).strip()
         
-        # كلمات السر المتبقية للأستاذ
+        # الحصول على كلمات السر المتبقية للأستاذ
         remaining_passwords_df = df_prof_memos[
             (df_prof_memos['الأستاذ'] == prof_name) &
             (df_prof_memos['تم التسجيل'] != "نعم") &
@@ -398,16 +437,13 @@ def update_registration(note_number, student1, student2=None):
         ]
         remaining_passwords = remaining_passwords_df['كلمة سر التسجيل'].astype(str).str.strip().tolist()
         
-        # البريد الإلكتروني للأستاذ
+        # الحصول على الإيميل
         prof_email = str(prof_match.iloc[0].get('الإيميل', '')).strip()
         
-        # إعداد أسماء الطلاب
-        student1_name = f"{student1['اللقب']} {student1['الإسم']}"
-        student2_name = f"{student2['اللقب']} {student2['الإسم']}" if student2 else None
-        
-        # ---------------- تحديث شيت الأساتذة ----------------
         prof_row_idx = prof_match.index[0] + 2
         col_names = df_prof_memos.columns.tolist()
+        
+        student1_name = f"{student1['اللقب']} {student1['الإسم']}"
         
         updates = []
         for col_name, value in [
@@ -418,11 +454,19 @@ def update_registration(note_number, student1, student2=None):
         ]:
             if col_name in col_names:
                 col_idx = col_names.index(col_name) + 1
-                updates.append({"range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}", "values": [[value]]})
+                updates.append({
+                    "range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}",
+                    "values": [[value]]
+                })
         
-        if student2_name and 'الطالب الثاني' in col_names:
+        student2_name = None
+        if student2 is not None and 'الطالب الثاني' in col_names:
+            student2_name = f"{student2['اللقب']} {student2['الإسم']}"
             col_idx = col_names.index('الطالب الثاني') + 1
-            updates.append({"range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}", "values": [[student2_name]]})
+            updates.append({
+                "range": f"Feuille 1!{col_letter(col_idx)}{prof_row_idx}",
+                "values": [[student2_name]]
+            })
         
         if updates:
             sheets_service.spreadsheets().values().batchUpdate(
@@ -431,7 +475,6 @@ def update_registration(note_number, student1, student2=None):
             ).execute()
             logger.info(f"تم تحديث شيت الأساتذة للمذكرة: {note_number}")
         
-        # ---------------- تحديث شيت المذكرات ----------------
         memo_row_idx = df_memos[df_memos['رقم المذكرة'] == note_number_clean].index[0] + 2
         memo_cols = df_memos.columns.tolist()
         
@@ -443,11 +486,17 @@ def update_registration(note_number, student1, student2=None):
         ]:
             if col_name in memo_cols:
                 col_idx = memo_cols.index(col_name) + 1
-                updates2.append({"range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}", "values": [[value]]})
+                updates2.append({
+                    "range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}",
+                    "values": [[value]]
+                })
         
-        if student2_name and 'الطالب الثاني' in memo_cols:
+        if student2 is not None and 'الطالب الثاني' in memo_cols:
             col_idx = memo_cols.index('الطالب الثاني') + 1
-            updates2.append({"range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}", "values": [[student2_name]]})
+            updates2.append({
+                "range": f"Feuille 1!{col_letter(col_idx)}{memo_row_idx}",
+                "values": [[student2_name]]
+            })
         
         if updates2:
             sheets_service.spreadsheets().values().batchUpdate(
@@ -456,30 +505,41 @@ def update_registration(note_number, student1, student2=None):
             ).execute()
             logger.info(f"تم تحديث شيت المذكرات للمذكرة: {note_number}")
         
-        # ---------------- تحديث شيت الطلاب ----------------
         students_cols = df_students.columns.tolist()
         if 'رقم المذكرة' not in students_cols:
             raise Exception("عمود 'رقم المذكرة' غير موجود")
         
         df_students['اسم المستخدم'] = df_students['اسم المستخدم'].astype(str).str.strip()
         
-        for student in [student1, student2]:
-            if student:
-                match = df_students[df_students['اسم المستخدم'] == student['اسم المستخدم'].strip()]
-                if not match.empty:
-                    row_idx = match.index[0] + 2
-                    col_idx = students_cols.index('رقم المذكرة') + 1
-                    sheets_service.spreadsheets().values().update(
-                        spreadsheetId=STUDENTS_SHEET_ID,
-                        range=f"Feuille 1!{col_letter(col_idx)}{row_idx}",
-                        valueInputOption="USER_ENTERED",
-                        body={"values": [[note_number_clean]]}
-                    ).execute()
-                    logger.info(f"تم تحديث بيانات الطالب {student['اللقب']} {student['الإسم']}")
+        student1_match = df_students[df_students['اسم المستخدم'] == student1['اسم المستخدم'].strip()]
+        if not student1_match.empty:
+            student1_row_idx = student1_match.index[0] + 2
+            col_idx = students_cols.index('رقم المذكرة') + 1
+            
+            sheets_service.spreadsheets().values().update(
+                spreadsheetId=STUDENTS_SHEET_ID,
+                range=f"Feuille 1!{col_letter(col_idx)}{student1_row_idx}",
+                valueInputOption="USER_ENTERED",
+                body={"values": [[note_number_clean]]}
+            ).execute()
+            logger.info(f"تم تحديث بيانات الطالب الأول")
+        
+        if student2 is not None:
+            student2_match = df_students[df_students['اسم المستخدم'] == student2['اسم المستخدم'].strip()]
+            if not student2_match.empty:
+                student2_row_idx = student2_match.index[0] + 2
+                
+                sheets_service.spreadsheets().values().update(
+                    spreadsheetId=STUDENTS_SHEET_ID,
+                    range=f"Feuille 1!{col_letter(col_idx)}{student2_row_idx}",
+                    valueInputOption="USER_ENTERED",
+                    body={"values": [[note_number_clean]]}
+                ).execute()
+                logger.info(f"تم تحديث بيانات الطالب الثاني")
         
         st.cache_data.clear()
         
-        # ---------------- إرسال البريد الإلكتروني للأستاذ ----------------
+        # إرسال البريد الإلكتروني للأستاذ
         if prof_email and EMAIL_ENABLED:
             email_success, email_msg = send_email_to_professor(
                 prof_email=prof_email,
@@ -496,14 +556,23 @@ def update_registration(note_number, student1, student2=None):
             else:
                 logger.warning(f"فشل إرسال الإيميل: {email_msg}")
         
-        return True, "تم تسجيل المذكرة بنجاح وإرسال البريد الإلكتروني"
-
+        logger.info(f"✅ تم تسجيل المذكرة {note_number} بنجاح")
+        return True, "✅ تم تسجيل المذكرة بنجاح!"
+        
     except Exception as e:
-        logger.error(f"خطأ أثناء تحديث التسجيل: {str(e)}")
-        return False, f"❌ فشل تسجيل المذكرة: {str(e)}"
+        logger.error(f"خطأ في تحديث التسجيل: {str(e)}", exc_info=True)
+        return False, f"❌ حدث خطأ أثناء التسجيل: {str(e)}"
 
-
-
+# ---------------- Session State ----------------
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.student1 = None
+    st.session_state.student2 = None
+    st.session_state.memo_type = "فردية"
+    st.session_state.mode = "register"
+    st.session_state.note_number = ""
+    st.session_state.prof_password = ""
+    st.session_state.show_confirmation = False
 
 def logout():
     """تسجيل الخروج"""
