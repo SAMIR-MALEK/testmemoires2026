@@ -775,6 +775,18 @@ if st.session_state.logged_in:
             
        
 
+            if not available_memos_df.empty:
+                st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة لتخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
+                
+                # عرض المذكرات كقائمة نصية مرقمة
+                for idx, row in available_memos_df.iterrows():
+                    st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
+            else:
+                st.markdown('<div class="error-msg">❌ لا توجد مذكرات متاحة لهذا الأستاذ مع تخصصك.</div>', unsafe_allow_html=True)
+
+
+
+#بداية    
 
             if not available_memos_df.empty:
                 st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة في تخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
@@ -789,6 +801,10 @@ if st.session_state.logged_in:
             else:
                 st.markdown('<div class="error-msg">❌ لا توجد مذكرات متاحة لهذا الأستاذ في تخصصك.</div>', unsafe_allow_html=True)
 
+#نهاية
+
+
+        
         st.markdown("---")
         
         col1, col2 = st.columns(2)
