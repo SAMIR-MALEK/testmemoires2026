@@ -184,14 +184,14 @@ def clear_cache_and_reload():
 
 
 
-st.write("📧 إيميل الأستاذ:", prof_email)
+
 
 # ---------------- دالة إرسال البريد الإلكتروني ----------------
 def send_email_to_professor(prof_email, prof_name, memo_number, memo_title, 
                            student1_name, student2_name, used_password, 
                            remaining_passwords):
     """إرسال بريد إلكتروني للأستاذ بتفاصيل التسجيل"""
-    
+    st.write("📧 إيميل الأستاذ:", prof_email)
     if not EMAIL_ENABLED:
         logger.warning("البريد الإلكتروني غير مفعّل")
         return False, "البريد الإلكتروني غير مفعّل"
