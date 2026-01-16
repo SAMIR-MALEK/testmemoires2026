@@ -8,7 +8,7 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-st.write("secrets:", st.secrets)
+
 
 # ---------------- إعداد Logging ----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
