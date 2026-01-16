@@ -67,14 +67,16 @@ MEMOS_RANGE = "Feuille 1!A1:N1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:L1000"
 
 # ---------------- إعداد البريد الإلكتروني ----------------
-# استخدم secrets لتخزين بيانات الإيميل
 try:
-    EMAIL_ADDRESS = st.secrets.get("email_address", "")
-    EMAIL_PASSWORD = st.secrets.get("email_password", "")
+    EMAIL_ADDRESS = st.secrets["email_address"]
+    EMAIL_PASSWORD = st.secrets["email_password"]
     EMAIL_ENABLED = bool(EMAIL_ADDRESS and EMAIL_PASSWORD)
-except:
+    logger.info(f"✅ البريد الإلكتروني مفعّل: {EMAIL_ADDRESS}")
+except Exception as e:
     EMAIL_ENABLED = False
-    logger.warning("البريد الإلكتروني غير مفعّل - تأكد من إضافة email_address و email_password في secrets")
+    EMAIL_ADDRESS = ""
+    EMAIL_PASSWORD = ""
+    logger.warning(f"⚠️ البريد الإلكتروني غير مفعّل: {str(e)}")
 
 # ---------------- دوال مساعدة ----------------
 def col_letter(n):
@@ -198,7 +200,7 @@ def send_email_to_professor(prof_email, prof_name, memo_number, memo_title,
         # إنشاء الرسالة
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f'تأكيد تسجيل مذكرة - {memo_number}'
-        msg['From'] = EMAIL_ADDRESS
+        msg['From'] = f"منصة تسجيل المذكرات <{EMAIL_ADDRESS}>"
         msg['To'] = prof_email
         
         # محتوى البريد بصيغة HTML
@@ -217,6 +219,7 @@ def send_email_to_professor(prof_email, prof_name, memo_number, memo_title,
         html_content = f"""
         <html dir="rtl">
         <head>
+            <meta charset="UTF-8">
             <style>
                 body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
                 .container {{ background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
@@ -281,16 +284,27 @@ def send_email_to_professor(prof_email, prof_name, memo_number, memo_title,
         html_part = MIMEText(html_content, 'html', 'utf-8')
         msg.attach(html_part)
         
-        # إرسال البريد
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg)
-        
-        logger.info(f"تم إرسال بريد إلكتروني للأستاذ {prof_name} على {prof_email}")
-        return True, "تم إرسال البريد الإلكتروني بنجاح"
+        # إرسال البريد مع معالجة أفضل للأخطاء
+        try:
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10) as server:
+                server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+                server.send_message(msg)
+            
+            logger.info(f"✅ تم إرسال بريد إلكتروني للأستاذ {prof_name} على {prof_email}")
+            return True, "تم إرسال البريد الإلكتروني بنجاح"
+            
+        except smtplib.SMTPAuthenticationError:
+            logger.error("❌ خطأ في المصادقة - تحقق من email_address و email_password")
+            return False, "خطأ في المصادقة مع خادم البريد"
+        except smtplib.SMTPException as smtp_err:
+            logger.error(f"❌ خطأ SMTP: {str(smtp_err)}")
+            return False, f"خطأ في إرسال البريد: {str(smtp_err)}"
+        except Exception as conn_err:
+            logger.error(f"❌ خطأ في الاتصال: {str(conn_err)}")
+            return False, f"خطأ في الاتصال بخادم البريد: {str(conn_err)}"
         
     except Exception as e:
-        logger.error(f"خطأ في إرسال البريد الإلكتروني: {str(e)}")
+        logger.error(f"❌ خطأ عام في إرسال البريد الإلكتروني: {str(e)}")
         return False, f"فشل إرسال البريد: {str(e)}"
 
 # ---------------- التحقق ----------------
@@ -317,7 +331,7 @@ def verify_student(username, password, df_students):
         logger.warning(f"محاولة دخول بكلمة سر خاطئة لـ: {username}")
         return False, "❌ كلمة السر غير صحيحة"
     
-    logger.info(f"تسجيل دخول ناجح: {username}")
+    logger.info(f"✅ تسجيل دخول ناجح: {username}")
     return True, student.iloc[0]
 
 def verify_students_batch(students_data, df_students):
@@ -388,7 +402,7 @@ def verify_professor_password(note_number, prof_password, df_memos, df_prof_memo
         logger.warning(f"محاولة استخدام كلمة سر مستخدمة مسبقاً")
         return False, None, "❌ هذه كلمة السر تم استعمالها مسبقًا"
     
-    logger.info(f"تحقق ناجح من كلمة سر المشرف للمذكرة: {note_number}")
+    logger.info(f"✅ تحقق ناجح من كلمة سر المشرف للمذكرة: {note_number}")
     return True, prof_row.iloc[0], None
 
 # ---------------- تحديث المذكرات ----------------
@@ -473,7 +487,7 @@ def update_registration(note_number, student1, student2=None):
                 spreadsheetId=PROF_MEMOS_SHEET_ID,
                 body={"valueInputOption": "USER_ENTERED", "data": updates}
             ).execute()
-            logger.info(f"تم تحديث شيت الأساتذة للمذكرة: {note_number}")
+            logger.info(f"✅ تم تحديث شيت الأساتذة للمذكرة: {note_number}")
         
         memo_row_idx = df_memos[df_memos['رقم المذكرة'] == note_number_clean].index[0] + 2
         memo_cols = df_memos.columns.tolist()
@@ -503,7 +517,7 @@ def update_registration(note_number, student1, student2=None):
                 spreadsheetId=MEMOS_SHEET_ID,
                 body={"valueInputOption": "USER_ENTERED", "data": updates2}
             ).execute()
-            logger.info(f"تم تحديث شيت المذكرات للمذكرة: {note_number}")
+            logger.info(f"✅ تم تحديث شيت المذكرات للمذكرة: {note_number}")
         
         students_cols = df_students.columns.tolist()
         if 'رقم المذكرة' not in students_cols:
@@ -522,7 +536,7 @@ def update_registration(note_number, student1, student2=None):
                 valueInputOption="USER_ENTERED",
                 body={"values": [[note_number_clean]]}
             ).execute()
-            logger.info(f"تم تحديث بيانات الطالب الأول")
+            logger.info(f"✅ تم تحديث بيانات الطالب الأول")
         
         if student2 is not None:
             student2_match = df_students[df_students['اسم المستخدم'] == student2['اسم المستخدم'].strip()]
@@ -535,11 +549,12 @@ def update_registration(note_number, student1, student2=None):
                     valueInputOption="USER_ENTERED",
                     body={"values": [[note_number_clean]]}
                 ).execute()
-                logger.info(f"تم تحديث بيانات الطالب الثاني")
+                logger.info(f"✅ تم تحديث بيانات الطالب الثاني")
         
         st.cache_data.clear()
         
         # إرسال البريد الإلكتروني للأستاذ
+        email_status_msg = ""
         if prof_email and EMAIL_ENABLED:
             email_success, email_msg = send_email_to_professor(
                 prof_email=prof_email,
@@ -552,15 +567,19 @@ def update_registration(note_number, student1, student2=None):
                 remaining_passwords=remaining_passwords
             )
             if email_success:
-                logger.info(f"تم إرسال إيميل للأستاذ {prof_name}")
+                logger.info(f"✅ تم إرسال إيميل للأستاذ {prof_name}")
+                email_status_msg = f"\n📧 تم إرسال بريد إلكتروني للأستاذ {prof_name}"
             else:
-                logger.warning(f"فشل إرسال الإيميل: {email_msg}")
+                logger.warning(f"⚠️ فشل إرسال الإيميل: {email_msg}")
+                email_status_msg = f"\n⚠️ تنبيه: لم يتم إرسال البريد الإلكتروني ({email_msg})"
+        elif not EMAIL_ENABLED:
+            logger.info("ℹ️ البريد الإلكتروني غير مفعّل")
         
         logger.info(f"✅ تم تسجيل المذكرة {note_number} بنجاح")
-        return True, "✅ تم تسجيل المذكرة بنجاح!"
+        return True, f"✅ تم تسجيل المذكرة بنجاح!{email_status_msg}"
         
     except Exception as e:
-        logger.error(f"خطأ في تحديث التسجيل: {str(e)}", exc_info=True)
+        logger.error(f"❌ خطأ في تحديث التسجيل: {str(e)}", exc_info=True)
         return False, f"❌ حدث خطأ أثناء التسجيل: {str(e)}"
 
 # ---------------- Session State ----------------
@@ -733,10 +752,10 @@ if st.session_state.logged_in:
     
     st.markdown(f"👤 الطالب الأول: **{s1['اللقب']} {s1['الإسم']}**")
     
-    
     if s2 is not None:
         st.markdown(f"👤 الطالب الثاني: **{s2['اللقب']} {s2['الإسم']}**")
     st.markdown(f"🎓 التخصص: **{s1['التخصص']}**")
+    
     if st.session_state.mode == "view":
         note_number = str(s1.get('رقم المذكرة', '')).strip()
         memo_info = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == note_number]
@@ -773,18 +792,9 @@ if st.session_state.logged_in:
                 (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")
             ][["رقم المذكرة", "عنوان المذكرة"]]
             
-       
-
-    
-
-
-
-#بداية    
-
             if not available_memos_df.empty:
                 st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة في تخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
                 
-                # عرض المذكرات بتنسيق محسّن مع أرقامها الفعلية
                 for idx, row in available_memos_df.iterrows():
                     st.markdown(f"""
                         <div class="memo-item">
@@ -793,12 +803,6 @@ if st.session_state.logged_in:
                     """, unsafe_allow_html=True)
             else:
                 st.markdown('<div class="error-msg">❌ لا توجد مذكرات متاحة لهذا الأستاذ في تخصصك.</div>', unsafe_allow_html=True)
-
-
-
-#نهاية
-        
-
         
         st.markdown("---")
         
