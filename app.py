@@ -72,17 +72,10 @@ EMAIL_ENABLED = False
 EMAIL_ADDRESS = ""
 EMAIL_PASSWORD = ""
 
-try:
-    EMAIL_ADDRESS = st.secrets["email_address"]
-    EMAIL_PASSWORD = st.secrets["email_password"]
-    if EMAIL_ADDRESS and EMAIL_PASSWORD:
-        EMAIL_ENABLED = True
-        logger.info(f"✅ البريد الإلكتروني مفعّل: {EMAIL_ADDRESS}")
-    else:
-        logger.warning("⚠️ بيانات البريد الإلكتروني فارغة")
-except Exception as e:
-    EMAIL_ENABLED = False
-    logger.warning(f"⚠️ البريد الإلكتروني غير مفعّل: {str(e)}")
+# ---------------- إعداد البريد المباشر ----------------
+EMAIL_ENABLED = True
+EMAIL_ADDRESS = "domaine.dsp@univ-bba.dz"        # ضع بريدك هنا
+EMAIL_PASSWORD = "etrvbsfuhbsbrdds"          # ضع App Password هنا
 
 # ---------------- دوال مساعدة ----------------
 def col_letter(n):
