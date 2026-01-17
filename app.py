@@ -1,574 +1,647 @@
-import React, { useState, useEffect } from 'react';
-import { Users, BookOpen, CheckCircle, Clock, Phone, TrendingUp, Award, AlertCircle, LogOut, Search, Filter } from 'lucide-react';
+import streamlit as st
+from datetime import datetime
+import pandas as pd
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+import logging
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import time
+import plotly.express as px
+import plotly.graph_objects as go
 
-const App = () => {
-  const [userType, setUserType] = useState(null);
-  const [professorAuth, setProfessorAuth] = useState({ username: '', password: '' });
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [password, setPassword] = useState('');
-  const [phone1, setPhone1] = useState('');
-  const [phone2, setPhone2] = useState('');
-  const [selectedThesis, setSelectedThesis] = useState('');
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  
-  const [professorData, setProfessorData] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [theses, setTheses] = useState([]);
+# ---------------- إعداد Logging ----------------
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-  const validatePhone = (phone) => {
-    const phoneRegex = /^(05|06|07)\d{8}$/;
-    return phoneRegex.test(phone);
-  };
+# ---------------- إعداد الصفحة ----------------
+st.set_page_config(page_title="نظام إدارة مذكرات الماستر", page_icon="🎓", layout="wide")
 
-  useEffect(() => {
-    if (userType === 'student') {
-      loadTheses();
-    }
-  }, [userType]);
+# ---------------- CSS المحسّن ----------------
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
 
-  const loadTheses = async () => {
-    try {
-      const csvData = await window.fs.readFile('المذكرات-الأساتذة.csv', { encoding: 'utf8' });
-      const Papa = await import('https://cdn.jsdelivr.net/npm/papaparse@5.4.1/+esm');
-      const parsedData = Papa.parse(csvData, { header: true, skipEmptyLines: true });
-      
-      const availableTheses = parsedData.data.filter(row => 
-        row['حالة التسجيل']?.trim() === 'متاحة'
-      );
-      
-      setTheses(availableTheses);
-    } catch (error) {
-      console.error('Error loading theses:', error);
-    }
-  };
+* {
+    font-family: 'Cairo', sans-serif !important;
+}
 
-  const handleStudentRegistration = async () => {
-    if (!firstName || !lastName || !password || !selectedThesis || !phone1) {
-      setMessage('⚠️ يرجى ملء جميع الحقول المطلوبة');
-      return;
-    }
+.main {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 0;
+}
 
-    if (!validatePhone(phone1)) {
-      setMessage('⚠️ رقم الهاتف الأول غير صحيح (يجب أن يبدأ بـ 05 أو 06 أو 07 ويحتوي على 10 أرقام)');
-      return;
-    }
+.stApp {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
 
-    if (phone2 && !validatePhone(phone2)) {
-      setMessage('⚠️ رقم الهاتف الثاني غير صحيح');
-      return;
-    }
+/* بطاقة رئيسية */
+.main-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    margin: 20px auto;
+    max-width: 1400px;
+}
 
-    setLoading(true);
-    setMessage('');
+/* عنوان */
+.hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
 
-    try {
-      const thesesResponse = await window.fs.readFile('المذكرات-الأساتذة.csv', { encoding: 'utf8' });
-      const Papa = await import('https://cdn.jsdelivr.net/npm/papaparse@5.4.1/+esm');
-      const thesesData = Papa.parse(thesesResponse, { header: true, skipEmptyLines: true });
-      
-      const thesis = thesesData.data.find(t => 
-        t['عنوان المذكرة']?.trim() === selectedThesis.trim()
-      );
+.hero-subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+}
 
-      if (!thesis) {
-        setMessage('❌ المذكرة غير موجودة');
-        setLoading(false);
-        return;
-      }
+/* أزرار الاختيار */
+.role-selector {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    margin: 40px 0;
+}
 
-      const status = thesis['حالة التسجيل']?.trim();
-      const savedPassword = thesis['كلمة السر']?.trim();
+.role-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 250px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
 
-      if (status === 'مسجلة') {
-        setMessage('❌ هذه المذكرة مسجلة بالفعل');
-        setLoading(false);
-        return;
-      }
+.role-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.5);
+}
 
-      if (password !== savedPassword) {
-        setMessage('❌ كلمة السر غير صحيحة');
-        setLoading(false);
-        return;
-      }
+/* بطاقات الإحصائيات */
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 25px;
+    color: white;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
 
-      const phoneInfo = phone2 ? `${phone1} / ${phone2}` : phone1;
-      const studentName = `${firstName.trim()} ${lastName.trim()}`;
-      
-      setMessage(`✅ تم تسجيل المذكرة بنجاح!\n\nالطالب: ${studentName}\nالهاتف: ${phoneInfo}\nالمذكرة: ${selectedThesis}`);
-      
-      setFirstName('');
-      setLastName('');
-      setPassword('');
-      setPhone1('');
-      setPhone2('');
-      setSelectedThesis('');
-      
-    } catch (error) {
-      setMessage('❌ حدث خطأ في قراءة البيانات');
-      console.error(error);
-    }
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
 
-    setLoading(false);
-  };
+.stat-number {
+    font-size: 3rem;
+    font-weight: 800;
+    margin: 10px 0;
+}
 
-  const handleProfessorLogin = async () => {
-    if (!professorAuth.username || !professorAuth.password) {
-      setMessage('⚠️ يرجى إدخال اسم المستخدم وكلمة المرور');
-      return;
-    }
+.stat-label {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
 
-    setLoading(true);
-    setMessage('');
+/* أزرار */
+.stButton > button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 15px 35px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
 
-    try {
-      const thesesResponse = await window.fs.readFile('المذكرات-الأساتذة.csv', { encoding: 'utf8' });
-      const Papa = await import('https://cdn.jsdelivr.net/npm/papaparse@5.4.1/+esm');
-      const thesesData = Papa.parse(thesesResponse, { header: true, skipEmptyLines: true });
-      
-      const professor = thesesData.data.find(row => 
-        row['إسم المستخدم']?.trim() === professorAuth.username.trim() &&
-        row['كلمة المرور']?.trim() === professorAuth.password.trim()
-      );
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+}
 
-      if (!professor) {
-        setMessage('❌ اسم المستخدم أو كلمة المرور غير صحيحة');
-        setLoading(false);
-        return;
-      }
+/* حقول الإدخال */
+.stTextInput > div > div > input,
+.stSelectbox > div > div > select {
+    border-radius: 12px;
+    border: 2px solid #e0e0e0;
+    padding: 12px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
 
-      const professorName = professor['الأستاذ']?.trim();
-      const professorTheses = thesesData.data.filter(t => 
-        t['الأستاذ']?.trim() === professorName
-      );
+.stTextInput > div > div > input:focus,
+.stSelectbox > div > div > select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
 
-      const stats = {
-        total: professorTheses.length,
-        registered: professorTheses.filter(t => t['حالة التسجيل']?.trim() === 'مسجلة').length,
-        available: professorTheses.filter(t => t['حالة التسجيل']?.trim() === 'متاحة').length,
-        theses: professorTheses.map(t => ({
-          title: t['عنوان المذكرة'],
-          status: t['حالة التسجيل'],
-          password: t['كلمة السر'],
-          student: t['الطالب'] || '-',
-          phones: t['أرقام الهواتف'] || '-',
-          date: t['تاريخ التسجيل'] || '-'
-        }))
-      };
+/* رسائل */
+.success-box {
+    background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+    border-radius: 12px;
+    padding: 20px;
+    color: #065f46;
+    margin: 20px 0;
+    box-shadow: 0 5px 15px rgba(132, 250, 176, 0.3);
+}
 
-      setProfessorData({ name: professorName, stats });
-      setIsAuthenticated(true);
-      
-    } catch (error) {
-      setMessage('❌ حدث خطأ في تسجيل الدخول');
-      console.error(error);
-    }
+.error-box {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    border-radius: 12px;
+    padding: 20px;
+    color: #7f1d1d;
+    margin: 20px 0;
+    box-shadow: 0 5px 15px rgba(250, 112, 154, 0.3);
+}
 
-    setLoading(false);
-  };
+.info-box {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    border-radius: 12px;
+    padding: 20px;
+    color: #1e40af;
+    margin: 20px 0;
+    box-shadow: 0 5px 15px rgba(168, 237, 234, 0.3);
+}
 
-  const handleLogout = () => {
-    setUserType(null);
-    setIsAuthenticated(false);
-    setProfessorAuth({ username: '', password: '' });
-    setProfessorData(null);
-    setMessage('');
-  };
+/* جدول المذكرات */
+.dataframe {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
 
-  if (!userType) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
-        <div className="max-w-4xl w-full">
-          <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-white mb-4">منصة إدارة المذكرات</h1>
-            <p className="text-xl text-blue-200">اختر نوع الحساب للمتابعة</p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-8">
-            <div 
-              onClick={() => setUserType('student')}
-              className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 cursor-pointer transform transition-all hover:scale-105 hover:bg-white/20 border border-white/20"
-            >
-              <div className="text-center">
-                <div className="bg-gradient-to-r from-blue-500 to-cyan-500 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <BookOpen className="w-12 h-12 text-white" />
-                </div>
-                <h2 className="text-3xl font-bold text-white mb-4">طالب</h2>
-                <p className="text-blue-200 text-lg">تسجيل وإدارة المذكرات</p>
-              </div>
+/* شعار */
+.logo-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.university-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #667eea;
+    margin: 10px 0;
+}
+
+/* Dashboard Cards */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+/* تحسين الـ tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 5px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 20px;
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-top: 40px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------- Google Sheets ----------------
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+info = st.secrets["service_account"]
+credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
+sheets_service = build('sheets', 'v4', credentials=credentials)
+
+STUDENTS_SHEET_ID = "1CHQyE1GJHlmynvaj2ez89Lf_S7Y3GU8T9rrl75rnF5c"
+MEMOS_SHEET_ID = "1oV2RYEWejDaRpTrKhecB230SgEo6dDwwLzUjW6VPw6o"
+PROF_MEMOS_SHEET_ID = "15u6N7XLFUKvTEmNtUNKVytpqVAQLaL19cAM8xZB_u3A"
+
+STUDENTS_RANGE = "Feuille 1!A1:M1000"  # تم إضافة عمود M لرقم الهاتف
+MEMOS_RANGE = "Feuille 1!A1:O1000"  # تم إضافة عمود O لنسبة التقدم
+PROF_MEMOS_RANGE = "Feuille 1!A1:N1000"  # M: username, N: password
+
+# ---------------- Email Configuration ----------------
+EMAIL_SENDER = "domaine.dsp@univ-bba.dz"
+EMAIL_PASSWORD = "oevruyiztgikwzah"
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+
+# ---------------- دوال مساعدة ----------------
+def col_letter(n):
+    """تحويل رقم العمود إلى حرف"""
+    result = ""
+    while n > 0:
+        n, remainder = divmod(n - 1, 26)
+        result = chr(65 + remainder) + result
+    return result
+
+def sanitize_input(text):
+    """تنقية المدخلات من الأحرف الخطرة"""
+    if not text:
+        return ""
+    dangerous_chars = ['<', '>', '"', "'", ';', '&', '|', '`']
+    cleaned = str(text).strip()
+    for char in dangerous_chars:
+        cleaned = cleaned.replace(char, '')
+    return cleaned
+
+def validate_phone(phone):
+    """التحقق من صحة رقم الهاتف"""
+    phone = sanitize_input(phone)
+    if not phone:
+        return False, "⚠️ رقم الهاتف مطلوب"
+    if len(phone) < 10:
+        return False, "⚠️ رقم الهاتف غير صالح"
+    return True, phone
+
+# ---------------- تحميل البيانات ----------------
+@st.cache_data(ttl=60)
+def load_students():
+    try:
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=STUDENTS_SHEET_ID, 
+            range=STUDENTS_RANGE
+        ).execute()
+        values = result.get('values', [])
+        if not values:
+            return pd.DataFrame()
+        df = pd.DataFrame(values[1:], columns=values[0])
+        logger.info(f"تم تحميل {len(df)} طالب")
+        return df
+    except Exception as e:
+        logger.error(f"خطأ في تحميل بيانات الطلاب: {str(e)}")
+        return pd.DataFrame()
+
+@st.cache_data(ttl=60)
+def load_memos():
+    try:
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=MEMOS_SHEET_ID, 
+            range=MEMOS_RANGE
+        ).execute()
+        values = result.get('values', [])
+        if not values:
+            return pd.DataFrame()
+        df = pd.DataFrame(values[1:], columns=values[0])
+        logger.info(f"تم تحميل {len(df)} مذكرة")
+        return df
+    except Exception as e:
+        logger.error(f"خطأ في تحميل بيانات المذكرات: {str(e)}")
+        return pd.DataFrame()
+
+@st.cache_data(ttl=60)
+def load_prof_memos():
+    try:
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=PROF_MEMOS_SHEET_ID, 
+            range=PROF_MEMOS_RANGE
+        ).execute()
+        values = result.get('values', [])
+        if not values:
+            return pd.DataFrame()
+        df = pd.DataFrame(values[1:], columns=values[0])
+        logger.info(f"تم تحميل {len(df)} مذكرة للأساتذة")
+        return df
+    except Exception as e:
+        logger.error(f"خطأ في تحميل بيانات مذكرات الأساتذة: {str(e)}")
+        return pd.DataFrame()
+
+def clear_cache():
+    """مسح الكاش"""
+    st.cache_data.clear()
+    logger.info("تم مسح الكاش")
+
+# ---------------- التحقق من الأستاذ ----------------
+def verify_professor(username, password, df_prof_memos):
+    """التحقق من بيانات الأستاذ"""
+    username = sanitize_input(username)
+    password = sanitize_input(password)
+    
+    if df_prof_memos.empty:
+        return False, "❌ خطأ في تحميل البيانات"
+    
+    # البحث في العمودين M و N
+    prof = df_prof_memos[
+        (df_prof_memos.get("اسم المستخدم", pd.Series()).astype(str).str.strip() == username) &
+        (df_prof_memos.get("كلمة المرور", pd.Series()).astype(str).str.strip() == password)
+    ]
+    
+    if prof.empty:
+        logger.warning(f"محاولة دخول أستاذ فاشلة: {username}")
+        return False, "❌ اسم المستخدم أو كلمة المرور غير صحيحة"
+    
+    logger.info(f"تسجيل دخول أستاذ ناجح: {username}")
+    return True, prof.iloc[0]
+
+# ---------------- Session State ----------------
+if 'page' not in st.session_state:
+    st.session_state.page = "home"
+if 'user_type' not in st.session_state:
+    st.session_state.user_type = None
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'user_data' not in st.session_state:
+    st.session_state.user_data = None
+if 'student1' not in st.session_state:
+    st.session_state.student1 = None
+if 'student2' not in st.session_state:
+    st.session_state.student2 = None
+
+def logout():
+    """تسجيل الخروج"""
+    st.session_state.page = "home"
+    st.session_state.user_type = None
+    st.session_state.logged_in = False
+    st.session_state.user_data = None
+    st.session_state.student1 = None
+    st.session_state.student2 = None
+    st.rerun()
+
+# ---------------- الصفحة الرئيسية ----------------
+def show_home_page():
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
+    
+    # الشعار والعنوان
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+            <div class="logo-container">
+                <img src="https://raw.githubusercontent.com/SAMIR-MALEK/memoire-depot-2026/main/LOGO2.png" width="120">
+                <div class="university-name">جامعة محمد البشير الإبراهيمي</div>
+                <div style="color: #666; font-size: 1.1rem;">كلية الحقوق والعلوم السياسية</div>
             </div>
-
-            <div 
-              onClick={() => setUserType('professor')}
-              className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 cursor-pointer transform transition-all hover:scale-105 hover:bg-white/20 border border-white/20"
-            >
-              <div className="text-center">
-                <div className="bg-gradient-to-r from-purple-500 to-pink-500 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Award className="w-12 h-12 text-white" />
-                </div>
-                <h2 className="text-3xl font-bold text-white mb-4">أستاذ</h2>
-                <p className="text-purple-200 text-lg">لوحة التحكم والإحصائيات</p>
-              </div>
-            </div>
-          </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<h1 class="hero-title">🎓 نظام إدارة مذكرات الماستر</h1>', unsafe_allow_html=True)
+        st.markdown('<p class="hero-subtitle">منصة متكاملة لتسجيل ومتابعة مذكرات التخرج</p>', unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # اختيار نوع المستخدم
+    st.markdown('<h2 style="text-align: center; color: #667eea; margin: 40px 0;">اختر نوع حسابك</h2>', unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        col_student, col_prof = st.columns(2)
+        
+        with col_student:
+            if st.button("👨‍🎓 طالب", use_container_width=True, key="btn_student"):
+                st.session_state.user_type = "student"
+                st.session_state.page = "student_login"
+                st.rerun()
+        
+        with col_prof:
+            if st.button("👨‍🏫 أستاذ", use_container_width=True, key="btn_prof"):
+                st.session_state.user_type = "professor"
+                st.session_state.page = "prof_login"
+                st.rerun()
+    
+    # معلومات إضافية
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("""
+        <div class="info-box">
+            <h3 style="margin-top: 0;">📌 معلومات هامة:</h3>
+            <ul style="text-align: right;">
+                <li>🔹 الطلاب: يمكنكم تسجيل مذكراتكم ومتابعة تقدمكم</li>
+                <li>🔹 الأساتذة: لوحة تحكم شاملة لإدارة ومتابعة المذكرات</li>
+                <li>🔹 للدعم الفني: يرجى التواصل مع إدارة الكلية</li>
+            </ul>
         </div>
-      </div>
-    );
-  }
+    """, unsafe_allow_html=True)
+    
+    # Footer
+    st.markdown("""
+        <div class="footer">
+            <p>© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
+            <p style="font-size: 0.9rem; opacity: 0.8;">جميع الحقوق محفوظة</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-  if (userType === 'professor') {
-    if (!isAuthenticated) {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center p-4">
-          <div className="max-w-md w-full">
-            <button
-              onClick={handleLogout}
-              className="mb-6 text-white/70 hover:text-white flex items-center gap-2 transition-colors"
-            >
-              ← الرجوع
-            </button>
+# ---------------- تسجيل دخول الأستاذ ----------------
+def show_prof_login():
+    st.markdown('<div class="main-card">', unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown('<h1 class="hero-title">👨‍🏫 فضاء الأستاذ</h1>', unsafe_allow_html=True)
+        st.markdown('<p class="hero-subtitle">تسجيل الدخول</p>', unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        username = st.text_input("📧 اسم المستخدم", max_chars=50)
+        password = st.text_input("🔑 كلمة المرور", type="password", max_chars=50)
+        
+        col_login, col_back = st.columns(2)
+        
+        with col_login:
+            if st.button("🚀 تسجيل الدخول", use_container_width=True):
+                if not username or not password:
+                    st.markdown('<div class="error-box">⚠️ يرجى إدخال جميع البيانات</div>', unsafe_allow_html=True)
+                else:
+                    df_prof_memos = load_prof_memos()
+                    valid, result = verify_professor(username, password, df_prof_memos)
+                    
+                    if valid:
+                        st.session_state.logged_in = True
+                        st.session_state.user_data = result
+                        st.session_state.page = "prof_dashboard"
+                        st.rerun()
+                    else:
+                        st.markdown(f'<div class="error-box">{result}</div>', unsafe_allow_html=True)
+        
+        with col_back:
+            if st.button("◀️ رجوع", use_container_width=True):
+                st.session_state.page = "home"
+                st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ---------------- لوحة تحكم الأستاذ ----------------
+def show_prof_dashboard():
+    prof_data = st.session_state.user_data
+    prof_name = prof_data.get("الأستاذ", "").strip()
+    
+    # Header
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown(f'<h1 class="hero-title">مرحباً أ. {prof_name} 👋</h1>', unsafe_allow_html=True)
+    with col2:
+        if st.button("🚪 خروج", use_container_width=True):
+            logout()
+    
+    # تحميل البيانات
+    clear_cache()
+    df_prof_memos = load_prof_memos()
+    df_memos = load_memos()
+    
+    # فلترة مذكرات الأستاذ
+    prof_memos = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name]
+    
+    # حساب الإحصائيات
+    total = len(prof_memos)
+    registered = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+    remaining = total - registered
+    percentage = (registered / total * 100) if total > 0 else 0
+    
+    # بطاقات الإحصائيات
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div style="font-size: 2.5rem;">📚</div>
+                <div class="stat-number">{total}</div>
+                <div class="stat-label">إجمالي المذكرات</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+            <div class="stat-card" style="background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);">
+                <div style="font-size: 2.5rem;">✅</div>
+                <div class="stat-number">{registered}</div>
+                <div class="stat-label">مذكرات مسجلة</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+            <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div style="font-size: 2.5rem;">⏳</div>
+                <div class="stat-number">{remaining}</div>
+                <div class="stat-label">مذكرات متبقية</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+            <div class="stat-card" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                <div style="font-size: 2.5rem;">📊</div>
+                <div class="stat-number">{percentage:.0f}%</div>
+                <div class="stat-label">نسبة الإنجاز</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["📋 المذكرات المسجلة", "🔑 كلمات السر", "📊 الإحصائيات", "⚙️ الإعدادات"])
+    
+    with tab1:
+        st.markdown("### 📋 قائمة المذكرات المسجلة")
+        
+        registered_memos = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
+        
+        if not registered_memos.empty:
+            for idx, memo in registered_memos.iterrows():
+                with st.expander(f"📄 {memo.get('رقم المذكرة', '')} - {memo.get('عنوان المذكرة', '')[:50]}..."):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"**👤 الطالب الأول:** {memo.get('الطالب الأول', '')}")
+                        st.markdown(f"**👤 الطالب الثاني:** {memo.get('الطالب الثاني', 'لا يوجد')}")
+                        st.markdown(f"**📅 تاريخ التسجيل:** {memo.get('تاريخ التسجيل', '')}")
+                    
+                    with col2:
+                        # هنا يمكن إضافة أرقام الهواتف عندما يتم حفظها
+                        st.markdown(f"**🎯 التخصص:** {memo.get('التخصص', '')}")
+                        
+                        # نسبة التقدم (قابلة للتعديل لاحقاً)
+                        progress = st.slider(
+                            "نسبة التقدم",
+                            0, 100,
+                            int(memo.get('نسبة التقدم', 0)) if memo.get('نسبة التقدم', '').isdigit() else 0,
+                            key=f"progress_{idx}"
+                        )
+        else:
+            st.info("لا توجد مذكرات مسجلة بعد")
+    
+    with tab2:
+        st.markdown("### 🔑 كلمات السر")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### ✅ كلمات السر المستخدمة")
+            used = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
+            for idx, row in used.iterrows():
+                password = row.get("كلمة سر التسجيل", "")
+                if password:
+                    st.success(f"✅ {password}")
             
-            <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20">
-              <div className="text-center mb-8">
-                <div className="bg-gradient-to-r from-purple-500 to-pink-500 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="w-10 h-10 text-white" />
-                </div>
-                <h2 className="text-3xl font-bold text-white mb-2">تسجيل دخول الأستاذ</h2>
-                <p className="text-purple-200">أدخل بيانات الدخول الخاصة بك</p>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-white mb-2 font-semibold">اسم المستخدم</label>
-                  <input
-                    type="text"
-                    value={professorAuth.username}
-                    onChange={(e) => setProfessorAuth({...professorAuth, username: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                    placeholder="أدخل اسم المستخدم"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-white mb-2 font-semibold">كلمة المرور</label>
-                  <input
-                    type="password"
-                    value={professorAuth.password}
-                    onChange={(e) => setProfessorAuth({...professorAuth, password: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                    placeholder="أدخل كلمة المرور"
-                  />
-                </div>
-
-                <button
-                  onClick={handleProfessorLogin}
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50"
-                >
-                  {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
-                </button>
-
-                {message && (
-                  <div className="mt-4 p-4 rounded-xl bg-white/20 border border-white/30">
-                    <p className="text-white text-center whitespace-pre-line">{message}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const filteredTheses = professorData.stats.theses.filter(t => {
-      const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           t.student.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter = filterStatus === 'all' || t.status === filterStatus;
-      return matchesSearch && matchesFilter;
-    });
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">لوحة التحكم</h1>
-              <p className="text-purple-200 text-xl">مرحباً {professorData.name}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl border border-white/20 transition-all"
-            >
-              <LogOut className="w-5 h-5" />
-              تسجيل الخروج
-            </button>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <BookOpen className="w-12 h-12 opacity-80" />
-                <div className="text-right">
-                  <p className="text-blue-100 text-sm">إجمالي المذكرات</p>
-                  <p className="text-4xl font-bold">{professorData.stats.total}</p>
-                </div>
-              </div>
-              <div className="h-2 bg-white/30 rounded-full">
-                <div className="h-full bg-white rounded-full" style={{width: '100%'}}></div>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <CheckCircle className="w-12 h-12 opacity-80" />
-                <div className="text-right">
-                  <p className="text-green-100 text-sm">المذكرات المسجلة</p>
-                  <p className="text-4xl font-bold">{professorData.stats.registered}</p>
-                </div>
-              </div>
-              <div className="h-2 bg-white/30 rounded-full">
-                <div 
-                  className="h-full bg-white rounded-full" 
-                  style={{width: `${(professorData.stats.registered / professorData.stats.total * 100)}%`}}
-                ></div>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <Clock className="w-12 h-12 opacity-80" />
-                <div className="text-right">
-                  <p className="text-orange-100 text-sm">المذكرات المتاحة</p>
-                  <p className="text-4xl font-bold">{professorData.stats.available}</p>
-                </div>
-              </div>
-              <div className="h-2 bg-white/30 rounded-full">
-                <div 
-                  className="h-full bg-white rounded-full" 
-                  style={{width: `${(professorData.stats.available / professorData.stats.total * 100)}%`}}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="relative">
-                <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="البحث عن مذكرة أو طالب..."
-                  className="w-full pr-12 pl-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                />
-              </div>
-              
-              <div className="relative">
-                <Filter className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/50 w-5 h-5" />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full pr-12 pl-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-400 appearance-none"
-                >
-                  <option value="all" className="bg-purple-900">جميع الحالات</option>
-                  <option value="متاحة" className="bg-purple-900">متاحة</option>
-                  <option value="مسجلة" className="bg-purple-900">مسجلة</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-white/10 border-b border-white/20">
-                    <th className="px-6 py-4 text-right text-white font-bold">عنوان المذكرة</th>
-                    <th className="px-6 py-4 text-right text-white font-bold">الحالة</th>
-                    <th className="px-6 py-4 text-right text-white font-bold">الطالب</th>
-                    <th className="px-6 py-4 text-right text-white font-bold">أرقام الهواتف</th>
-                    <th className="px-6 py-4 text-right text-white font-bold">كلمة السر</th>
-                    <th className="px-6 py-4 text-right text-white font-bold">تاريخ التسجيل</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTheses.map((thesis, index) => (
-                    <tr key={index} className="border-b border-white/10 hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4 text-white">{thesis.title}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          thesis.status === 'مسجلة' 
-                            ? 'bg-green-500/20 text-green-300 border border-green-500/50' 
-                            : 'bg-orange-500/20 text-orange-300 border border-orange-500/50'
-                        }`}>
-                          {thesis.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-white">{thesis.student}</td>
-                      <td className="px-6 py-4 text-white">
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-blue-300" />
-                          {thesis.phones}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-white">
-                        <code className="bg-white/10 px-3 py-1 rounded border border-white/20">
-                          {thesis.password}
-                        </code>
-                      </td>
-                      <td className="px-6 py-4 text-white">{thesis.date}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            if used.empty:
+                st.info("لا توجد كلمات سر مستخدمة")
+        
+        with col2:
+            st.markdown("#### ⏳ كلمات السر المتاحة")
+            available = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
+            for idx, row in available.iterrows():
+                password = row.get("كلمة سر التسجيل", "")
+                if password:
+                    st.warning(f"⏳ {password}")
             
-            {filteredTheses.length === 0 && (
-              <div className="text-center py-12">
-                <AlertCircle className="w-16 h-16 text-white/30 mx-auto mb-4" />
-                <p className="text-white/50 text-lg">لا توجد نتائج</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
+            if available.empty:
+                st.info("لا توجد كلمات سر متاحة")
+    
+    with tab3:
+        st.markdown("### 📊 الإحصائيات التفصيلية")
+        
+        # رسم بياني دائري
+        fig = go.Figure(data=[go.Pie(
+            labels=['مسجلة', 'متبقية'],
+            values=[registered, remaining],
+            hole=.4,
+            marker_colors=['#84fab0', '#fa709a']
+        )])
+        
+        fig.update_layout(
+            title_text="توزيع المذكرات",
+            font=dict(family="Cairo, sans-serif", size=14)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with tab4:
+        st.markdown("### ⚙️ الإعدادات")
+        st.info("🚧 قيد التطوير - قريباً")
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-4">
-      <div className="max-w-4xl mx-auto py-8">
-        <button
-          onClick={handleLogout}
-          className="mb-6 text-white/70 hover:text-white flex items-center gap-2 transition-colors"
-        >
-          ← الرجوع
-        </button>
+# ---------------- Main App ----------------
+if st.session_state.page == "home":
+    show_home_page()
 
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
-          <div className="text-center mb-8">
-            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <BookOpen className="w-10 h-10 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold text-white mb-2">تسجيل المذكرات</h1>
-            <p className="text-blue-200 text-lg">قم بملء البيانات لتسجيل مذكرتك</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-white mb-2 font-semibold">الاسم</label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="أدخل اسمك"
-              />
-            </div>
-
-            <div>
-              <label className="block text-white mb-2 font-semibold">اللقب</label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="أدخل لقبك"
-              />
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-white mb-2 font-semibold flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                رقم الهاتف الأول *
-              </label>
-              <input
-                type="tel"
-                value={phone1}
-                onChange={(e) => setPhone1(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="0797605895"
-                maxLength="10"
-              />
-              {phone1 && !validatePhone(phone1) && (
-                <p className="text-red-300 text-sm mt-1">⚠️ يجب أن يبدأ بـ 05 أو 06 أو 07</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-white mb-2 font-semibold flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                رقم الهاتف الثاني (اختياري)
-              </label>
-              <input
-                type="tel"
-                value={phone2}
-                onChange={(e) => setPhone2(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="0612345678"
-                maxLength="10"
-              />
-              {phone2 && !validatePhone(phone2) && (
-                <p className="text-red-300 text-sm mt-1">⚠️ يجب أن يبدأ بـ 05 أو 06 أو 07</p>
-              )}
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-white mb-2 font-semibold">اختر المذكرة</label>
-            <select
-              value={selectedThesis}
-              onChange={(e) => setSelectedThesis(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-blue-400 appearance-none"
-            >
-              <option value="" className="bg-purple-900">-- اختر مذكرة --</option>
-              {theses.map((thesis, index) => (
-                <option key={index} value={thesis['عنوان المذكرة']} className="bg-purple-900">
-                  {thesis['عنوان المذكرة']}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-white mb-2 font-semibold">كلمة السر</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="أدخل كلمة السر"
-            />
-          </div>
-
-          <button
-            onClick={handleStudentRegistration}
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-4 rounded-xl font-bold text-lg hover:from-blue-600 hover:to-cyan-600 transition-all disabled:opacity-50 shadow-lg"
-          >
-            {loading ? 'جاري التسجيل...' : 'تسجيل المذكرة'}
-          </button>
-
-          {message && (
-            <div className={`mt-6 p-4 rounded-xl border ${
-              message.includes('✅') 
-                ? 'bg-green-500/20 border-green-500/50' 
-                : 'bg-red-500/20 border-red-500/50'
-            }`}>
-              <p className="text-white text-center whitespace-pre-line">{message}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default App;
+elif st.session_state.page == "prof_login":
+    show_prof_login
