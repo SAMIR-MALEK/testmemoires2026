@@ -14,229 +14,442 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # ---------------- إعداد الصفحة ----------------
-st.set_page_config(page_title="نظام إدارة مذكرات الماستر", page_icon="🎓", layout="wide")
+st.set_page_config(
+    page_title="نظام إدارة المذكرات",
+    page_icon="🎓",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-# ---------------- CSS المحسّن ----------------
+# ---------------- CSS الاحترافي ----------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap');
 
 * {
     font-family: 'Cairo', sans-serif !important;
-}
-
-.main {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
     padding: 0;
+    box-sizing: border-box;
 }
 
+/* إخفاء عناصر Streamlit الافتراضية */
+#MainMenu, footer, header {visibility: hidden;}
+.stDeployButton {display: none;}
+
+/* الخلفية الرئيسية */
 .stApp {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-attachment: fixed;
 }
 
-/* بطاقة رئيسية */
-.main-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 40px;
+.main > div {
+    padding: 0 !important;
+    max-width: 100% !important;
+}
+
+/* Container رئيسي */
+.main-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+/* بطاقات Glassmorphism */
+.glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    margin: 20px auto;
-    max-width: 1400px;
+    padding: 3rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* عنوان */
+.glass-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+}
+
+/* العناوين */
 .hero-title {
-    font-size: 3rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-size: 4rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
     text-align: center;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+    text-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
 }
 
 .hero-subtitle {
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.9);
     text-align: center;
-    color: #666;
-    font-size: 1.2rem;
-    margin-bottom: 30px;
+    margin-bottom: 3rem;
+    font-weight: 300;
 }
 
-/* أزرار الاختيار */
-.role-selector {
-    display: flex;
-    gap: 30px;
-    justify-content: center;
-    margin: 40px 0;
-}
-
+/* بطاقات الاختيار */
 .role-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 20px;
-    padding: 40px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 25px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 3rem;
     text-align: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 250px;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.role-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.role-card:hover::before {
+    opacity: 1;
 }
 
 .role-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.5);
+    transform: translateY(-15px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+}
+
+.role-icon {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+}
+
+.role-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 1rem;
+}
+
+.role-desc {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 300;
 }
 
 /* بطاقات الإحصائيات */
 .stat-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 15px;
-    padding: 25px;
-    color: white;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 2rem;
     text-align: center;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
+    transition: all 0.3s;
+    height: 100%;
 }
 
 .stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+    transform: translateY(-10px);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.stat-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
 }
 
 .stat-number {
-    font-size: 3rem;
-    font-weight: 800;
-    margin: 10px 0;
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: white;
+    margin: 1rem 0;
+    text-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .stat-label {
-    font-size: 1.1rem;
-    opacity: 0.9;
-}
-
-/* أزرار */
-.stButton > button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    padding: 15px 35px;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-}
-
-.stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
 }
 
 /* حقول الإدخال */
 .stTextInput > div > div > input,
-.stSelectbox > div > div > select {
-    border-radius: 12px;
-    border: 2px solid #e0e0e0;
-    padding: 12px;
-    font-size: 1rem;
-    transition: all 0.3s ease;
+.stSelectbox > div > div > select,
+.stTextArea > div > div > textarea {
+    background: rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 15px !important;
+    color: white !important;
+    font-size: 1.1rem !important;
+    padding: 1rem 1.5rem !important;
+    transition: all 0.3s !important;
 }
 
 .stTextInput > div > div > input:focus,
-.stSelectbox > div > div > select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+.stSelectbox > div > div > select:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
+    background: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* رسائل */
-.success-box {
-    background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-    border-radius: 12px;
-    padding: 20px;
-    color: #065f46;
-    margin: 20px 0;
-    box-shadow: 0 5px 15px rgba(132, 250, 176, 0.3);
+.stTextInput > div > div > input::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
 }
 
-.error-box {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    border-radius: 12px;
-    padding: 20px;
-    color: #7f1d1d;
-    margin: 20px 0;
-    box-shadow: 0 5px 15px rgba(250, 112, 154, 0.3);
+/* Labels */
+.stTextInput > label,
+.stSelectbox > label,
+.stTextArea > label {
+    color: white !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
 }
 
-.info-box {
-    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    border-radius: 12px;
-    padding: 20px;
-    color: #1e40af;
-    margin: 20px 0;
-    box-shadow: 0 5px 15px rgba(168, 237, 234, 0.3);
+/* الأزرار */
+.stButton > button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 15px !important;
+    padding: 1.2rem 3rem !important;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4) !important;
+    width: 100%;
+}
+
+.stButton > button:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6) !important;
+}
+
+.stButton > button:active {
+    transform: translateY(-1px) !important;
+}
+
+/* رسائل النجاح والخطأ */
+.success-msg {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(16, 185, 129, 0.5);
+    border-radius: 15px;
+    padding: 1.5rem;
+    color: white;
+    font-size: 1.1rem;
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.error-msg {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(239, 68, 68, 0.5);
+    border-radius: 15px;
+    padding: 1.5rem;
+    color: white;
+    font-size: 1.1rem;
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.info-msg {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(59, 130, 246, 0.5);
+    border-radius: 15px;
+    padding: 1.5rem;
+    color: white;
+    font-size: 1.1rem;
+    margin: 1rem 0;
 }
 
 /* جدول المذكرات */
 .dataframe {
-    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px);
+    border-radius: 15px !important;
     overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
 }
 
-/* شعار */
-.logo-container {
-    text-align: center;
-    margin: 20px 0;
+.dataframe thead tr th {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    padding: 1.5rem !important;
+    border: none !important;
 }
 
-.university-name {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #667eea;
-    margin: 10px 0;
+.dataframe tbody tr td {
+    color: white !important;
+    padding: 1.2rem !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    font-size: 1rem !important;
 }
 
-/* Dashboard Cards */
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin: 30px 0;
+.dataframe tbody tr:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* تحسين الـ tabs */
+/* Tabs */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 10px;
+    gap: 1rem;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 5px;
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 0.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .stTabs [data-baseweb="tab"] {
-    border-radius: 8px;
-    padding: 10px 20px;
+    border-radius: 10px;
+    padding: 1rem 2rem;
     font-weight: 600;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.3s;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
 }
 
 .stTabs [aria-selected="true"] {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* الـ Expander */
+.streamlit-expanderHeader {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px);
+    border-radius: 12px !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: 1.1rem !important;
+    padding: 1rem !important;
+}
+
+.streamlit-expanderHeader:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.streamlit-expanderContent {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+}
+
+/* Progress bar */
+.stProgress > div > div > div {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 10px;
+    height: 12px !important;
+}
+
+.stProgress > div > div {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-radius: 10px;
+    height: 12px !important;
+}
+
+/* Selectbox options */
+option {
+    background: #764ba2 !important;
+    color: white !important;
+    padding: 10px !important;
 }
 
 /* Footer */
 .footer {
     text-align: center;
-    padding: 20px;
-    color: white;
+    padding: 2rem;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    margin-top: 3rem;
+}
+
+/* شعار */
+.logo {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 2rem;
+    display: block;
+    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+/* تحسين المسافات */
+.block-container {
+    padding: 0 !important;
+    max-width: none !important;
+}
+
+/* Radio buttons */
+.stRadio > div {
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    margin-top: 40px;
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 1rem;
+}
+
+.stRadio > div > label {
+    color: white !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+}
+
+/* Columns */
+[data-testid="column"] {
+    padding: 0.5rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- Google Sheets ----------------
+# ---------------- باقي الكود من النسخة السابقة مع تعديلات بسيطة ----------------
+
+# [باقي imports و Google Sheets configuration كما هو]
+
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 info = st.secrets["service_account"]
 credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
@@ -246,19 +459,17 @@ STUDENTS_SHEET_ID = "1CHQyE1GJHlmynvaj2ez89Lf_S7Y3GU8T9rrl75rnF5c"
 MEMOS_SHEET_ID = "1oV2RYEWejDaRpTrKhecB230SgEo6dDwwLzUjW6VPw6o"
 PROF_MEMOS_SHEET_ID = "15u6N7XLFUKvTEmNtUNKVytpqVAQLaL19cAM8xZB_u3A"
 
-STUDENTS_RANGE = "Feuille 1!A1:M1000"  # تم إضافة عمود M لرقم الهاتف
-MEMOS_RANGE = "Feuille 1!A1:O1000"  # تم إضافة عمود O لنسبة التقدم
-PROF_MEMOS_RANGE = "Feuille 1!A1:N1000"  # M: username, N: password
+STUDENTS_RANGE = "Feuille 1!A1:M1000"
+MEMOS_RANGE = "Feuille 1!A1:O1000"
+PROF_MEMOS_RANGE = "Feuille 1!A1:N1000"
 
-# ---------------- Email Configuration ----------------
 EMAIL_SENDER = "domaine.dsp@univ-bba.dz"
 EMAIL_PASSWORD = "oevruyiztgikwzah"
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
-# ---------------- دوال مساعدة ----------------
+# دوال مساعدة
 def col_letter(n):
-    """تحويل رقم العمود إلى حرف"""
     result = ""
     while n > 0:
         n, remainder = divmod(n - 1, 26)
@@ -266,7 +477,6 @@ def col_letter(n):
     return result
 
 def sanitize_input(text):
-    """تنقية المدخلات من الأحرف الخطرة"""
     if not text:
         return ""
     dangerous_chars = ['<', '>', '"', "'", ';', '&', '|', '`']
@@ -275,16 +485,6 @@ def sanitize_input(text):
         cleaned = cleaned.replace(char, '')
     return cleaned
 
-def validate_phone(phone):
-    """التحقق من صحة رقم الهاتف"""
-    phone = sanitize_input(phone)
-    if not phone:
-        return False, "⚠️ رقم الهاتف مطلوب"
-    if len(phone) < 10:
-        return False, "⚠️ رقم الهاتف غير صالح"
-    return True, phone
-
-# ---------------- تحميل البيانات ----------------
 @st.cache_data(ttl=60)
 def load_students():
     try:
@@ -296,7 +496,6 @@ def load_students():
         if not values:
             return pd.DataFrame()
         df = pd.DataFrame(values[1:], columns=values[0])
-        logger.info(f"تم تحميل {len(df)} طالب")
         return df
     except Exception as e:
         logger.error(f"خطأ في تحميل بيانات الطلاب: {str(e)}")
@@ -313,7 +512,6 @@ def load_memos():
         if not values:
             return pd.DataFrame()
         df = pd.DataFrame(values[1:], columns=values[0])
-        logger.info(f"تم تحميل {len(df)} مذكرة")
         return df
     except Exception as e:
         logger.error(f"خطأ في تحميل بيانات المذكرات: {str(e)}")
@@ -330,27 +528,21 @@ def load_prof_memos():
         if not values:
             return pd.DataFrame()
         df = pd.DataFrame(values[1:], columns=values[0])
-        logger.info(f"تم تحميل {len(df)} مذكرة للأساتذة")
         return df
     except Exception as e:
         logger.error(f"خطأ في تحميل بيانات مذكرات الأساتذة: {str(e)}")
         return pd.DataFrame()
 
 def clear_cache():
-    """مسح الكاش"""
     st.cache_data.clear()
-    logger.info("تم مسح الكاش")
 
-# ---------------- التحقق من الأستاذ ----------------
 def verify_professor(username, password, df_prof_memos):
-    """التحقق من بيانات الأستاذ"""
     username = sanitize_input(username)
     password = sanitize_input(password)
     
     if df_prof_memos.empty:
         return False, "❌ خطأ في تحميل البيانات"
     
-    # البحث في العمودين M و N
     prof = df_prof_memos[
         (df_prof_memos.get("اسم المستخدم", pd.Series()).astype(str).str.strip() == username) &
         (df_prof_memos.get("كلمة المرور", pd.Series()).astype(str).str.strip() == password)
@@ -363,7 +555,7 @@ def verify_professor(username, password, df_prof_memos):
     logger.info(f"تسجيل دخول أستاذ ناجح: {username}")
     return True, prof.iloc[0]
 
-# ---------------- Session State ----------------
+# Session State
 if 'page' not in st.session_state:
     st.session_state.page = "home"
 if 'user_type' not in st.session_state:
@@ -372,283 +564,134 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_data' not in st.session_state:
     st.session_state.user_data = None
-if 'student1' not in st.session_state:
-    st.session_state.student1 = None
-if 'student2' not in st.session_state:
-    st.session_state.student2 = None
 
 def logout():
-    """تسجيل الخروج"""
     st.session_state.page = "home"
     st.session_state.user_type = None
     st.session_state.logged_in = False
     st.session_state.user_data = None
-    st.session_state.student1 = None
-    st.session_state.student2 = None
     st.rerun()
 
-# ---------------- الصفحة الرئيسية ----------------
+# الصفحة الرئيسية
 def show_home_page():
-    st.markdown('<div class="main-card">', unsafe_allow_html=True)
-    
-    # الشعار والعنوان
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-            <div class="logo-container">
-                <img src="https://raw.githubusercontent.com/SAMIR-MALEK/memoire-depot-2026/main/LOGO2.png" width="120">
-                <div class="university-name">جامعة محمد البشير الإبراهيمي</div>
-                <div style="color: #666; font-size: 1.1rem;">كلية الحقوق والعلوم السياسية</div>
+    st.markdown("""
+        <div class="main-container">
+            <div style="max-width: 1400px; width: 100%;">
+                <div style="text-align: center; margin-bottom: 4rem;">
+                    <img src="https://raw.githubusercontent.com/SAMIR-MALEK/memoire-depot-2026/main/LOGO2.png" class="logo">
+                    <h1 class="hero-title">🎓 نظام إدارة المذكرات</h1>
+                    <p class="hero-subtitle">جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
+                </div>
             </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown('<h1 class="hero-title">🎓 نظام إدارة مذكرات الماستر</h1>', unsafe_allow_html=True)
-        st.markdown('<p class="hero-subtitle">منصة متكاملة لتسجيل ومتابعة مذكرات التخرج</p>', unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # اختيار نوع المستخدم
-    st.markdown('<h2 style="text-align: center; color: #667eea; margin: 40px 0;">اختر نوع حسابك</h2>', unsafe_allow_html=True)
+        </div>
+    """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         col_student, col_prof = st.columns(2)
         
         with col_student:
-            if st.button("👨‍🎓 طالب", use_container_width=True, key="btn_student"):
+            st.markdown("""
+                <div class="role-card">
+                    <div class="role-icon">👨‍🎓</div>
+                    <h2 class="role-title">طالب</h2>
+                    <p class="role-desc">تسجيل ومتابعة المذكرات</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("الدخول كطالب", key="btn_student", use_container_width=True):
                 st.session_state.user_type = "student"
                 st.session_state.page = "student_login"
                 st.rerun()
         
         with col_prof:
-            if st.button("👨‍🏫 أستاذ", use_container_width=True, key="btn_prof"):
+            st.markdown("""
+                <div class="role-card">
+                    <div class="role-icon">👨‍🏫</div>
+                    <h2 class="role-title">أستاذ</h2>
+                    <p class="role-desc">لوحة التحكم والإدارة</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("الدخول كأستاذ", key="btn_prof", use_container_width=True):
                 st.session_state.user_type = "professor"
                 st.session_state.page = "prof_login"
                 st.rerun()
-    
-    # معلومات إضافية
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("""
-        <div class="info-box">
-            <h3 style="margin-top: 0;">📌 معلومات هامة:</h3>
-            <ul style="text-align: right;">
-                <li>🔹 الطلاب: يمكنكم تسجيل مذكراتكم ومتابعة تقدمكم</li>
-                <li>🔹 الأساتذة: لوحة تحكم شاملة لإدارة ومتابعة المذكرات</li>
-                <li>🔹 للدعم الفني: يرجى التواصل مع إدارة الكلية</li>
-            </ul>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Footer
-    st.markdown("""
-        <div class="footer">
-            <p>© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
-            <p style="font-size: 0.9rem; opacity: 0.8;">جميع الحقوق محفوظة</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        
+        st.markdown("""
+            <div class="footer">
+                <p style="font-size: 1.2rem; font-weight: 600;">© 2026 جامعة محمد البشير الإبراهيمي</p>
+                <p style="opacity: 0.8; margin-top: 0.5rem;">كلية الحقوق والعلوم السياسية - جميع الحقوق محفوظة</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-# ---------------- تسجيل دخول الأستاذ ----------------
+# تسجيل دخول الأستاذ
 def show_prof_login():
-    st.markdown('<div class="main-card">', unsafe_allow_html=True)
-    
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown('<h1 class="hero-title">👨‍🏫 فضاء الأستاذ</h1>', unsafe_allow_html=True)
-        st.markdown('<p class="hero-subtitle">تسجيل الدخول</p>', unsafe_allow_html=True)
+        st.markdown("<br><br>", unsafe_allow_html=True)
         
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("""
+            <div class="glass-card">
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <div class="role-icon" style="width: 100px; height: 100px; font-size: 3rem; margin: 0 auto 1.5rem;">👨‍🏫</div>
+                    <h1 class="hero-title" style="font-size: 2.5rem;">فضاء الأستاذ</h1>
+                    <p class="hero-subtitle" style="font-size: 1.2rem; margin-bottom: 0;">تسجيل الدخول</p>
+                </div>
+        """, unsafe_allow_html=True)
         
-        username = st.text_input("📧 اسم المستخدم", max_chars=50)
-        password = st.text_input("🔑 كلمة المرور", type="password", max_chars=50)
+        username = st.text_input("📧 اسم المستخدم", key="prof_username")
+        password = st.text_input("🔑 كلمة المرور", type="password", key="prof_password")
         
-        col_login, col_back = st.columns(2)
-        
-        with col_login:
-            if st.button("🚀 تسجيل الدخول", use_container_width=True):
-                if not username or not password:
-                    st.markdown('<div class="error-box">⚠️ يرجى إدخال جميع البيانات</div>', unsafe_allow_html=True)
+        if st.button("🚀 تسجيل الدخول", use_container_width=True):
+            if not username or not password:
+                st.markdown('<div class="error-msg">⚠️ يرجى إدخال جميع البيانات</div>', unsafe_allow_html=True)
+            else:
+                df_prof_memos = load_prof_memos()
+                valid, result = verify_professor(username, password, df_prof_memos)
+                
+                if valid:
+                    st.session_state.logged_in = True
+                    st.session_state.user_data = result
+                    st.session_state.page = "prof_dashboard"
+                    st.rerun()
                 else:
-                    df_prof_memos = load_prof_memos()
-                    valid, result = verify_professor(username, password, df_prof_memos)
-                    
-                    if valid:
-                        st.session_state.logged_in = True
-                        st.session_state.user_data = result
-                        st.session_state.page = "prof_dashboard"
-                        st.rerun()
-                    else:
-                        st.markdown(f'<div class="error-box">{result}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="error-msg">{result}</div>', unsafe_allow_html=True)
         
-        with col_back:
-            if st.button("◀️ رجوع", use_container_width=True):
-                st.session_state.page = "home"
-                st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+        if st.button("◀️ رجوع للرئيسية", use_container_width=True):
+            st.session_state.page = "home"
+            st.rerun()
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
-# ---------------- لوحة تحكم الأستاذ ----------------
+# لوحة تحكم الأستاذ
 def show_prof_dashboard():
     prof_data = st.session_state.user_data
     prof_name = prof_data.get("الأستاذ", "").strip()
     
-    # Header
-    col1, col2 = st.columns([3, 1])
+    col1, col2 = st.columns([4, 1])
     with col1:
-        st.markdown(f'<h1 class="hero-title">مرحباً أ. {prof_name} 👋</h1>', unsafe_allow_html=True)
+        st.markdown(f'<h1 class="hero-title" style="text-align: right; font-size: 2.5rem;">مرحباً أ. {prof_name} 👋</h1>', unsafe_allow_html=True)
     with col2:
         if st.button("🚪 خروج", use_container_width=True):
             logout()
     
-    # تحميل البيانات
     clear_cache()
     df_prof_memos = load_prof_memos()
-    df_memos = load_memos()
     
-    # فلترة مذكرات الأستاذ
     prof_memos = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name]
     
-    # حساب الإحصائيات
     total = len(prof_memos)
     registered = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
     remaining = total - registered
     percentage = (registered / total * 100) if total > 0 else 0
     
-    # بطاقات الإحصائيات
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <div style="font-size: 2.5rem;">📚</div>
-                <div class="stat-number">{total}</div>
-                <div class="stat-label">إجمالي المذكرات</div>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);">
-                <div style="font-size: 2.5rem;">✅</div>
-                <div class="stat-number">{registered}</div>
-                <div class="stat-label">مذكرات مسجلة</div>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                <div style="font-size: 2.5rem;">⏳</div>
-                <div class="stat-number">{remaining}</div>
-                <div class="stat-label">مذكرات متبقية</div>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown(f"""
-            <div class="stat-card" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
-                <div style="font-size: 2.5rem;">📊</div>
-                <div class="stat-number">{percentage:.0f}%</div>
-                <div class="stat-label">نسبة الإنجاز</div>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["📋 المذكرات المسجلة", "🔑 كلمات السر", "📊 الإحصائيات", "⚙️ الإعدادات"])
-    
-    with tab1:
-        st.markdown("### 📋 قائمة المذكرات المسجلة")
-        
-        registered_memos = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
-        
-        if not registered_memos.empty:
-            for idx, memo in registered_memos.iterrows():
-                with st.expander(f"📄 {memo.get('رقم المذكرة', '')} - {memo.get('عنوان المذكرة', '')[:50]}..."):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown(f"**👤 الطالب الأول:** {memo.get('الطالب الأول', '')}")
-                        st.markdown(f"**👤 الطالب الثاني:** {memo.get('الطالب الثاني', 'لا يوجد')}")
-                        st.markdown(f"**📅 تاريخ التسجيل:** {memo.get('تاريخ التسجيل', '')}")
-                    
-                    with col2:
-                        # هنا يمكن إضافة أرقام الهواتف عندما يتم حفظها
-                        st.markdown(f"**🎯 التخصص:** {memo.get('التخصص', '')}")
-                        
-                        # نسبة التقدم (قابلة للتعديل لاحقاً)
-                        progress = st.slider(
-                            "نسبة التقدم",
-                            0, 100,
-                            int(memo.get('نسبة التقدم', 0)) if memo.get('نسبة التقدم', '').isdigit() else 0,
-                            key=f"progress_{idx}"
-                        )
-        else:
-            st.info("لا توجد مذكرات مسجلة بعد")
-    
-    with tab2:
-        st.markdown("### 🔑 كلمات السر")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### ✅ كلمات السر المستخدمة")
-            used = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
-            for idx, row in used.iterrows():
-                password = row.get("كلمة سر التسجيل", "")
-                if password:
-                    st.success(f"✅ {password}")
-            
-            if used.empty:
-                st.info("لا توجد كلمات سر مستخدمة")
-        
-        with col2:
-            st.markdown("#### ⏳ كلمات السر المتاحة")
-            available = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
-            for idx, row in available.iterrows():
-                password = row.get("كلمة سر التسجيل", "")
-                if password:
-                    st.warning(f"⏳ {password}")
-            
-            if available.empty:
-                st.info("لا توجد كلمات سر متاحة")
-    
-    with tab3:
-        st.markdown("### 📊 الإحصائيات التفصيلية")
-        
-        # رسم بياني بسيط باستخدام st.progress
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### 📈 نسبة الإنجاز")
-            st.progress(percentage / 100)
-            st.markdown(f"<h2 style='text-align: center; color: #667eea;'>{percentage:.1f}%</h2>", unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("#### 📊 التوزيع")
-            st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); 
-                            padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 10px;'>
-                    <div style='font-size: 2rem; color: white; font-weight: bold;'>{registered}</div>
-                    <div style='color: white;'>مذكرات مسجلة</div>
-                </div>
-                
-                <div style='background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); 
-                            padding: 20px; border-radius: 12px; text-align: center;'>
-                    <div style='font-size: 2rem; color: white; font-weight: bold;'>{remaining}</div>
-                    <div style='color: white;'>مذكرات متبقية</div>
-                </div>
-            """, unsafe_allow_html=True)
-    
-    with tab4:
-        st.markdown("### ⚙️ الإعدادات")
-        st.info("🚧 قيد التطوير - قريباً")
-
-# ---------------- Main App ----------------
-if st.session_state.page == "home":
-    show_home_page()
-
-elif st.session_state.page == "prof_login":
-    show_prof_login
+            <div class="stat-card">
+                <div class="stat-icon">📚</div>
+                <div class="stat-number"
