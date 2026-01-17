@@ -8,8 +8,6 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
-import plotly.express as px
-import plotly.graph_objects as go
 
 # ---------------- إعداد Logging ----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -620,20 +618,29 @@ def show_prof_dashboard():
     with tab3:
         st.markdown("### 📊 الإحصائيات التفصيلية")
         
-        # رسم بياني دائري
-        fig = go.Figure(data=[go.Pie(
-            labels=['مسجلة', 'متبقية'],
-            values=[registered, remaining],
-            hole=.4,
-            marker_colors=['#84fab0', '#fa709a']
-        )])
+        # رسم بياني بسيط باستخدام st.progress
+        col1, col2 = st.columns(2)
         
-        fig.update_layout(
-            title_text="توزيع المذكرات",
-            font=dict(family="Cairo, sans-serif", size=14)
-        )
+        with col1:
+            st.markdown("#### 📈 نسبة الإنجاز")
+            st.progress(percentage / 100)
+            st.markdown(f"<h2 style='text-align: center; color: #667eea;'>{percentage:.1f}%</h2>", unsafe_allow_html=True)
         
-        st.plotly_chart(fig, use_container_width=True)
+        with col2:
+            st.markdown("#### 📊 التوزيع")
+            st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); 
+                            padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 10px;'>
+                    <div style='font-size: 2rem; color: white; font-weight: bold;'>{registered}</div>
+                    <div style='color: white;'>مذكرات مسجلة</div>
+                </div>
+                
+                <div style='background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); 
+                            padding: 20px; border-radius: 12px; text-align: center;'>
+                    <div style='font-size: 2rem; color: white; font-weight: bold;'>{remaining}</div>
+                    <div style='color: white;'>مذكرات متبقية</div>
+                </div>
+            """, unsafe_allow_html=True)
     
     with tab4:
         st.markdown("### ⚙️ الإعدادات")
