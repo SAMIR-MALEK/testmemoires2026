@@ -51,7 +51,7 @@ PROF_MEMOS_RANGE = "Feuille 1!A1:L1000"
 
 # ---------------- Email Configuration ----------------
 EMAIL_SENDER = "domaine.dsp@univ-bba.dz"
-EMAIL_PASSWORD = "oevruyiztgikwzah"
+EMAIL_PASSWORD = "xxxx"
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
