@@ -967,4 +967,27 @@ if st.session_state.logged_in:
                             st.balloons()
                             
                             clear_cache_and_reload()
-                            st.session_state
+                            st.session_state.mode = "view"
+                            st.session_state.show_confirmation = False
+                            
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.markdown(f'<div class="error-msg">{message}</div>', unsafe_allow_html=True)
+                            st.session_state.show_confirmation = False
+            
+            with col2:
+                if st.button("❌ إلغاء", use_container_width=True):
+                    st.session_state.show_confirmation = False
+                    st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ---------------- Footer ----------------
+st.markdown("---")
+st.markdown("""
+    <div style='text-align:center; color:#888; font-size:12px; padding:20px;'>
+        <p>© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
+        <p>للاستفسار يرجى الاتصال بمكتب فريق التكوين</p>
+    </div>
+""", unsafe_allow_html=True)
