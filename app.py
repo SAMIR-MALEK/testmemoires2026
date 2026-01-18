@@ -95,30 +95,16 @@ def validate_algerian_phone(phone):
     """التحقق من صحة رقم الهاتف الجزائري"""
     phone = sanitize_input(phone)
     if not phone:
-        return False, "⚠️ رقم الهاتف فارغ"
+        return False, "⚠️ رقم الهاتف خاطئ"
     
     # إزالة المسافات والأحرف غير الرقمية
     phone_digits = re.sub(r'[^0-9]', '', phone)
     
-    # التحقق من أن الرقم يبدأ بـ 0 ويتكون من 10 أرقام
-    # أو يبدأ بـ +213 أو 00213 ويتكون من 9 أرقام إضافية
-    if phone_digits.startswith('0') and len(phone_digits) == 10:
-        # التحقق من أن الرقم يبدأ بـ 05, 06, 07
-        if phone_digits[1] in ['5', '6', '7']:
-            return True, phone_digits
-        else:
-            return False, "⚠️ رقم الهاتف يجب أن يبدأ بـ 05 أو 06 أو 07"
-    elif phone_digits.startswith('213') and len(phone_digits) == 12:
-        # تحويل إلى صيغة محلية
-        local_number = '0' + phone_digits[3:]
-        if local_number[1] in ['5', '6', '7']:
-            return True, local_number
-        else:
-            return False, "⚠️ رقم الهاتف غير صحيح"
-    else:
-        return False, "⚠️ رقم الهاتف يجب أن يتكون من 10 أرقام ويبدأ بـ 0"
+    # التحقق: يبدأ بـ 0، يتكون من 10 أرقام، الرقم الثاني 5 أو 6 أو 7
+    if len(phone_digits) == 10 and phone_digits[0] == '0' and phone_digits[1] in ['5', '6', '7']:
+        return True, phone_digits
     
-    return False, "⚠️ رقم الهاتف غير صحيح"
+    return False, "⚠️ رقم الهاتف خاطئ"
 
 # ---------------- تحميل البيانات ----------------
 @st.cache_data(ttl=60)
@@ -409,13 +395,9 @@ def update_registration(note_number, student1, student2=None):
         df_prof_memos = load_prof_memos()
         df_students = load_students()
 
-        # الحصول على معلومات المذكرة والأستاذ
         prof_name = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()]["الأستاذ"].iloc[0].strip()
-        
-        # الحصول على كلمة السر المستخدمة من session_state
         used_prof_password = st.session_state.prof_password.strip()
         
-        # البحث عن السطر الصحيح باستخدام الأستاذ وكلمة السر المحددة
         prof_row_idx = df_prof_memos[
             (df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name) &
             (df_prof_memos["كلمة سر التسجيل"].astype(str).str.strip() == used_prof_password)
@@ -447,7 +429,6 @@ def update_registration(note_number, student1, student2=None):
         
         logger.info(f"تم تحديث صفحة الأساتذة للمذكرة: {note_number}")
 
-        # تحديث شيت المذكرات (مع حفظ كلمة سر المشرف)
         memo_row_idx = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()].index[0] + 2
         memo_cols = df_memos.columns.tolist()
         
@@ -460,7 +441,6 @@ def update_registration(note_number, student1, student2=None):
              "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]}
         ]
         
-        # إضافة كلمة سر المشرف إلى شيت المذكرات
         if 'كلمة سر التسجيل' in memo_cols:
             updates2.append({
                 "range": f"Feuille 1!{col_letter(memo_cols.index('كلمة سر التسجيل')+1)}{memo_row_idx}",
@@ -614,12 +594,12 @@ st.markdown("<h4 style='text-align:center; color:#FFD700;'>منصة تسجيل �
 # ---------------- عملية التحقق من الهاتف ----------------
 if st.session_state.phone_verification_needed and not st.session_state.logged_in:
     st.markdown('<div class="info-msg">', unsafe_allow_html=True)
-    st.markdown("### 📱 التحقق من أرقام الهاتف")
-    st.markdown("⚠️ يرجى إدخال أرقام الهاتف للطلاب الذين ليس لديهم رقم مسجل")
+    st.markdown("### 📱 إدخال رقم الهاتف")
+    st.markdown("⚠️ يرجى إدخال رقم الهاتف للمتابعة")
     st.markdown('</div>', unsafe_allow_html=True)
     
     phones_to_update = {}
-    all_phones_valid = True
+    phone_inputs = {}
     
     for idx, student in enumerate(st.session_state.temp_students):
         student_phone = str(student.get('الهاتف', '')).strip()
@@ -627,55 +607,113 @@ if st.session_state.phone_verification_needed and not st.session_state.logged_in
         if not student_phone or student_phone == '':
             st.markdown(f"**👤 {student['اللقب']} {student['الإسم']}**")
             phone_input = st.text_input(
-                f"📱 رقم الهاتف (05xxxxxxxx أو 06xxxxxxxx أو 07xxxxxxxx)",
+                f"📱 رقم الهاتف",
                 key=f"phone_{idx}",
                 max_chars=15,
                 placeholder="05xxxxxxxx"
             )
-            
-            if phone_input:
-                valid_phone, result = validate_algerian_phone(phone_input)
-                if valid_phone:
-                    phones_to_update[student['اسم المستخدم']] = result
-                    st.markdown(f'<div class="success-msg">✅ رقم صحيح: {result}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="error-msg">{result}</div>', unsafe_allow_html=True)
-                    all_phones_valid = False
-            else:
-                all_phones_valid = False
+            phone_inputs[student['اسم المستخدم']] = phone_input
     
     st.markdown("---")
     
+    # التحقق من أن جميع الحقول تم ملؤها
+    all_filled = all(phone_inputs.values())
+    
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("✅ تأكيد وإكمال تسجيل الدخول", type="primary", use_container_width=True, disabled=not all_phones_valid):
-            # تحديث أرقام الهواتف في الشيت
-            for username, phone in phones_to_update.items():
-                success, msg = update_phone_number(username, phone)
-                if not success:
-                    st.error(msg)
+        if st.button("✅ متابعة", type="primary", use_container_width=True, disabled=not all_filled):
+            # التحقق من صحة جميع الأرقام
+            all_valid = True
+            for username, phone_input in phone_inputs.items():
+                valid_phone, result = validate_algerian_phone(phone_input)
+                if valid_phone:
+                    phones_to_update[username] = result
+                else:
+                    st.markdown(f'<div class="error-msg">{result}</div>', unsafe_allow_html=True)
+                    all_valid = False
+                    break
             
-            # مسح الكاش وإعادة تحميل البيانات
-            clear_cache_and_reload()
-            time.sleep(1)
-            df_students_fresh = load_students()
-            
-            # تحديث بيانات الطلاب في session_state
-            st.session_state.student1 = df_students_fresh[
-                df_students_fresh["اسم المستخدم"].astype(str).str.strip() == st.session_state.temp_students[0]['اسم المستخدم'].strip()
-            ].iloc[0]
-            
-            if len(st.session_state.temp_students) > 1:
-                st.session_state.student2 = df_students_fresh[
-                    df_students_fresh["اسم المستخدم"].astype(str).str.strip() == st.session_state.temp_students[1]['اسم المستخدم'].strip()
+            if all_valid:
+                # تحديث أرقام الهواتف في الشيت
+                for username, phone in phones_to_update.items():
+                    success, msg = update_phone_number(username, phone)
+                    if not success:
+                        st.error(msg)
+                
+                # مسح الكاش وإعادة تحميل البيانات
+                clear_cache_and_reload()
+                time.sleep(1)
+                df_students_fresh = load_students()
+                
+                # تحديث بيانات الطلاب في session_state
+                st.session_state.student1 = df_students_fresh[
+                    df_students_fresh["اسم المستخدم"].astype(str).str.strip() == st.session_state.temp_students[0]['اسم المستخدم'].strip()
                 ].iloc[0]
-            
-            # إكمال عملية تسجيل الدخول
-            st.session_state.phone_verification_needed = False
-            st.session_state.logged_in = True
-            st.success("✅ تم تحديث أرقام الهاتف بنجاح!")
-            time.sleep(1)
-            st.rerun()
+                
+                if len(st.session_state.temp_students) > 1:
+                    st.session_state.student2 = df_students_fresh[
+                        df_students_fresh["اسم المستخدم"].astype(str).str.strip() == st.session_state.temp_students[1]['اسم المستخدم'].strip()
+                    ].iloc[0]
+                
+                # التحقق من التخصصات للتسجيل الثنائي
+                if len(st.session_state.temp_students) > 1:
+                    s1_specialty = str(st.session_state.student1.get('التخصص', '')).strip()
+                    s2_specialty = str(st.session_state.student2.get('التخصص', '')).strip()
+                    
+                    if s1_specialty != s2_specialty:
+                        st.markdown('<div class="error-msg">❌ لا يمكن التسجيل الثنائي. الطالبان في تخصصين مختلفين</div>', unsafe_allow_html=True)
+                        st.session_state.phone_verification_needed = False
+                        st.session_state.temp_students = []
+                        st.stop()
+                    
+                    s1_note = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
+                    s2_note = str(st.session_state.student2.get('رقم المذكرة', '')).strip()
+                    
+                    if (s1_note and not s2_note) or (not s1_note and s2_note):
+                        registered_student = None
+                        if s1_note:
+                            registered_student = f"{st.session_state.student1['اللقب']} {st.session_state.student1['الإسم']}"
+                        else:
+                            registered_student = f"{st.session_state.student2['اللقب']} {st.session_state.student2['الإسم']}"
+                        
+                        st.markdown(f'<div class="error-msg">❌ أحد الطالبين مسجل مسبقاً: {registered_student}<br>لا يمكن المتابعة</div>', unsafe_allow_html=True)
+                        st.session_state.phone_verification_needed = False
+                        st.session_state.temp_students = []
+                        st.session_state.student1 = None
+                        st.session_state.student2 = None
+                        st.stop()
+                    
+                    if s1_note and s2_note and s1_note != s2_note:
+                        st.markdown(f'<div class="error-msg">❌ الطالبان مسجلان في مذكرتين مختلفتين<br>الطالب الأول في المذكرة: {s1_note}<br>الطالب الثاني في المذكرة: {s2_note}<br>لا يمكن المتابعة</div>', unsafe_allow_html=True)
+                        st.session_state.phone_verification_needed = False
+                        st.session_state.temp_students = []
+                        st.session_state.student1 = None
+                        st.session_state.student2 = None
+                        st.stop()
+                    
+                    if s1_note and s2_note and s1_note == s2_note:
+                        st.session_state.mode = "view"
+                
+                # التحقق من التسجيل الفردي
+                if len(st.session_state.temp_students) == 1:
+                    fardiya_value = str(st.session_state.student1.get('فردية', '')).strip()
+                    if fardiya_value not in ["1", "نعم"]:
+                        st.markdown('<div class="error-msg">❌ لا يمكنك تسجيل مذكرة فردية. يرجى الاتصال بمسؤول الميدان</div>', unsafe_allow_html=True)
+                        st.session_state.phone_verification_needed = False
+                        st.session_state.temp_students = []
+                        st.stop()
+                    
+                    note_number = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
+                    if note_number:
+                        st.session_state.mode = "view"
+                    else:
+                        st.session_state.mode = "register"
+                
+                # إكمال عملية تسجيل الدخول
+                st.session_state.phone_verification_needed = False
+                st.session_state.logged_in = True
+                time.sleep(0.5)
+                st.rerun()
     
     with col2:
         if st.button("❌ إلغاء", use_container_width=True):
@@ -929,27 +967,4 @@ if st.session_state.logged_in:
                             st.balloons()
                             
                             clear_cache_and_reload()
-                            st.session_state.mode = "view"
-                            st.session_state.show_confirmation = False
-                            
-                            time.sleep(2)
-                            st.rerun()
-                        else:
-                            st.markdown(f'<div class="error-msg">{message}</div>', unsafe_allow_html=True)
-                            st.session_state.show_confirmation = False
-            
-            with col2:
-                if st.button("❌ إلغاء", use_container_width=True):
-                    st.session_state.show_confirmation = False
-                    st.rerun()
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ---------------- Footer ----------------
-st.markdown("---")
-st.markdown("""
-    <div style='text-align:center; color:#888; font-size:12px; padding:20px;'>
-        <p>© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
-        <p>للاستفسار يرجى الاتصال بمكتب فريق التكوين</p>
-    </div>
-""", unsafe_allow_html=True)
+                            st.session_state
