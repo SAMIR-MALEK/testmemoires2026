@@ -493,8 +493,7 @@ def update_registration(note_number, student1, student2=None):
         logger.error(f"خطأ في تحديث التسجيل: {str(e)}")
         return False, f"❌ حدث خطأ أثناء التسجيل: {str(e)}"
 
-student1 = None
-    st.session
+
 
 # ---------------- Session State ----------------
 if 'logged_in' not in st.session_state:
