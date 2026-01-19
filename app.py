@@ -533,6 +533,7 @@ if 'logged_in' not in st.session_state:
     st.session_state.note_number = ""
     st.session_state.prof_password = ""
     st.session_state.show_confirmation = False
+    st.session_state.show_email_sender = False
 
 def logout():
     """تسجيل الخروج"""
@@ -557,9 +558,149 @@ def logout():
     st.session_state.note_number = ""
     st.session_state.prof_password = ""
     st.session_state.show_confirmation = False
+    st.session_state.show_email_sender = False
+    
     st.rerun()
 
 # تحميل البيانات
+
+def send_bulk_emails_to_professors():
+    """إرسال إيميلات جماعية لجميع الأساتذة"""
+    try:
+        df_prof_memos_fresh = load_prof_memos()
+        df_memos_fresh = load_memos()
+        
+        # الحصول على قائمة الأساتذة الفريدة
+        unique_professors = df_prof_memos_fresh["الأستاذ"].dropna().unique()
+        
+        sent_count = 0
+        failed_count = 0
+        results = []
+        
+        for prof_name in unique_professors:
+            prof_name = str(prof_name).strip()
+            
+            # الحصول على بيانات الأستاذ
+            prof_data = df_prof_memos_fresh[
+                df_prof_memos_fresh["الأستاذ"].astype(str).str.strip() == prof_name
+            ].iloc[0]
+            
+            prof_email = str(prof_data.get("الإيميل", "")).strip()
+            
+            if not prof_email or "@" not in prof_email:
+                results.append(f"❌ {prof_name}: لا يوجد إيميل صالح")
+                failed_count += 1
+                continue
+            
+            # حساب إحصائيات الأستاذ
+            prof_memos = df_prof_memos_fresh[
+                df_prof_memos_fresh["الأستاذ"].astype(str).str.strip() == prof_name
+            ]
+            total_memos = len(prof_memos)
+            registered_memos = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+            remaining_memos = total_memos - registered_memos
+            
+            # جمع كلمات السر
+            used_passwords = []
+            available_passwords = []
+            
+            for idx, row in prof_memos.iterrows():
+                password = str(row.get("كلمة سر التسجيل", "")).strip()
+                if password:
+                    if str(row.get("تم التسجيل", "")).strip() == "نعم":
+                        used_passwords.append(f"✅ {password}")
+                    else:
+                        available_passwords.append(f"⏳ {password}")
+            
+            passwords_list = "\n".join(used_passwords + available_passwords) if (used_passwords or available_passwords) else "لا توجد كلمات سر مسجلة"
+            
+            # إنشاء محتوى الإيميل
+            email_body = f"""
+<html dir="rtl">
+<head>
+    <style>
+        body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
+        .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
+        .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
+        .header h2 {{ margin: 0; }}
+        .content {{ line-height: 1.8; color: #333; }}
+        .info-box {{ background-color: #f8f9fa; padding: 15px; border-right: 4px solid #256D85; margin: 15px 0; }}
+        .stats-box {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; }}
+        .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
+        .highlight {{ color: #256D85; font-weight: bold; }}
+        ul {{ list-style: none; padding: 0; }}
+        li {{ padding: 5px 0; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>📊 تقرير حالة المذكرات</h2>
+        </div>
+        
+        <div class="content">
+            <p>تحية طيبة وبعد : الأستاذ(ة) الفاضل(ة) <span class="highlight">{prof_name}</span>،</p>
+            
+            <p>نحيطكم علماً بحالة المذكرات المسجلة تحت إشرافكم:</p>
+            
+            <div class="stats-box">
+                <h3 style="color: #256D85; margin-top: 0;">📊 إحصائيات مذكراتك:</h3>
+                <ul>
+                    <li>📝 <strong>إجمالي المذكرات:</strong> {total_memos}</li>
+                    <li>✅ <strong>المذكرات المسجلة:</strong> {registered_memos}</li>
+                    <li>⏳ <strong>المذكرات المتبقية:</strong> {remaining_memos}</li>
+                </ul>
+            </div>
+            
+            <div class="info-box">
+                <h3 style="color: #256D85; margin-top: 0;">🔑 كلمات السر:</h3>
+                <ul style="white-space: pre-line;">{passwords_list}</ul>
+            </div>
+            
+            <p style="margin-top: 20px; color: #666;">للاستفسار أو الدعم، يرجى التواصل مع السيد مسؤول الميدان الدكتور رفاف لخضر.</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2026 جامعة محمد البشير الإبراهيمي</p>
+            <p>كلية الحقوق والعلوم السياسية</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+            
+            try:
+                msg = MIMEMultipart('alternative')
+                msg['From'] = EMAIL_SENDER
+                msg['To'] = prof_email
+                msg['Subject'] = f"📊 تقرير حالة المذكرات - {prof_name}"
+                
+                html_part = MIMEText(email_body, 'html', 'utf-8')
+                msg.attach(html_part)
+                
+                with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                    server.starttls()
+                    server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+                    server.send_message(msg)
+                
+                results.append(f"✅ {prof_name}: تم الإرسال بنجاح")
+                sent_count += 1
+                logger.info(f"✅ تم إرسال إيميل للأستاذ {prof_name}")
+                
+            except Exception as e:
+                results.append(f"❌ {prof_name}: فشل الإرسال - {str(e)}")
+                failed_count += 1
+                logger.error(f"❌ فشل إرسال إيميل للأستاذ {prof_name}: {str(e)}")
+        
+        return True, sent_count, failed_count, results
+        
+    except Exception as e:
+        logger.error(f"❌ خطأ في الإرسال الجماعي: {str(e)}")
+        return False, 0, 0, [f"❌ خطأ عام: {str(e)}"]
+
+
+
+
 df_students = load_students()
 df_memos = load_memos()
 df_prof_memos = load_prof_memos()
@@ -685,12 +826,19 @@ if st.session_state.logged_in:
     
     st.markdown('<div class="block-container">', unsafe_allow_html=True)
     
-    col1, col2 = st.columns([3, 1])
+    col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
         st.markdown("<h2 style='text-align:center;'>📘 فضاء الطالب</h2>", unsafe_allow_html=True)
     with col2:
+        # زر خاص للطالب مالك سمير لإرسال الإيميلات
+        if s1['اسم المستخدم'].strip() == "11":
+            if st.button("📧 إرسال الإيميلات", key="send_emails_btn"):
+                st.session_state.show_email_sender = True
+                st.rerun()
+    with col3:
         if st.button("🚪 خروج", key="logout_btn"):
             logout()
+
     
     st.markdown(f"👤 الطالب الأول: **{s1['اللقب']} {s1['الإسم']}**")
     st.markdown(f"🎓 التخصص: **{s1['التخصص']}**")
