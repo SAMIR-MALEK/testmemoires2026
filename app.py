@@ -443,3 +443,172 @@ with st.expander("🔐 لوحة تحكم الإدارة"):
             if st.button("🚪 خروج من الإدارة", use_container_width=True):
                 st.session_state.admin_mode = False
                 st.rerun()
+# ---------------- فضاء الطالب ----------------
+if st.session_state.logged_in:
+    s1 = st.session_state.student1
+    s2 = st.session_state.student2
+    
+    st.markdown('<div class="block-container">', unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("<h2 style='text-align:center;'>📘 فضاء الطالب</h2>", unsafe_allow_html=True)
+    with col2:
+        if st.button("🚪 خروج", key="logout_btn"):
+            logout()
+    
+    st.markdown(f"👤 الطالب الأول: **{s1['اللقب']} {s1['الإسم']}**")
+    st.markdown(f"🎓 التخصص: **{s1['التخصص']}**")
+    
+    if s2 is not None:
+        st.markdown(f"👤 الطالب الثاني: **{s2['اللقب']} {s2['الإسم']}**")
+
+    if st.session_state.mode == "view":
+        time.sleep(0.5)
+        
+        df_memos_fresh = load_memos()
+        
+        note_number = str(s1.get('رقم المذكرة', '')).strip()
+        memo_info = df_memos_fresh[df_memos_fresh["رقم المذكرة"].astype(str).str.strip() == note_number]
+        
+        if not memo_info.empty:
+            memo_info = memo_info.iloc[0]
+            st.markdown('<div class="success-msg">', unsafe_allow_html=True)
+            st.markdown(f"### ✅ أنت مسجل في المذكرة التالية:")
+            st.markdown(f"**📄 رقم المذكرة:** {memo_info['رقم المذكرة']}")
+            st.markdown(f"**📑 عنوان المذكرة:** {memo_info['عنوان المذكرة']}")
+            st.markdown(f"**👨‍🏫 الأستاذ المشرف:** {memo_info['الأستاذ']}")
+            st.markdown(f"**🎯 التخصص:** {memo_info['التخصص']}")
+            st.markdown(f"**🕒 تاريخ التسجيل:** {memo_info.get('تاريخ التسجيل','')}")
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="error-msg">⚠️ لم يتم العثور على معلومات المذكرة. يرجى تحديث الصفحة.</div>', unsafe_allow_html=True)
+            if st.button("🔄 تحديث الصفحة"):
+                clear_cache_and_reload()
+                time.sleep(1)
+                st.rerun()
+        
+        st.markdown('<div class="info-msg">', unsafe_allow_html=True)
+        st.markdown("ℹ️ **ملاحظة:** لا يمكن تسجيل مذكرة أخرى. إذا كان هناك خطأ، يرجى الاتصال بالإدارة.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    elif st.session_state.mode == "register":
+        st.markdown('<div class="info-msg">', unsafe_allow_html=True)
+        st.markdown("### 📝 تسجيل مذكرة جديدة")
+        st.markdown("⚠️ اختر الأستاذ المشرف والمذكرة التي ترغب في تسجيلها")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        all_profs = sorted(df_memos["الأستاذ"].dropna().unique())
+        selected_prof = st.selectbox("🧑‍🏫 اختر الأستاذ المشرف:", [""] + all_profs)
+        
+        if selected_prof:
+            student_specialty = s1["التخصص"]
+            
+            # حساب عدد المذكرات المسجلة للأستاذ
+            prof_all_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()]
+            prof_registered_memos = prof_all_memos[prof_all_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
+            total_registered = len(prof_registered_memos)
+            
+            # التحقق إذا استنفذ الأستاذ كل المذكرات (4 مذكرات أو أكثر)
+            if total_registered >= 4:
+                st.markdown('<div class="error-msg">', unsafe_allow_html=True)
+                st.markdown(f'### ❌ الأستاذ {selected_prof} استنفذ كل العناوين الخاصة به')
+                st.markdown('⚠️ يرجى اختيار أستاذ آخر')
+                st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                available_memos_df = df_memos[
+                    (df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()) &
+                    (df_memos["التخصص"].astype(str).str.strip() == student_specialty.strip()) &
+                    (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")
+                ][["رقم المذكرة", "عنوان المذكرة"]]
+                
+                if not available_memos_df.empty:
+                    st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة في تخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
+                    
+                    for idx, row in available_memos_df.iterrows():
+                        st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
+                else:
+                    st.markdown('<div class="error-msg">لا توجد مذكرات متاحة لهذا الأستاذ في تخصصك ❌ .</div>', unsafe_allow_html=True)
+        st.markdown("---")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state.note_number = st.text_input(
+                "📄 رقم المذكرة", 
+                value=st.session_state.note_number,
+                max_chars=20
+            )
+        with col2:
+            st.session_state.prof_password = st.text_input(
+                "🔑 كلمة سر المشرف", 
+                type="password",
+                max_chars=50
+            )
+
+        if not st.session_state.show_confirmation:
+            if st.button("📝 المتابعة للتأكيد", type="primary", use_container_width=True):
+                if not st.session_state.note_number or not st.session_state.prof_password:
+                    st.markdown('<div class="error-msg">⚠️ يرجى إدخال رقم المذكرة وكلمة سر المشرف</div>', unsafe_allow_html=True)
+                else:
+                    st.session_state.show_confirmation = True
+                    st.rerun()
+        else:
+            st.markdown('<div class="info-msg">', unsafe_allow_html=True)
+            st.markdown("### ⚠️ تأكيد التسجيل")
+            st.markdown(f"**رقم المذكرة:** {st.session_state.note_number}")
+            st.markdown(f"**الطالب الأول:** {s1['اللقب']} {s1['الإسم']}")
+            if s2 is not None:
+                st.markdown(f"**الطالب الثاني:** {s2['اللقب']} {s2['الإسم']}")
+            st.markdown("**⚠️ تنبيه:** بعد التأكيد، لن تتمكن من تغيير المذكرة!")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ تأكيد نهائي", type="primary", use_container_width=True):
+                    valid_memo, prof_row, error_msg = verify_professor_password(
+                        st.session_state.note_number, 
+                        st.session_state.prof_password, 
+                        df_memos, 
+                        df_prof_memos
+                    )
+                    
+                    if not valid_memo:
+                        st.markdown(f'<div class="error-msg">{error_msg}</div>', unsafe_allow_html=True)
+                        st.session_state.show_confirmation = False
+                    else:
+                        with st.spinner('⏳ جاري تسجيل المذكرة...'):
+                            success, message = update_registration(
+                                st.session_state.note_number, 
+                                s1, 
+                                s2
+                            )
+                        
+                        if success:
+                            st.markdown(f'<div class="success-msg">{message}</div>', unsafe_allow_html=True)
+                            st.balloons()
+                            
+                            clear_cache_and_reload()
+                            st.session_state.mode = "view"
+                            st.session_state.show_confirmation = False
+                            
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.markdown(f'<div class="error-msg">{message}</div>', unsafe_allow_html=True)
+                            st.session_state.show_confirmation = False
+            
+            with col2:
+                if st.button("❌ إلغاء", use_container_width=True):
+                    st.session_state.show_confirmation = False
+                    st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ---------------- Footer ----------------
+st.markdown("---")
+st.markdown("""
+    <div style='text-align:center; color:#888; font-size:12px; padding:20px;'>
+        <p>© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
+        <p>للاستفسار يرجى الاتصال بمكتب فريق التكوين</p>
+    </div>
+""", unsafe_allow_html=True)
