@@ -64,36 +64,6 @@ def col_letter(n):
         result = chr(65 + remainder) + result
     return result
 
-
-        if selected_prof:
-            student_specialty = s1["التخصص"]
-            
-            # حساب عدد المذكرات المسجلة للأستاذ
-            prof_all_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()]
-            prof_registered_memos = prof_all_memos[prof_all_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
-            total_registered = len(prof_registered_memos)
-            
-            # التحقق إذا استنفذ الأستاذ كل المذكرات (4 مذكرات أو أكثر)
-            if total_registered >= 4:
-                st.markdown('<div class="error-msg">', unsafe_allow_html=True)
-                st.markdown(f'### ❌ الأستاذ {selected_prof} استنفذ كل العناوين الخاصة به')
-                st.markdown('⚠️ يرجى اختيار أستاذ آخر')
-                st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                available_memos_df = df_memos[
-                    (df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()) &
-                    (df_memos["التخصص"].astype(str).str.strip() == student_specialty.strip()) &
-                    (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")
-                ][["رقم المذكرة", "عنوان المذكرة"]]
-                
-                if not available_memos_df.empty:
-                    st.markdown(f'<p style="color:#4CAF50; font-weight:bold;">✅ المذكرات المتاحة في تخصصك ({student_specialty}):</p>', unsafe_allow_html=True)
-                    
-                    for idx, row in available_memos_df.iterrows():
-                        st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
-                else:
-                    st.markdown('<div class="error-msg">لا توجد مذكرات متاحة لهذا الأستاذ في تخصصك ❌ .</div>', unsafe_allow_html=True)
-
 def sanitize_input(text):
     """تنقية المدخلات من الأحرف الخطرة"""
     if not text:
@@ -522,6 +492,9 @@ def update_registration(note_number, student1, student2=None):
     except Exception as e:
         logger.error(f"خطأ في تحديث التسجيل: {str(e)}")
         return False, f"❌ حدث خطأ أثناء التسجيل: {str(e)}"
+
+student1 = None
+    st.session
 
 # ---------------- Session State ----------------
 if 'logged_in' not in st.session_state:
