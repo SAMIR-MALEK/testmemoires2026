@@ -53,7 +53,7 @@ PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 
 STUDENTS_RANGE = "Feuille 1!A1:L1000"
 MEMOS_RANGE = "Feuille 1!A1:N1000"
-PROF_MEMOS_RANGE = "Feuille 1!A1:L1000"
+PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
 
 # بيانات الإدارة (يمكنك تغييرها)
 ADMIN_CREDENTIALS = {
