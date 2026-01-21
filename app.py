@@ -105,8 +105,8 @@ ADMIN_CREDENTIALS = {
     "dsp": "dsp@2026"
 }
 
-EMAIL_SENDER = st.secrets["EMAIL_SENDER"]
-EMAIL_PASSWORD = st.secrets["EMAIL_PASSWORD"]
+EMAIL_SENDER = "domaine.dsp@univ-bba.dz"
+EMAIL_PASSWORD = "oevruyiztgikwzah"
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 ADMIN_EMAIL = "domaine.dsp@univ-bba.dz"
