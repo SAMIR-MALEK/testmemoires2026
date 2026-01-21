@@ -31,7 +31,7 @@ button:hover { background-color:#2C89A0 !important; }
 .info-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #2d4a5a; border-radius: 8px; }
 .warning-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #5a4d2d; border-radius: 8px; }
 
-/* بطاقات الإحصائيات بدون فواصل */
+/* بطاقات الإحصائيات */
 .stat-card { 
     background: linear-gradient(135deg, #256D85 0%, #2C89A0 100%); 
     padding: 25px; 
@@ -818,7 +818,7 @@ elif st.session_state.user_type == "student":
                         st.rerun()
 
 # ============================================================
-# فضاء الأساتذة - محسّن
+# فضاء الأساتذة
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
@@ -864,7 +864,7 @@ elif st.session_state.user_type == "professor":
         
         st.markdown("### 📊 لوحة التحكم")
         
-        # بطاقات الإحصائيات بدون فواصل
+        # بطاقات الإحصائيات
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -894,11 +894,162 @@ elif st.session_state.user_type == "professor":
         
         st.markdown("---")
         
-        # التبويبات: كلمات السر → المذكرات المسجلة → المذكرات المتاحة/المقترحة → الطلبات
-        tab1, tab2, tab3, tab4 = st.tabs(["🔑 كلمات السر", "📝 المذكرات المسجلة", "⏳ المذكرات المتاحة/المقترحة", "📬 الطلبات"])
+        # التبويبات: المذكرات المسجلة → كلمات السر → المذكرات المتاحة/المقترحة
+        tab1, tab2, tab3 = st.tabs(["📝 المذكرات المسجلة", "🔑 كلمات السر", "⏳ المذكرات المتاحة/المقترحة"])
         
-        # Tab 1: كلمات السر
+        # Tab 1: المذكرات المسجلة
         with tab1:
+            st.markdown("### ✅ المذكرات المسجلة")
+            registered = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
+            
+            if not registered.empty:
+                # إنشاء قائمة اختيار للمذكرات
+                memo_options = [f"{row['رقم المذكرة']} - {row['عنوان المذكرة']}" for _, row in registered.iterrows()]
+                selected_memo_option = st.selectbox("📝 اختر مذكرة لعرض التفاصيل:", memo_options, key="select_registered_memo")
+                
+                # الحصول على رقم المذكرة المختارة
+                selected_memo_num = selected_memo_option.split(" - ")[0]
+                memo = registered[registered["رقم المذكرة"].astype(str).str.strip() == selected_memo_num].iloc[0]
+                
+                st.markdown('<div class="memo-card">', unsafe_allow_html=True)
+                st.markdown(f"**📄 رقم المذكرة:** {memo['رقم المذكرة']}")
+                st.markdown(f"**📑 العنوان:** {memo['عنوان المذكرة']}")
+                st.markdown(f"**🎓 التخصص:** {memo['التخصص']}")
+                
+                # معلومات الطلاب
+                student1_name = memo.get('الطالب الأول', 'غير محدد')
+                st.markdown(f"**👤 الطالب الأول:** {student1_name}")
+                
+                # البحث عن بريد الطالب الأول
+                if student1_name != 'غير محدد':
+                    student1_parts = student1_name.split()
+                    if len(student1_parts) >= 2:
+                        student1_data = df_students[
+                            (df_students["اللقب"].astype(str).str.strip() == student1_parts[0].strip()) &
+                            (df_students["الإسم"].astype(str).str.strip() == student1_parts[1].strip())
+                        ]
+                        if not student1_data.empty:
+                            student1_email = str(student1_data.iloc[0].get("البريد الإلكتروني", "")).strip()
+                            if student1_email:
+                                st.markdown(f"**📧 البريد:** {student1_email}")
+                
+                # الطالب الثاني
+                if str(memo.get('الطالب الثاني', '')).strip():
+                    student2_name = memo['الطالب الثاني']
+                    st.markdown(f"**👤 الطالب الثاني:** {student2_name}")
+                    
+                    # البحث عن بريد الطالب الثاني
+                    student2_parts = student2_name.split()
+                    if len(student2_parts) >= 2:
+                        student2_data = df_students[
+                            (df_students["اللقب"].astype(str).str.strip() == student2_parts[0].strip()) &
+                            (df_students["الإسم"].astype(str).str.strip() == student2_parts[1].strip())
+                        ]
+                        if not student2_data.empty:
+                            student2_email = str(student2_data.iloc[0].get("البريد الإلكتروني", "")).strip()
+                            if student2_email:
+                                st.markdown(f"**📧 البريد:** {student2_email}")
+                
+                st.markdown(f"**🕒 تاريخ التسجيل:** {memo.get('تاريخ التسجيل', 'غير محدد')}")
+                
+                # نسبة التقدم
+                progress_value = str(memo.get('نسبة التقدم', '0')).strip()
+                try:
+                    progress_int = int(progress_value) if progress_value else 0
+                except:
+                    progress_int = 0
+                
+                st.markdown(f"**📊 نسبة التقدم الحالية:** {progress_int}%")
+                st.markdown(f'<div class="progress-container"><div class="progress-bar" style="width: {progress_int}%;">{progress_int}%</div></div>', unsafe_allow_html=True)
+                
+                # تحديث نسبة التقدم
+                st.markdown("**🔄 تحديث نسبة التقدم:**")
+                
+                progress_stages = {
+                    "0%": 0,
+                    "10% - ضبط المقدمة والإشكالية": 10,
+                    "30% - المبحث الأول من الفصل الأول": 30,
+                    "40% - المبحث الثاني من الفصل الأول": 40,
+                    "60% - المبحث الأول من الفصل الثاني": 60,
+                    "80% - المبحث الثاني من الفصل الثاني": 80,
+                    "100% - الخاتمة والمذكرة مكتملة": 100
+                }
+                
+                new_progress = st.selectbox(
+                    "اختر المرحلة الحالية:",
+                    options=list(progress_stages.keys()),
+                    key=f"progress_{memo['رقم المذكرة']}"
+                )
+                
+                if st.button(f"💾 حفظ التقدم", key=f"save_progress_{memo['رقم المذكرة']}"):
+                    progress_val = progress_stages[new_progress]
+                    success, msg = update_progress(memo['رقم المذكرة'], progress_val)
+                    if success:
+                        st.success(msg)
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(msg)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                st.markdown("---")
+                
+                # قسم الطلبات المتعلقة بهذه المذكرة
+                st.markdown("### 📬 طلبات متعلقة بهذه المذكرة")
+                
+                request_type = st.selectbox(
+                    "نوع الطلب:",
+                    ["تغيير العنوان", "إضافة طالب"],
+                    key=f"request_type_{memo['رقم المذكرة']}"
+                )
+                
+                if request_type == "تغيير العنوان":
+                    new_title = st.text_input(
+                        "العنوان الجديد للمذكرة:",
+                        placeholder="اكتب العنوان الجديد هنا...",
+                        key=f"new_title_{memo['رقم المذكرة']}"
+                    )
+                    details = f"العنوان الجديد المقترح:\n{new_title}"
+                    
+                elif request_type == "إضافة طالب":
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        new_student_lastname = st.text_input(
+                            "لقب الطالب الجديد:",
+                            placeholder="اللقب",
+                            key=f"new_student_ln_{memo['رقم المذكرة']}"
+                        )
+                    with col2:
+                        new_student_firstname = st.text_input(
+                            "اسم الطالب الجديد:",
+                            placeholder="الاسم",
+                            key=f"new_student_fn_{memo['رقم المذكرة']}"
+                        )
+                    details = f"الطالب المطلوب إضافته:\nاللقب: {new_student_lastname}\nالاسم: {new_student_firstname}"
+                
+                if st.button("📤 تسجيل الطلب", type="primary", key=f"submit_request_{memo['رقم المذكرة']}"):
+                    if request_type == "تغيير العنوان" and new_title.strip():
+                        success, msg = send_request_to_admin(prof_name, request_type, memo['رقم المذكرة'], details)
+                        if success:
+                            st.success(msg)
+                            st.balloons()
+                        else:
+                            st.error(msg)
+                    elif request_type == "إضافة طالب" and new_student_lastname.strip() and new_student_firstname.strip():
+                        success, msg = send_request_to_admin(prof_name, request_type, memo['رقم المذكرة'], details)
+                        if success:
+                            st.success(msg)
+                            st.balloons()
+                        else:
+                            st.error(msg)
+                    else:
+                        st.error("⚠️ يرجى ملء جميع الحقول المطلوبة")
+            else:
+                st.info("لا توجد مذكرات مسجلة بعد")
+        
+        # Tab 2: كلمات السر
+        with tab2:
             st.markdown("### 🔑 كلمات السر الخاصة بك")
             prof_passwords = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
             
@@ -920,97 +1071,6 @@ elif st.session_state.user_type == "professor":
             else:
                 st.info("لا توجد كلمات سر مسجلة")
         
-        # Tab 2: المذكرات المسجلة
-        with tab2:
-            st.markdown("### ✅ المذكرات المسجلة")
-            registered = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
-            
-            if not registered.empty:
-                for idx, memo in registered.iterrows():
-                    st.markdown('<div class="memo-card">', unsafe_allow_html=True)
-                    st.markdown(f"**📄 رقم المذكرة:** {memo['رقم المذكرة']}")
-                    st.markdown(f"**📑 العنوان:** {memo['عنوان المذكرة']}")
-                    st.markdown(f"**🎓 التخصص:** {memo['التخصص']}")
-                    
-                    # معلومات الطلاب
-                    student1_name = memo.get('الطالب الأول', 'غير محدد')
-                    st.markdown(f"**👤 الطالب الأول:** {student1_name}")
-                    
-                    # البحث عن بريد الطالب الأول
-                    if student1_name != 'غير محدد':
-                        student1_parts = student1_name.split()
-                        if len(student1_parts) >= 2:
-                            student1_data = df_students[
-                                (df_students["اللقب"].astype(str).str.strip() == student1_parts[0].strip()) &
-                                (df_students["الإسم"].astype(str).str.strip() == student1_parts[1].strip())
-                            ]
-                            if not student1_data.empty:
-                                student1_email = str(student1_data.iloc[0].get("البريد الإلكتروني", "")).strip()
-                                if student1_email:
-                                    st.markdown(f"**📧 البريد:** {student1_email}")
-                    
-                    # الطالب الثاني
-                    if str(memo.get('الطالب الثاني', '')).strip():
-                        student2_name = memo['الطالب الثاني']
-                        st.markdown(f"**👤 الطالب الثاني:** {student2_name}")
-                        
-                        # البحث عن بريد الطالب الثاني
-                        student2_parts = student2_name.split()
-                        if len(student2_parts) >= 2:
-                            student2_data = df_students[
-                                (df_students["اللقب"].astype(str).str.strip() == student2_parts[0].strip()) &
-                                (df_students["الإسم"].astype(str).str.strip() == student2_parts[1].strip())
-                            ]
-                            if not student2_data.empty:
-                                student2_email = str(student2_data.iloc[0].get("البريد الإلكتروني", "")).strip()
-                                if student2_email:
-                                    st.markdown(f"**📧 البريد:** {student2_email}")
-                    
-                    st.markdown(f"**🕒 تاريخ التسجيل:** {memo.get('تاريخ التسجيل', 'غير محدد')}")
-                    
-                    # نسبة التقدم
-                    progress_value = str(memo.get('نسبة التقدم', '0')).strip()
-                    try:
-                        progress_int = int(progress_value) if progress_value else 0
-                    except:
-                        progress_int = 0
-                    
-                    st.markdown(f"**📊 نسبة التقدم الحالية:** {progress_int}%")
-                    st.markdown(f'<div class="progress-container"><div class="progress-bar" style="width: {progress_int}%;">{progress_int}%</div></div>', unsafe_allow_html=True)
-                    
-                    # تحديث نسبة التقدم
-                    st.markdown("**🔄 تحديث نسبة التقدم:**")
-                    
-                    progress_stages = {
-                        "0%": 0,
-                        "10% - ضبط المقدمة والإشكالية": 10,
-                        "30% - المبحث الأول من الفصل الأول": 30,
-                        "40% - المبحث الثاني من الفصل الأول": 40,
-                        "60% - المبحث الأول من الفصل الثاني": 60,
-                        "80% - المبحث الثاني من الفصل الثاني": 80,
-                        "100% - الخاتمة والمذكرة مكتملة": 100
-                    }
-                    
-                    new_progress = st.selectbox(
-                        "اختر المرحلة الحالية:",
-                        options=list(progress_stages.keys()),
-                        key=f"progress_{memo['رقم المذكرة']}"
-                    )
-                    
-                    if st.button(f"💾 حفظ التقدم", key=f"save_progress_{memo['رقم المذكرة']}"):
-                        progress_val = progress_stages[new_progress]
-                        success, msg = update_progress(memo['رقم المذكرة'], progress_val)
-                        if success:
-                            st.success(msg)
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error(msg)
-                    
-                    st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                st.info("لا توجد مذكرات مسجلة بعد")
-        
         # Tab 3: المذكرات المتاحة/المقترحة
         with tab3:
             if is_exhausted:
@@ -1031,43 +1091,6 @@ elif st.session_state.user_type == "professor":
                     st.markdown('</div>', unsafe_allow_html=True)
             else:
                 st.success("✅ جميع المذكرات مسجلة!")
-        
-        # Tab 4: الطلبات
-        with tab4:
-            st.markdown("### 📬 تسجيل طلب جديد")
-            st.info("💡 يمكنك تسجيل طلبات تغيير العنوان أو إضافة طالب لمذكرة فردية")
-            
-            request_type = st.selectbox(
-                "نوع الطلب:",
-                ["تغيير العنوان", "إضافة طالب"]
-            )
-            
-            # اختيار المذكرة
-            registered_memos_list = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
-            if not registered_memos_list.empty:
-                memo_options = [f"{row['رقم المذكرة']} - {row['عنوان المذكرة']}" for _, row in registered_memos_list.iterrows()]
-                selected_memo = st.selectbox("اختر المذكرة:", memo_options)
-                memo_number = selected_memo.split(" - ")[0]
-            else:
-                st.warning("لا توجد مذكرات مسجلة لتقديم طلب عليها")
-                memo_number = None
-            
-            details = st.text_area(
-                "تفاصيل الطلب:",
-                placeholder="اكتب تفاصيل طلبك هنا...",
-                height=150
-            )
-            
-            if st.button("📤 تسجيل الطلب", type="primary"):
-                if memo_number and details.strip():
-                    success, msg = send_request_to_admin(prof_name, request_type, memo_number, details)
-                    if success:
-                        st.success(msg)
-                        st.balloons()
-                    else:
-                        st.error(msg)
-                else:
-                    st.error("⚠️ يرجى ملء جميع الحقول")
 
 # ============================================================
 # فضاء الإدارة
