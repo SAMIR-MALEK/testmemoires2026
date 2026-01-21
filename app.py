@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # ---------------- إعداد الصفحة ----------------
 st.set_page_config(page_title="نظام تسجيل المذكرات", page_icon="🎓", layout="wide")
 
-# ---------------- CSS ----------------
+# ---------------- CSS محسّن ----------------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
@@ -26,18 +26,63 @@ html, body, [class*="css"] { font-family: 'Cairo', sans-serif !important; }
 label, h1, h2, h3, h4, h5, h6, p, span, .stTextInput label { color:#ffffff !important; }
 button { background-color:#256D85 !important; color:white !important; border:none !important; padding:10px 20px !important; border-radius:6px !important; }
 button:hover { background-color:#2C89A0 !important; }
-.message { font-size:18px; font-weight:bold; text-align:center; margin:10px 0; color:#FFFFFF;}
-.logout-btn { background-color:#8B0000 !important; }
-.logout-btn:hover { background-color:#A52A2A !important; }
 .success-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #2d5a2d; border-radius: 8px; }
 .error-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #5a2d2d; border-radius: 8px; }
 .info-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #2d4a5a; border-radius: 8px; }
-.stat-card { background: linear-gradient(135deg, #256D85 0%, #2C89A0 100%); padding: 20px; border-radius: 12px; margin: 10px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-.stat-number { font-size: 36px; font-weight: bold; color: #FFD700; }
-.stat-label { font-size: 14px; color: #E0E0E0; margin-top: 5px; }
-.memo-card { background-color: #243447; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #256D85; }
-.role-selector { background-color: #1A2A3D; padding: 30px; border-radius: 12px; text-align: center; }
-.role-btn { background: linear-gradient(135deg, #256D85 0%, #2C89A0 100%) !important; padding: 20px 40px !important; margin: 10px !important; font-size: 18px !important; border-radius: 10px !important; }
+.warning-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #5a4d2d; border-radius: 8px; }
+
+/* بطاقات الإحصائيات بدون فواصل */
+.stat-card { 
+    background: linear-gradient(135deg, #256D85 0%, #2C89A0 100%); 
+    padding: 25px; 
+    border-radius: 12px; 
+    margin: 5px; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    text-align: center;
+}
+.stat-number { font-size: 42px; font-weight: bold; color: #FFD700; margin-bottom: 8px; }
+.stat-label { font-size: 15px; color: #E0E0E0; }
+
+/* بطاقة المذكرة */
+.memo-card { 
+    background: linear-gradient(135deg, #243447 0%, #1e3a52 100%); 
+    padding: 20px; 
+    border-radius: 10px; 
+    margin: 15px 0; 
+    border-left: 5px solid #256D85;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+}
+
+/* بطاقة تحذير الاستنفاذ */
+.alert-card {
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    padding: 20px;
+    border-radius: 10px;
+    margin: 15px 0;
+    border-left: 5px solid #FFD700;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* شريط التقدم */
+.progress-container {
+    background-color: #1A2A3D;
+    border-radius: 10px;
+    padding: 3px;
+    margin: 10px 0;
+}
+.progress-bar {
+    height: 25px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #256D85 0%, #2C89A0 50%, #FFD700 100%);
+    text-align: center;
+    line-height: 25px;
+    color: white;
+    font-weight: bold;
+    transition: width 0.3s ease;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -52,20 +97,19 @@ MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 
 STUDENTS_RANGE = "Feuille 1!A1:L1000"
-MEMOS_RANGE = "Feuille 1!A1:N1000"
+MEMOS_RANGE = "Feuille 1!A1:Q1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
 
-# بيانات الإدارة (يمكنك تغييرها)
 ADMIN_CREDENTIALS = {
     "admin": "admin2026",
     "dsp": "dsp@2026"
 }
 
-# ---------------- Email Configuration ----------------
 EMAIL_SENDER = "domaine.dsp@univ-bba.dz"
 EMAIL_PASSWORD = "oevruyiztgikwzah"
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
+ADMIN_EMAIL = "domaine.dsp@univ-bba.dz"
 
 # ---------------- دوال مساعدة ----------------
 def col_letter(n):
@@ -151,31 +195,43 @@ def clear_cache_and_reload():
     st.cache_data.clear()
     logger.info("تم مسح السجلات")
 
-# ---------------- إرسال البريد الإلكتروني ----------------
-def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2=None):
+# ---------------- تحديث نسبة التقدم ----------------
+def update_progress(memo_number, progress_value):
+    """تحديث نسبة التقدم في عمود Q"""
     try:
-        df_prof_memos = load_prof_memos()
-        prof_memos = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
-        total_memos = len(prof_memos)
-        registered_memos = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
-        remaining_memos = total_memos - registered_memos
+        df_memos = load_memos()
+        memo_row = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(memo_number).strip()]
         
-        used_passwords = []
-        available_passwords = []
+        if memo_row.empty:
+            return False, "❌ لم يتم العثور على المذكرة"
         
-        for idx, row in prof_memos.iterrows():
-            password = str(row.get("كلمة سر التسجيل", "")).strip()
-            if password:
-                if str(row.get("تم التسجيل", "")).strip() == "نعم":
-                    used_passwords.append(f"✅ {password}")
-                else:
-                    available_passwords.append(f"⏳ {password}")
+        row_idx = memo_row.index[0] + 2
         
-        student2_info = ""
-        if student2 is not None:
-            student2_info = f"\n👤 **الطالب الثاني:** {student2['اللقب']} {student2['الإسم']}"
+        sheets_service.spreadsheets().values().update(
+            spreadsheetId=MEMOS_SHEET_ID,
+            range=f"Feuille 1!Q{row_idx}",
+            valueInputOption="USER_ENTERED",
+            body={"values": [[str(progress_value)]]}
+        ).execute()
         
-        passwords_list = "\n".join(used_passwords + available_passwords) if (used_passwords or available_passwords) else "لا توجد كلمات سر مسجلة"
+        clear_cache_and_reload()
+        logger.info(f"تم تحديث نسبة التقدم للمذكرة {memo_number} إلى {progress_value}%")
+        return True, "✅ تم تحديث نسبة التقدم بنجاح"
+        
+    except Exception as e:
+        logger.error(f"خطأ في تحديث نسبة التقدم: {str(e)}")
+        return False, f"❌ خطأ: {str(e)}"
+
+# ---------------- إرسال طلب للإدارة ----------------
+def send_request_to_admin(prof_name, request_type, memo_number, details):
+    """إرسال طلب الأستاذ للإدارة"""
+    try:
+        request_types = {
+            "تغيير العنوان": "🔄 طلب تغيير عنوان مذكرة",
+            "إضافة طالب": "➕ طلب إضافة طالب لمذكرة فردية"
+        }
+        
+        subject = request_types.get(request_type, "📬 طلب جديد من أستاذ")
         
         email_body = f"""
 <html dir="rtl">
@@ -183,11 +239,77 @@ def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2
     <style>
         body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
         .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
-        .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
+        .header {{ background-color: #8B4513; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
+        .content {{ line-height: 1.8; color: #333; }}
+        .info-box {{ background-color: #fff8dc; padding: 15px; border-right: 4px solid #8B4513; margin: 15px 0; }}
+        .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>{subject}</h2>
+        </div>
+        <div class="content">
+            <p><strong>من:</strong> الأستاذ(ة) {prof_name}</p>
+            <p><strong>نوع الطلب:</strong> {request_type}</p>
+            <p><strong>رقم المذكرة:</strong> {memo_number}</p>
+            
+            <div class="info-box">
+                <h3>📋 تفاصيل الطلب:</h3>
+                <p style="white-space: pre-line;">{details}</p>
+            </div>
+            
+            <p><strong>⏰ تاريخ الطلب:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+        </div>
+        <div class="footer">
+            <p>© 2026 جامعة محمد البشير الإبراهيمي</p>
+            <p>نظام إدارة المذكرات</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+        
+        msg = MIMEMultipart('alternative')
+        msg['From'] = EMAIL_SENDER
+        msg['To'] = ADMIN_EMAIL
+        msg['Subject'] = f"{subject} - {prof_name}"
+        msg.attach(MIMEText(email_body, 'html', 'utf-8'))
+        
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+        
+        logger.info(f"تم إرسال طلب {request_type} من {prof_name} للإدارة")
+        return True, "✅ تم تسجيل طلبك بنجاح"
+        
+    except Exception as e:
+        logger.error(f"خطأ في إرسال الطلب: {str(e)}")
+        return False, "❌ خطأ في تسجيل الطلب"
+
+# ---------------- إرسال البريد للأستاذ ----------------
+def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2=None):
+    try:
+        df_prof_memos = load_prof_memos()
+        prof_memos = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
+        total_memos = len(prof_memos)
+        registered_memos = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+        
+        student2_info = ""
+        if student2 is not None:
+            student2_info = f"<p>👤 <strong>الطالب الثاني:</strong> {student2['اللقب']} {student2['الإسم']}</p>"
+        
+        email_body = f"""
+<html dir="rtl">
+<head>
+    <style>
+        body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
+        .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; max-width: 600px; margin: auto; }}
+        .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; }}
         .content {{ line-height: 1.8; color: #333; }}
         .info-box {{ background-color: #f8f9fa; padding: 15px; border-right: 4px solid #256D85; margin: 15px 0; }}
-        .stats-box {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; }}
-        .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; }}
     </style>
 </head>
 <body>
@@ -200,19 +322,10 @@ def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2
             <div class="info-box">
                 <p>📄 <strong>رقم المذكرة:</strong> {memo_info['رقم المذكرة']}</p>
                 <p>📑 <strong>عنوان المذكرة:</strong> {memo_info['عنوان المذكرة']}</p>
-                <p>👤 <strong>الطالب الأول:</strong> {student1['اللقب']} {student1['الإسم']}{student2_info}</p>
+                <p>👤 <strong>الطالب الأول:</strong> {student1['اللقب']} {student1['الإسم']}</p>
+                {student2_info}
             </div>
-            <div class="stats-box">
-                <h3>📊 إحصائيات مذكراتك:</h3>
-                <ul>
-                    <li>📝 إجمالي المذكرات: {total_memos}</li>
-                    <li>✅ المذكرات المسجلة: {registered_memos}</li>
-                    <li>⏳ المذكرات المتبقية: {remaining_memos}</li>
-                </ul>
-            </div>
-        </div>
-        <div class="footer">
-            <p>© 2026 جامعة محمد البشير الإبراهيمي</p>
+            <p>📊 <strong>إحصائياتك:</strong> {registered_memos} من {total_memos} مذكرات مسجلة</p>
         </div>
     </div>
 </body>
@@ -222,7 +335,7 @@ def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2
         msg = MIMEMultipart('alternative')
         msg['From'] = EMAIL_SENDER
         msg['To'] = prof_email
-        msg['Subject'] = f"✅ تسجيل مذكرة جديدة - رقم {memo_info['رقم المذكرة']}"
+        msg['Subject'] = f"✅ تسجيل مذكرة - {memo_info['رقم المذكرة']}"
         msg.attach(MIMEText(email_body, 'html', 'utf-8'))
         
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
@@ -230,108 +343,86 @@ def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2
             server.login(EMAIL_SENDER, EMAIL_PASSWORD)
             server.send_message(msg)
         
-        return True, "تم إرسال البريد الإلكتروني بنجاح"
-        
+        return True, "تم إرسال البريد"
     except Exception as e:
-        logger.error(f"❌ خطأ في إرسال البريد الإلكتروني: {str(e)}")
-        return False, f"فشل إرسال البريد: {str(e)}"
+        logger.error(f"خطأ في البريد: {str(e)}")
+        return False, str(e)
 
 # ---------------- التحقق ----------------
 def verify_student(username, password, df_students):
     valid, result = validate_username(username)
     if not valid:
         return False, result
-    
     username = result
     password = sanitize_input(password)
-    
     if df_students.empty:
         return False, "❌ خطأ في تحميل بيانات الطلاب"
-    
     student = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == username]
-    
     if student.empty:
         return False, "❌ اسم المستخدم غير موجود"
-    
     if student.iloc[0]["كلمة السر"].strip() != password:
         return False, "❌ كلمة السر غير صحيحة"
-    
     return True, student.iloc[0]
 
 def verify_students_batch(students_data, df_students):
     verified_students = []
-    
     for username, password in students_data:
         if not username:
             continue
-            
         valid, student = verify_student(username, password, df_students)
         if not valid:
             return False, student
         verified_students.append(student)
-    
     return True, verified_students
 
 def verify_professor(username, password, df_prof_memos):
-    """التحقق من بيانات الأستاذ"""
     username = sanitize_input(username)
     password = sanitize_input(password)
-    
     if df_prof_memos.empty:
         return False, "❌ خطأ في تحميل بيانات الأساتذة"
+    
+    required_cols = ["إسم المستخدم", "كلمة المرور"]
+    missing_cols = [col for col in required_cols if col not in df_prof_memos.columns]
+    if missing_cols:
+        return False, f"❌ الأعمدة التالية غير موجودة: {', '.join(missing_cols)}"
     
     prof = df_prof_memos[
         (df_prof_memos["إسم المستخدم"].astype(str).str.strip() == username) &
         (df_prof_memos["كلمة المرور"].astype(str).str.strip() == password)
     ]
-    
     if prof.empty:
         return False, "❌ اسم المستخدم أو كلمة السر غير صحيحة"
-    
     return True, prof.iloc[0]
 
 def verify_admin(username, password):
-    """التحقق من بيانات الإدارة"""
     username = sanitize_input(username)
     password = sanitize_input(password)
-    
     if username in ADMIN_CREDENTIALS and ADMIN_CREDENTIALS[username] == password:
         return True, username
-    
     return False, "❌ بيانات الإدارة غير صحيحة"
 
 def verify_professor_password(note_number, prof_password, df_memos, df_prof_memos):
     valid, result = validate_note_number(note_number)
     if not valid:
         return False, None, result
-    
     note_number = result
     prof_password = sanitize_input(prof_password)
-    
     if df_memos.empty or df_prof_memos.empty:
         return False, None, "❌ خطأ في تحميل البيانات"
-    
     memo_row = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == note_number]
-    
     if memo_row.empty:
         return False, None, "❌ رقم المذكرة غير موجود"
-    
     memo_row = memo_row.iloc[0]
-    
     if str(memo_row.get("تم التسجيل", "")).strip() == "نعم":
         return False, None, "❌ هذه المذكرة مسجلة مسبقاً"
-    
     prof_row = df_prof_memos[
         (df_prof_memos["الأستاذ"].astype(str).str.strip() == memo_row["الأستاذ"].strip()) &
         (df_prof_memos["كلمة سر التسجيل"].astype(str).str.strip() == prof_password)
     ]
-    
     if prof_row.empty:
         return False, None, "❌ كلمة سر المشرف غير صحيحة"
-    
     if str(prof_row.iloc[0].get("تم التسجيل", "")).strip() == "نعم":
         return False, None, "❌ هذه كلمة السر تم استعمالها مسبقًا"
-    
     return True, prof_row.iloc[0], None
 
 # ---------------- تحديث المذكرات ----------------
@@ -615,7 +706,6 @@ elif st.session_state.user_type == "student":
                 st.rerun()
     
     else:
-        # الطالب مسجل الدخول
         s1 = st.session_state.student1
         s2 = st.session_state.student2
         
@@ -728,7 +818,7 @@ elif st.session_state.user_type == "student":
                         st.rerun()
 
 # ============================================================
-# فضاء الأساتذة
+# فضاء الأساتذة - محسّن
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
@@ -769,8 +859,12 @@ elif st.session_state.user_type == "professor":
         registered_memos = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
         available_memos = total_memos - registered_memos
         
+        # تحقق من الاستنفاذ
+        is_exhausted = registered_memos >= 4
+        
         st.markdown("### 📊 لوحة التحكم")
         
+        # بطاقات الإحصائيات بدون فواصل
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -788,47 +882,23 @@ elif st.session_state.user_type == "professor":
         with col3:
             st.markdown('<div class="stat-card">', unsafe_allow_html=True)
             st.markdown(f'<div class="stat-number">{available_memos}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="stat-label">⏳ المذكرات المتاحة</div>', unsafe_allow_html=True)
+            if is_exhausted:
+                st.markdown('<div class="stat-label">💡 مذكرات مقترحة</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="stat-label">⏳ المذكرات المتاحة</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
+        
+        # تحذير الاستنفاذ
+        if is_exhausted:
+            st.markdown('<div class="alert-card">⚠️ لقد استنفذت العناوين الأربعة المخصصة لك. المذكرات المتبقية تعتبر مقترحة ولا يمكن تسجيلها حالياً.</div>', unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # التبويبات
-        tab1, tab2, tab3 = st.tabs(["📝 المذكرات المسجلة", "⏳ المذكرات المتاحة", "🔑 كلمات السر"])
+        # التبويبات: كلمات السر → المذكرات المسجلة → المذكرات المتاحة/المقترحة → الطلبات
+        tab1, tab2, tab3, tab4 = st.tabs(["🔑 كلمات السر", "📝 المذكرات المسجلة", "⏳ المذكرات المتاحة/المقترحة", "📬 الطلبات"])
         
+        # Tab 1: كلمات السر
         with tab1:
-            st.markdown("### ✅ المذكرات المسجلة")
-            registered = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
-            
-            if not registered.empty:
-                for idx, memo in registered.iterrows():
-                    st.markdown('<div class="memo-card">', unsafe_allow_html=True)
-                    st.markdown(f"**📄 رقم المذكرة:** {memo['رقم المذكرة']}")
-                    st.markdown(f"**📑 العنوان:** {memo['عنوان المذكرة']}")
-                    st.markdown(f"**🎓 التخصص:** {memo['التخصص']}")
-                    st.markdown(f"**👤 الطالب الأول:** {memo.get('الطالب الأول', 'غير محدد')}")
-                    if str(memo.get('الطالب الثاني', '')).strip():
-                        st.markdown(f"**👤 الطالب الثاني:** {memo['الطالب الثاني']}")
-                    st.markdown(f"**🕒 تاريخ التسجيل:** {memo.get('تاريخ التسجيل', 'غير محدد')}")
-                    st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                st.info("لا توجد مذكرات مسجلة بعد")
-        
-        with tab2:
-            st.markdown("### ⏳ المذكرات المتاحة للتسجيل")
-            available = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
-            
-            if not available.empty:
-                for idx, memo in available.iterrows():
-                    st.markdown('<div class="memo-card">', unsafe_allow_html=True)
-                    st.markdown(f"**📄 رقم المذكرة:** {memo['رقم المذكرة']}")
-                    st.markdown(f"**📑 العنوان:** {memo['عنوان المذكرة']}")
-                    st.markdown(f"**🎓 التخصص:** {memo['التخصص']}")
-                    st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                st.success("✅ جميع المذكرات مسجلة!")
-        
-        with tab3:
             st.markdown("### 🔑 كلمات السر الخاصة بك")
             prof_passwords = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
             
@@ -849,6 +919,155 @@ elif st.session_state.user_type == "professor":
                         st.markdown('</div>', unsafe_allow_html=True)
             else:
                 st.info("لا توجد كلمات سر مسجلة")
+        
+        # Tab 2: المذكرات المسجلة
+        with tab2:
+            st.markdown("### ✅ المذكرات المسجلة")
+            registered = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
+            
+            if not registered.empty:
+                for idx, memo in registered.iterrows():
+                    st.markdown('<div class="memo-card">', unsafe_allow_html=True)
+                    st.markdown(f"**📄 رقم المذكرة:** {memo['رقم المذكرة']}")
+                    st.markdown(f"**📑 العنوان:** {memo['عنوان المذكرة']}")
+                    st.markdown(f"**🎓 التخصص:** {memo['التخصص']}")
+                    
+                    # معلومات الطلاب
+                    student1_name = memo.get('الطالب الأول', 'غير محدد')
+                    st.markdown(f"**👤 الطالب الأول:** {student1_name}")
+                    
+                    # البحث عن بريد الطالب الأول
+                    if student1_name != 'غير محدد':
+                        student1_parts = student1_name.split()
+                        if len(student1_parts) >= 2:
+                            student1_data = df_students[
+                                (df_students["اللقب"].astype(str).str.strip() == student1_parts[0].strip()) &
+                                (df_students["الإسم"].astype(str).str.strip() == student1_parts[1].strip())
+                            ]
+                            if not student1_data.empty:
+                                student1_email = str(student1_data.iloc[0].get("البريد الإلكتروني", "")).strip()
+                                if student1_email:
+                                    st.markdown(f"**📧 البريد:** {student1_email}")
+                    
+                    # الطالب الثاني
+                    if str(memo.get('الطالب الثاني', '')).strip():
+                        student2_name = memo['الطالب الثاني']
+                        st.markdown(f"**👤 الطالب الثاني:** {student2_name}")
+                        
+                        # البحث عن بريد الطالب الثاني
+                        student2_parts = student2_name.split()
+                        if len(student2_parts) >= 2:
+                            student2_data = df_students[
+                                (df_students["اللقب"].astype(str).str.strip() == student2_parts[0].strip()) &
+                                (df_students["الإسم"].astype(str).str.strip() == student2_parts[1].strip())
+                            ]
+                            if not student2_data.empty:
+                                student2_email = str(student2_data.iloc[0].get("البريد الإلكتروني", "")).strip()
+                                if student2_email:
+                                    st.markdown(f"**📧 البريد:** {student2_email}")
+                    
+                    st.markdown(f"**🕒 تاريخ التسجيل:** {memo.get('تاريخ التسجيل', 'غير محدد')}")
+                    
+                    # نسبة التقدم
+                    progress_value = str(memo.get('نسبة التقدم', '0')).strip()
+                    try:
+                        progress_int = int(progress_value) if progress_value else 0
+                    except:
+                        progress_int = 0
+                    
+                    st.markdown(f"**📊 نسبة التقدم الحالية:** {progress_int}%")
+                    st.markdown(f'<div class="progress-container"><div class="progress-bar" style="width: {progress_int}%;">{progress_int}%</div></div>', unsafe_allow_html=True)
+                    
+                    # تحديث نسبة التقدم
+                    st.markdown("**🔄 تحديث نسبة التقدم:**")
+                    
+                    progress_stages = {
+                        "0%": 0,
+                        "10% - ضبط المقدمة والإشكالية": 10,
+                        "30% - المبحث الأول من الفصل الأول": 30,
+                        "40% - المبحث الثاني من الفصل الأول": 40,
+                        "60% - المبحث الأول من الفصل الثاني": 60,
+                        "80% - المبحث الثاني من الفصل الثاني": 80,
+                        "100% - الخاتمة والمذكرة مكتملة": 100
+                    }
+                    
+                    new_progress = st.selectbox(
+                        "اختر المرحلة الحالية:",
+                        options=list(progress_stages.keys()),
+                        key=f"progress_{memo['رقم المذكرة']}"
+                    )
+                    
+                    if st.button(f"💾 حفظ التقدم", key=f"save_progress_{memo['رقم المذكرة']}"):
+                        progress_val = progress_stages[new_progress]
+                        success, msg = update_progress(memo['رقم المذكرة'], progress_val)
+                        if success:
+                            st.success(msg)
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                st.info("لا توجد مذكرات مسجلة بعد")
+        
+        # Tab 3: المذكرات المتاحة/المقترحة
+        with tab3:
+            if is_exhausted:
+                st.markdown("### 💡 المذكرات المقترحة (استنفذت العناوين)")
+            else:
+                st.markdown("### ⏳ المذكرات المتاحة للتسجيل")
+            
+            available = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
+            
+            if not available.empty:
+                for idx, memo in available.iterrows():
+                    st.markdown('<div class="memo-card">', unsafe_allow_html=True)
+                    st.markdown(f"**📄 رقم المذكرة:** {memo['رقم المذكرة']}")
+                    st.markdown(f"**📑 العنوان:** {memo['عنوان المذكرة']}")
+                    st.markdown(f"**🎓 التخصص:** {memo['التخصص']}")
+                    if is_exhausted:
+                        st.markdown("**⚠️ حالة:** مقترحة (غير متاحة للتسجيل)")
+                    st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                st.success("✅ جميع المذكرات مسجلة!")
+        
+        # Tab 4: الطلبات
+        with tab4:
+            st.markdown("### 📬 تسجيل طلب جديد")
+            st.info("💡 يمكنك تسجيل طلبات تغيير العنوان أو إضافة طالب لمذكرة فردية")
+            
+            request_type = st.selectbox(
+                "نوع الطلب:",
+                ["تغيير العنوان", "إضافة طالب"]
+            )
+            
+            # اختيار المذكرة
+            registered_memos_list = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
+            if not registered_memos_list.empty:
+                memo_options = [f"{row['رقم المذكرة']} - {row['عنوان المذكرة']}" for _, row in registered_memos_list.iterrows()]
+                selected_memo = st.selectbox("اختر المذكرة:", memo_options)
+                memo_number = selected_memo.split(" - ")[0]
+            else:
+                st.warning("لا توجد مذكرات مسجلة لتقديم طلب عليها")
+                memo_number = None
+            
+            details = st.text_area(
+                "تفاصيل الطلب:",
+                placeholder="اكتب تفاصيل طلبك هنا...",
+                height=150
+            )
+            
+            if st.button("📤 تسجيل الطلب", type="primary"):
+                if memo_number and details.strip():
+                    success, msg = send_request_to_admin(prof_name, request_type, memo_number, details)
+                    if success:
+                        st.success(msg)
+                        st.balloons()
+                    else:
+                        st.error(msg)
+                else:
+                    st.error("⚠️ يرجى ملء جميع الحقول")
 
 # ============================================================
 # فضاء الإدارة
@@ -994,7 +1213,19 @@ elif st.session_state.user_type == "admin":
             st.markdown("---")
             st.markdown("#### 📅 آخر التسجيلات")
             recent_registrations = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"].tail(10)
-            st.dataframe(recent_registrations[["رقم المذكرة", "عنوان المذكرة", "الأستاذ", "الطالب الأول", "تاريخ التسجيل"]], use_container_width=True)
+            if not recent_registrations.empty and "تاريخ التسجيل" in recent_registrations.columns:
+                st.dataframe(recent_registrations[["رقم المذكرة", "عنوان المذكرة", "الأستاذ", "الطالب الأول", "تاريخ التسجيل"]], use_container_width=True)
+            else:
+                st.info("لا توجد تسجيلات حديثة")
+            
+            st.markdown("---")
+            st.markdown("#### 📊 نسب التقدم")
+            progress_summary = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"].copy()
+            if not progress_summary.empty and "نسبة التقدم" in progress_summary.columns:
+                progress_summary["نسبة التقدم"] = progress_summary["نسبة التقدم"].apply(lambda x: int(x) if str(x).isdigit() else 0)
+                avg_progress = progress_summary["نسبة التقدم"].mean()
+                st.markdown(f"**📊 متوسط نسبة التقدم العامة:** {avg_progress:.1f}%")
+                st.markdown(f'<div class="progress-container"><div class="progress-bar" style="width: {avg_progress}%;">{avg_progress:.1f}%</div></div>', unsafe_allow_html=True)
         
         with tab5:
             st.markdown("### 🔄 تحديث البيانات")
