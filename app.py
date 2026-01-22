@@ -422,13 +422,15 @@ if st.session_state.user_type is None:
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================================
-# فضاء الطلبة (Minor UI tweaks here)
+# فضاء الطلبة
 # ============================================================
 elif st.session_state.user_type == "student":
     if not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
-        with col2: 
-            if st.button("🔙 رجوع", key="back_student"): st.session_state.user_type = None; st.rerun()
+        with col2:
+            if st.button("🔙 رجوع", key="back_student"):
+                st.session_state.user_type = None
+                st.rerun()
         
         st.markdown('<div class="card"><h3>👨‍🎓 فضاء الطلبة</h3></div>', unsafe_allow_html=True)
         st.session_state.memo_type = st.radio("اختر نوع المذكرة:", ["فردية", "ثنائية"], horizontal=True)
@@ -458,7 +460,6 @@ elif st.session_state.user_type == "student":
                     st.session_state.student1 = verified_students[0]
                     st.session_state.student2 = verified_students[1] if len(verified_students) > 1 else None
                     
-                    # Validation Logic (Same as before)
                     if st.session_state.memo_type == "ثنائية" and st.session_state.student2 is not None:
                         s1_note = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
                         s2_note = str(st.session_state.student2.get('رقم المذكرة', '')).strip()
@@ -481,7 +482,9 @@ elif st.session_state.user_type == "student":
     else:
         s1 = st.session_state.student1; s2 = st.session_state.student2
         col1, col2 = st.columns([4, 1])
-        with col2: if st.button("🚪 خروج", key="logout_btn"): logout()
+        with col2:
+            if st.button("🚪 خروج", key="logout_btn"):
+                logout()
         
         st.markdown(f'<div class="card"><h3>📘 فضاء الطالب</h3><p>👤 الطالب الأول: <b>{s1["اللقب"]} {s1["الإسم"]}</b></p><p>🎓 التخصص: <b>{s1["التخصص"]}</b></p></div>', unsafe_allow_html=True)
         if s2 is not None: st.markdown(f'<div class="card"><p>👤 الطالب الثاني: <b>{s2["اللقب"]} {s2["الإسم"]}</b></p></div>', unsafe_allow_html=True)
@@ -507,7 +510,6 @@ elif st.session_state.user_type == "student":
             selected_prof = st.selectbox("🧑‍🏫 اختر الأستاذ المشرف:", [""] + all_profs)
             
             if selected_prof:
-                spec = s1["التخص"]; # Assuming typo fix in original
                 student_specialty = s1["التخصص"]
                 prof_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()]
                 reg_count = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
@@ -553,13 +555,15 @@ elif st.session_state.user_type == "student":
                     if st.button("❌ إلغاء"): st.session_state.show_confirmation = False; st.rerun()
 
 # ============================================================
-# فضاء الأساتذة (Improved Design)
+# فضاء الأساتذة
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
-        with col2: 
-            if st.button("🔙 رجوع", key="back_prof"): st.session_state.user_type = None; st.rerun()
+        with col2:
+            if st.button("🔙 رجوع", key="back_prof"):
+                st.session_state.user_type = None
+                st.rerun()
         st.markdown('<div class="card" style="text-align:center"><h3>👨‍🏫 فضاء الأساتذة</h3></div>', unsafe_allow_html=True)
         
         with st.form("prof_login_form"):
@@ -573,7 +577,9 @@ elif st.session_state.user_type == "professor":
     else:
         prof = st.session_state.professor; prof_name = prof["الأستاذ"]
         col1, col2 = st.columns([4, 1])
-        with col2: if st.button("🚪 خروج"): logout()
+        with col2:
+            if st.button("🚪 خروج"):
+                logout()
         
         st.markdown(f'<h2 style="margin-bottom:20px;">👨‍🏫 فضاء الأستاذ(ة) <span style="color:#60A5FA">{prof_name}</span></h2>', unsafe_allow_html=True)
 
@@ -615,7 +621,6 @@ elif st.session_state.user_type == "professor":
             registered = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
             
             if not registered.empty:
-                # Grid Layout for Memos
                 cols = st.columns(2)
                 for i, (_, memo) in enumerate(registered.iterrows()):
                     with cols[i % 2]:
@@ -636,7 +641,6 @@ elif st.session_state.user_type == "professor":
                         ''', unsafe_allow_html=True)
                         
                         with st.expander("🛠️ إدارة وتفاصيل", expanded=False):
-                            # Progress Update
                             new_prog = st.selectbox("تحديث نسبة التقدم:", [
                                 "0%", "10% - ضبط المقدمة", "30% - الفصل الأول", 
                                 "60% - الفصل الثاني", "80% - الخاتمة", "100% - مكتملة"
@@ -647,7 +651,6 @@ elif st.session_state.user_type == "professor":
                                 st.success(m) if s else st.error(m); time.sleep(1); st.rerun()
                             
                             st.markdown("---")
-                            # Requests
                             st.markdown("📤 **إرسال طلب للإدارة**")
                             req_type = st.selectbox("نوع الطلب:", ["تغيير العنوان", "إضافة طالب"], key=f"req_{memo['رقم المذكرة']}")
                             det = ""
@@ -672,7 +675,6 @@ elif st.session_state.user_type == "professor":
             st.subheader("🔑 كلمات السر")
             pwds = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
             if not pwds.empty:
-                # Grid for passwords
                 for _, row in pwds.iterrows():
                     stat = str(row.get("تم التسجيل", "")).strip()
                     pwd = str(row.get("كلمة سر التسجيل", "")).strip()
@@ -707,13 +709,15 @@ elif st.session_state.user_type == "professor":
             else: st.success("✅ جميع المذكرات مسجلة أو مقترحة!")
 
 # ============================================================
-# فضاء الإدارة (Improved Design & Charts)
+# فضاء الإدارة
 # ============================================================
 elif st.session_state.user_type == "admin":
     if not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
-        with col2: 
-            if st.button("🔙 رجوع", key="back_admin"): st.session_state.user_type = None; st.rerun()
+        with col2:
+            if st.button("🔙 رجوع", key="back_admin"):
+                st.session_state.user_type = None
+                st.rerun()
         st.markdown('<div class="card" style="text-align:center"><h3>🔐 فضاء الإدارة</h3></div>', unsafe_allow_html=True)
         with st.form("admin_login"):
             u = st.text_input("اسم المستخدم"); p = st.text_input("كلمة المرور", type="password")
@@ -723,7 +727,9 @@ elif st.session_state.user_type == "admin":
                 else: st.session_state.admin_user = r; st.session_state.logged_in = True; st.rerun()
     else:
         col1, col2 = st.columns([4, 1])
-        with col2: if st.button("🚪 خروج"): logout()
+        with col2:
+            if st.button("🚪 خروج"):
+                logout()
         st.header("🔐 لوحة تحكم الإدارة")
         
         # --- Admin Stats Grid ---
@@ -755,9 +761,12 @@ elif st.session_state.user_type == "admin":
         with tab1:
             st.subheader("📝 جدول المذكرات")
             f_status = st.selectbox("تصفية:", ["الكل", "مسجلة", "متاحة"])
-            d_memos = df_memos if f_status == "الكل" else df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == ("نعم" if f_status == "مسجلة" else "غير نعم")] # Simplified logic for display
-            if f_status == "مسجلة": d_memos = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
-            elif f_status == "متاحة": d_memos = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
+            if f_status == "الكل":
+                d_memos = df_memos
+            elif f_status == "مسجلة":
+                d_memos = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
+            else:
+                d_memos = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
             
             st.dataframe(d_memos, use_container_width=True, height=400)
 
@@ -783,7 +792,6 @@ elif st.session_state.user_type == "admin":
         with tab4:
             st.subheader("📊 التحليل الإحصائي")
             
-            # Chart 1: Distribution by Specialty
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("##### 📈 توزيع المذكرات حسب التخصص")
