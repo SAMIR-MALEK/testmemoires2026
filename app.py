@@ -31,34 +31,6 @@ button:hover { background-color:#2C89A0 !important; }
 .info-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #2d4a5a; border-radius: 8px; }
 .warning-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #5a4d2d; border-radius: 8px; }
 
-/* بطاقات الإحصائيات - تصميم جديد */
-.stat-card { 
-    background: linear-gradient(135deg, #256D85 0%, #2C89A0 100%); 
-    padding: 25px; 
-    border-radius: 12px; 
-    margin: 5px; 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    text-align: center;
-    height: 140px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-.stat-number { 
-    font-size: 48px; 
-    font-weight: bold; 
-    color: #FFD700; 
-    margin: 5px 0;
-    line-height: 1.1;
-}
-.stat-label { 
-    font-size: 16px; 
-    color: #FFFFFF; 
-    margin-top: 8px;
-    font-weight: 500;
-}
-
 /* بطاقة المذكرة */
 .memo-card { 
     background: linear-gradient(135deg, #243447 0%, #1e3a52 100%); 
@@ -891,32 +863,23 @@ elif st.session_state.user_type == "professor":
         
         st.subheader("📊 لوحة التحكم")
         
-        # بطاقات الإحصائيات - تصميم جديد
+        # إحصائيات بدون مستطيلات زرقاء
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            # بطاقة "إجمالي المذكرات"
-            st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="stat-number">{total_memos}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="stat-label">إجمالي المذكرات</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f"### {total_memos}")
+            st.markdown("**إجمالي المذكرات**")
         
         with col2:
-            # بطاقة "المذكرات المسجلة"
-            st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="stat-number">{registered_memos}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="stat-label">المذكرات المسجلة</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f"### {registered_memos}")
+            st.markdown("**المذكرات المسجلة**")
         
         with col3:
-            # بطاقة "المذكرات المتاحة/المقترحة"
-            st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="stat-number">{available_memos}</div>', unsafe_allow_html=True)
+            st.markdown(f"### {available_memos}")
             if is_exhausted:
-                st.markdown('<div class="stat-label">مذكرات مقترحة</div>', unsafe_allow_html=True)
+                st.markdown("**مذكرات مقترحة**")
             else:
-                st.markdown('<div class="stat-label">المذكرات المتاحة</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown("**المذكرات المتاحة**")
         
         # تحذير الاستنفاذ
         if is_exhausted:
@@ -1164,42 +1127,28 @@ elif st.session_state.user_type == "admin":
         
         st.subheader("📊 الإحصائيات العامة")
         
+        # إحصائيات بدون مستطيلات زرقاء
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
-            # بطاقة "الطلاب"
-            st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="stat-number">{total_students}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="stat-label">👨‍🎓 الطلاب</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f"### {total_students}")
+            st.markdown("**👨‍🎓 الطلاب**")
         
         with col2:
-            # بطاقة "الأساتذة"
-            st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="stat-number">{total_profs}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="stat-label">👨‍🏫 الأساتذة</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f"### {total_profs}")
+            st.markdown("**👨‍🏫 الأساتذة**")
         
         with col3:
-            # بطاقة "المذكرات"
-            st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="stat-number">{total_memos}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="stat-label">📚 المذكرات</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f"### {total_memos}")
+            st.markdown("**📚 المذكرات**")
         
         with col4:
-            # بطاقة "المسجلة"
-            st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="stat-number">{registered_memos}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="stat-label">✅ المسجلة</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f"### {registered_memos}")
+            st.markdown("**✅ المسجلة**")
         
         with col5:
-            # بطاقة "المتاحة"
-            st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-            st.markdown(f'<div class="stat-number">{available_memos}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="stat-label">⏳ المتاحة</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f"### {available_memos}")
+            st.markdown("**⏳ المتاحة**")
         
         st.markdown("---")
         
