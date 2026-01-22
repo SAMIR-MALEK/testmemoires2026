@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # ---------------- إعداد الصفحة ----------------
 st.set_page_config(page_title="نظام تسجيل المذكرات", page_icon="📝", layout="wide")
 
-# ---------------- CSS (تصميم فاخر بلا كود في الأزرار) ----------------
+# ---------------- CSS (تصميم الأزرار المطلوب: أزرق/أبيض) ----------------
 st.markdown("""
 <!-- استدعاء خط احترافي -->
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
@@ -36,26 +36,27 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.5px; margin-bottom: 1rem; 
 label, p, span { color: #E2E8F0; }
 .stTextInput label, .stSelectbox label { color: #ffffff !important; font-weight: 600; }
 
-/* الأزرار - التصميم الصحيح: أبيض/أزرق (بدون أيقونات) */
+/* الأزرار - التصميم المطلوب بدقة */
 .stButton>button { 
-    background-color: #ffffff; /* خلفية بيضاء */
-    color: #256D85; /* كتابة زرقاء */
-    border: 1px solid #256D85; 
+    background-color: #256D85 !important; /* خلفية زرقاء */
+    color: #ffffff !important;              /* كتابة بيضاء */
+    border: 2px solid #ffffff !important; /* حدود بيضاء */
     border-radius: 8px; 
     font-weight: 700; 
     padding: 0.75rem 1.5rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    white-space: nowrap; /* لمنع تمدد الزر */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    white-space: nowrap;
     font-size: 1rem;
 }
+/* عند مرور الماوس أو الضغط */
 .stButton>button:hover { 
-    background-color: #256D85; /* خلفية زرقاء عند التفاعل */
-    color: #ffffff; /* كتابة بيضاء */
-    border-color: #256D85;
-    transform: translateY(-3px); /* تأثير حركة */
-    box-shadow: 0 10px 15px -3px rgba(37, 109, 133, 0.4);
+    background-color: #ffffff !important; /* خلفية بيضاء */
+    color: #256D85 !important;              /* كتابة زرقاء */
+    border: 2px solid #256D85 !important; /* حدود زرقاء */
+    box-shadow: 0 8px 12px rgba(37, 109, 133, 0.4);
+    transform: translateY(-2px);
 }
 
 /* البطاقات المخصصة */
@@ -441,7 +442,6 @@ if st.session_state.user_type is None:
         st.markdown("<h4 style='color: #94A3B8; font-weight: 300;'>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</h4>", unsafe_allow_html=True)
     
     st.markdown("---")
-    # أزرار نظيفة بلا أيقونات
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("فضاء الطلبة", key="student_btn", use_container_width=True): st.session_state.user_type = "student"; st.rerun()
