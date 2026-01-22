@@ -16,74 +16,64 @@ logger = logging.getLogger(__name__)
 # ---------------- إعداد الصفحة ----------------
 st.set_page_config(page_title="نظام تسجيل المذكرات", page_icon="🎓", layout="wide")
 
-# ---------------- CSS محسّن وتصميم احترافي ----------------
+# ---------------- CSS (الألوان الكلاسيكية: أزرق ليلي، أبيض، أصفر) ----------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
 html, body, [class*="css"] { font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right; }
 
-/* الخلفية الأساسية */
-.main { background-color: #0F172A; color: #E2E8F0; }
-.block-container { padding: 2rem; background-color: transparent; max-width: 1400px; margin: auto; }
+/* الخلفية والنصوص العامة */
+.main { background-color: #0A1B2C; color: #ffffff; }
+.block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 12px; margin:auto;}
+label, h1, h2, h3, h4, h5, h6, p, span, .stTextInput label, .stSelectbox label { color:#ffffff !important; }
 
-/* عناصر الإدخال والأزرار */
-.stButton>button {
-    background: linear-gradient(90deg, #3B82F6 0%, #2563EB 100%);
-    color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px;
-    font-weight: 600; width: 100%; transition: all 0.3s; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+/* الأزرار */
+.stButton>button { background-color:#256D85 !important; color:white !important; border:none !important; padding:10px 20px !important; border-radius:6px !important; transition: 0.3s;}
+.stButton>button:hover { background-color:#2C89A0 !important; }
+
+/* البطاقات العامة */
+.card { 
+    background: linear-gradient(135deg, #243447 0%, #1e3a52 100%); 
+    padding: 20px; border-radius: 10px; margin: 15px 0; 
+    border-left: 5px solid #256D85;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2); color: #ffffff;
 }
-.stButton>button:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); }
 
-/* البطاقات (Cards) */
-.card {
-    background: rgba(30, 41, 59, 0.7);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s;
-}
-.card:hover { transform: translateY(-2px); border-color: #3B82F6; }
-
-/* بطاقات الإحصائيات (KPI Cards) */
+/* بطاقات الإحصائيات (KPI) */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
 .kpi-card {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 41, 59, 0.4) 100%);
-    border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 1.5rem;
-    text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    background-color: #1A2A3D;
+    border: 1px solid #256D85; border-radius: 12px; padding: 1.5rem;
+    text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
-.kpi-value { font-size: 2.5rem; font-weight: 700; color: #60A5FA; margin: 10px 0; }
-.kpi-label { font-size: 1rem; color: #94A3B8; font-weight: 600; }
-.kpi-icon { font-size: 2rem; margin-bottom: 5px; }
+.kpi-value { font-size: 2.5rem; font-weight: bold; color: #FFD700; margin: 10px 0; } /* أصفر ذهبي للأرقام */
+.kpi-label { font-size: 1.1rem; color: #ffffff; font-weight: bold; }
 
-/* تنبيهات */
+/* التنبيهات */
 .alert-card {
-    background: linear-gradient(90deg, #991B1B 0%, #7F1D1D 100%);
-    border: 1px solid #EF4444; color: white; padding: 1.5rem; border-radius: 12px;
-    text-align: center; font-weight: bold; margin: 1rem 0; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    padding: 20px; border-radius: 10px; margin: 15px 0;
+    border-left: 5px solid #FFD700;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    text-align: center; font-size: 18px; font-weight: bold; color: white;
 }
 
 /* شريط التقدم */
-.progress-container { background-color: #1E293B; border-radius: 999px; padding: 4px; margin: 10px 0; overflow: hidden; }
+.progress-container { background-color: #1A2A3D; border-radius: 10px; padding: 3px; margin: 10px 0; }
 .progress-bar {
-    height: 12px; border-radius: 999px; background: linear-gradient(90deg, #3B82F6 0%, #10B981 100%);
-    transition: width 0.5s ease-out; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    height: 25px; border-radius: 8px;
+    background: linear-gradient(90deg, #256D85 0%, #2C89A0 50%, #FFD700 100%);
+    text-align: center; line-height: 25px; color: white; font-weight: bold; transition: width 0.3s ease;
 }
 
-/* جداول البيانات */
-.stDataFrame { border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
-[data-testid="stMarkdownContainer"] { color: #E2E8F0; }
+/* الجداول */
+.stDataFrame { border: 1px solid #256D85; border-radius: 8px; }
+[data-testid="stMarkdownContainer"] { color: #ffffff; }
 
-/* العناوين */
-h1, h2, h3 { color: #F8FAFC; font-weight: 700; }
-
-/* Tabs */
-.stTabs [data-baseweb="tab-list"] { gap: 24px; }
-.stTabs [data-baseweb="tab"] { 
-    background-color: transparent; color: #94A3B8; font-weight: 600; padding: 10px 20px; border-radius: 8px;
-}
-.stTabs [aria-selected="true"] { 
-    background-color: rgba(59, 130, 246, 0.2); color: #60A5FA; border-bottom: 2px solid #60A5FA;
-}
+/* التبويبات */
+.stTabs [data-baseweb="tab-list"] { gap: 2rem; }
+.stTabs [data-baseweb="tab"] { color: #ffffff; }
+.stTabs [aria-selected="true"] { color: #FFD700; border-bottom: 2px solid #FFD700; font-weight: bold; }
 
 </style>
 """, unsafe_allow_html=True)
@@ -409,15 +399,15 @@ if st.session_state.user_type is None:
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown('<div class="card" style="text-align:center; cursor:pointer;">', unsafe_allow_html=True)
+        st.markdown('<div class="card" style="text-align:center;">', unsafe_allow_html=True)
         if st.button("👨‍🎓 فضاء الطلبة", key="student_btn", use_container_width=True): st.session_state.user_type = "student"; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     with col2:
-        st.markdown('<div class="card" style="text-align:center; cursor:pointer;">', unsafe_allow_html=True)
+        st.markdown('<div class="card" style="text-align:center;">', unsafe_allow_html=True)
         if st.button("👨‍🏫 فضاء الأساتذة", key="prof_btn", use_container_width=True): st.session_state.user_type = "professor"; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     with col3:
-        st.markdown('<div class="card" style="text-align:center; cursor:pointer;">', unsafe_allow_html=True)
+        st.markdown('<div class="card" style="text-align:center;">', unsafe_allow_html=True)
         if st.button("🔐 فضاء الإدارة", key="admin_btn", use_container_width=True): st.session_state.user_type = "admin"; st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -495,7 +485,7 @@ elif st.session_state.user_type == "student":
             memo_info = df_memos_fresh[df_memos_fresh["رقم المذكرة"].astype(str).str.strip() == note_num]
             if not memo_info.empty:
                 memo_info = memo_info.iloc[0]
-                st.markdown(f'''<div class="card" style="border-left: 5px solid #10B981;">
+                st.markdown(f'''<div class="card" style="border-left: 5px solid #FFD700;">
                     <h3>✅ أنت مسجل في المذكرة التالية:</h3>
                     <p><b>📄 رقم:</b> {memo_info['رقم المذكرة']}</p>
                     <p><b>📑 العنوان:</b> {memo_info['عنوان المذكرة']}</p>
@@ -581,7 +571,7 @@ elif st.session_state.user_type == "professor":
             if st.button("🚪 خروج"):
                 logout()
         
-        st.markdown(f'<h2 style="margin-bottom:20px;">👨‍🏫 فضاء الأستاذ(ة) <span style="color:#60A5FA">{prof_name}</span></h2>', unsafe_allow_html=True)
+        st.markdown(f'<h2 style="margin-bottom:20px;">👨‍🏫 فضاء الأستاذ(ة) <span style="color:#FFD700">{prof_name}</span></h2>', unsafe_allow_html=True)
 
         # --- Stats Section with KPI Cards ---
         prof_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
@@ -593,18 +583,15 @@ elif st.session_state.user_type == "professor":
         st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
         st.markdown(f'''
             <div class="kpi-card">
-                <div class="kpi-icon">📚</div>
                 <div class="kpi-value">{total}</div>
                 <div class="kpi-label">إجمالي المذكرات</div>
             </div>
-            <div class="kpi-card" style="border-color:#10B981;">
-                <div class="kpi-icon">✅</div>
-                <div class="kpi-value" style="color:#10B981;">{registered}</div>
+            <div class="kpi-card" style="border-color: #2d5a2d;">
+                <div class="kpi-value" style="color: #2ecc71;">{registered}</div>
                 <div class="kpi-label">المذكرات المسجلة</div>
             </div>
-            <div class="kpi-card" style="border-color:#F59E0B;">
-                <div class="kpi-icon">⏳</div>
-                <div class="kpi-value" style="color:#F59E0B;">{available}</div>
+            <div class="kpi-card" style="border-color: #5a4d2d;">
+                <div class="kpi-value" style="color: #FFD700;">{available}</div>
                 <div class="kpi-label">المذكرات المتاحة</div>
             </div>
         ''', unsafe_allow_html=True)
@@ -629,9 +616,9 @@ elif st.session_state.user_type == "professor":
                         except: prog_int = 0
                         
                         st.markdown(f'''
-                        <div class="card" style="border-right: 4px solid #10B981;">
+                        <div class="card" style="border-right: 5px solid #2d5a2d;">
                             <h4>{memo['رقم المذكرة']} - {memo['عنوان المذكرة']}</h4>
-                            <p style="color:#94A3B8; font-size:0.9em;">🎓 {memo['التخصص']}</p>
+                            <p style="color:#cccccc; font-size:0.9em;">🎓 {memo['التخصص']}</p>
                             <p>👤 <b>{memo.get('الطالب الأول','--')}</b></p>
                             <div class="progress-container">
                                 <div class="progress-bar" style="width: {prog_int}%;"></div>
@@ -679,13 +666,13 @@ elif st.session_state.user_type == "professor":
                     stat = str(row.get("تم التسجيل", "")).strip()
                     pwd = str(row.get("كلمة سر التسجيل", "")).strip()
                     if pwd:
-                        color = "#10B981" if stat == "نعم" else "#F59E0B"
+                        color = "#2d5a2d" if stat == "نعم" else "#5a4d2d"
                         status_txt = "مستخدمة" if stat == "نعم" else "متاحة"
                         st.markdown(f'''
-                        <div class="card" style="border-right: 4px solid {color}; display:flex; justify-content:space-between; align-items:center;">
+                        <div class="card" style="border-right: 5px solid {color}; display:flex; justify-content:space-between; align-items:center;">
                             <div>
-                                <h3 style="margin:0; font-family:monospace; font-size:1.5rem;">{pwd}</h3>
-                                <p style="margin:5px 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p>
+                                <h3 style="margin:0; font-family:monospace; font-size:1.5rem; color:#FFD700;">{pwd}</h3>
+                                <p style="margin:5px 0 0 0; color:#cccccc;">الحالة: {status_txt}</p>
                             </div>
                             <span style="font-size:2rem;">🔑</span>
                         </div>
@@ -700,10 +687,10 @@ elif st.session_state.user_type == "professor":
             if not avail.empty:
                 for _, m in avail.iterrows():
                     st.markdown(f'''
-                    <div class="card" style="border-left: 4px solid #64748B;">
+                    <div class="card" style="border-left: 4px solid #cccccc;">
                         <h4>{m['رقم المذكرة']}</h4>
                         <p>{m['عنوان المذكرة']}</p>
-                        <p style="color:#94A3B8;">🎓 {m['التخصص']}</p>
+                        <p style="color:#cccccc;">🎓 {m['التخصص']}</p>
                     </div>
                     ''', unsafe_allow_html=True)
             else: st.success("✅ جميع المذكرات مسجلة أو مقترحة!")
@@ -739,19 +726,24 @@ elif st.session_state.user_type == "admin":
         st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
         st.markdown(f'''
             <div class="kpi-card">
-                <div class="kpi-icon">👨‍🎓</div><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div>
+                <div class="kpi-value">{st_s}</div>
+                <div class="kpi-label">الطلاب</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-icon">👨‍🏫</div><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div>
+                <div class="kpi-value">{t_p}</div>
+                <div class="kpi-label">الأساتذة</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-icon">📚</div><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div>
+                <div class="kpi-value">{t_m}</div>
+                <div class="kpi-label">إجمالي المذكرات</div>
             </div>
-            <div class="kpi-card" style="border-color:#10B981;">
-                <div class="kpi-icon">✅</div><div class="kpi-value" style="color:#10B981;">{r_m}</div><div class="kpi-label">مسجلة</div>
+            <div class="kpi-card" style="border-color: #2d5a2d;">
+                <div class="kpi-value" style="color: #2ecc71;">{r_m}</div>
+                <div class="kpi-label">مسجلة</div>
             </div>
-            <div class="kpi-card" style="border-color:#F59E0B;">
-                <div class="kpi-icon">⏳</div><div class="kpi-value" style="color:#F59E0B;">{a_m}</div><div class="kpi-label">متاحة</div>
+            <div class="kpi-card" style="border-color: #5a4d2d;">
+                <div class="kpi-value" style="color: #FFD700;">{a_m}</div>
+                <div class="kpi-label">متاحة</div>
             </div>
         ''', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
@@ -796,12 +788,12 @@ elif st.session_state.user_type == "admin":
             with col1:
                 st.markdown("##### 📈 توزيع المذكرات حسب التخصص")
                 spec_dist = df_memos.groupby("التخصص").size()
-                st.bar_chart(spec_dist, color="#60A5FA")
+                st.bar_chart(spec_dist, color="#256D85")
             
             with col2:
                 st.markdown("##### 📈 حالة التسجيل حسب التخصص")
                 reg_status = df_memos.groupby("التخصص")["تم التسجيل"].apply(lambda x: (x.astype(str).str.strip() == "نعم").sum())
-                st.bar_chart(reg_status, color="#10B981")
+                st.bar_chart(reg_status, color="#FFD700")
 
             st.markdown("---")
             st.markdown("##### 📊 نسب التقدم العامة")
@@ -821,4 +813,4 @@ elif st.session_state.user_type == "admin":
                 with st.spinner("جاري التحديث..."): clear_cache_and_reload(); time.sleep(2); st.success("✅ تم التحديث"); st.rerun()
 
 st.markdown("---")
-st.markdown('<div style="text-align:center; color:#64748B; padding:20px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#888; font-size:12px; padding:20px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
