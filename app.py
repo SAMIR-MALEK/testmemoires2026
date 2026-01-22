@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # ---------------- إعداد الصفحة ----------------
 st.set_page_config(page_title="نظام تسجيل المذكرات", page_icon="📘", layout="wide")
 
-# ---------------- CSS (تصميم موحد للأزرار - أزرق وناعم) ----------------
+# ---------------- CSS (تصميم موحد للأزرار: أزرق للجميع) ----------------
 st.markdown("""
 <!-- استدعاء خط احترافي -->
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -36,15 +36,21 @@ h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.5px; margin-bottom: 1rem; 
 label, p, span { color: #E2E8F0; }
 .stTextInput label, .stSelectbox label { color: #ffffff !important; font-weight: 600; }
 
-/* الأزرار - التصميم الموحد للجميع (أزرق، بدون حدود، دائري) */
-/* استهداف جميع الأزرار الرئيسية وأزرار النماذج */
-.stButton>button, button[kind="primary"] {
-    background-color: #2F6F7E !important;   /* لون الزر الأزرق */
-    color: #ffffff !important;              /* لون النص الأبيض */
+/* =========================================
+   الأزرار - تصميم موحد للجميع (أزرق)
+   ========================================= */
+
+/* استهداف جميع أنواع الأزرار */
+.stButton>button,
+button[kind="primary"],
+button[kind="secondary"],
+div[data-testid="stFormSubmitButton"] button {
+    background-color: #2F6F7E !important;   /* خلفية زرقاء للجميع */
+    color: #ffffff !important;              /* كتابة بيضاء للجميع */
     font-size: 16px;
     font-weight: 500;
     padding: 12px 28px;
-    border: none !important;                /* إزالة الحدود */
+    border: none !important;                /* بدون حدود */
     border-radius: 12px !important;        /* تدوير الزوايا */
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25); /* ظل خفيف */
@@ -52,11 +58,14 @@ label, p, span { color: #E2E8F0; }
     width: 100%;
     text-align: center;
     display: flex; justify-content: center; align-items: center;
-    gap: 10px; /* مسافة للأيقونة */
+    gap: 10px;
 }
 
 /* تأثير عند مرور الماوس */
-.stButton>button:hover, button[kind="primary"]:hover {
+.stButton>button:hover,
+button[kind="primary"]:hover,
+button[kind="secondary"]:hover,
+div[data-testid="stFormSubmitButton"] button:hover {
     background-color: #285E6B !important;   /* لون أغمق عند المرور */
     transform: translateY(-2px); /* حركة خفيفة للأعلى */
     box-shadow: 0 6px 12px rgba(0,0,0,0.3);
@@ -444,7 +453,6 @@ if st.session_state.user_type is None:
         st.markdown("<h4 style='color: #94A3B8; font-weight: 300;'>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</h4>", unsafe_allow_html=True)
     
     st.markdown("---")
-    # أزرار الرئيسية بأيقونات احترافية
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("🎓 فضاء الطلبة", key="student_btn", use_container_width=True): st.session_state.user_type = "student"; st.rerun()
@@ -460,7 +468,7 @@ elif st.session_state.user_type == "student":
     if not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
         with col2:
-            # زر رجوع - بدون باب
+            # زر رجوع - أزرق
             if st.button("⬅️ رجوع", key="back_student"):
                 st.session_state.user_type = None
                 st.rerun()
@@ -478,7 +486,7 @@ elif st.session_state.user_type == "student":
                 username2 = st.text_input("اسم المستخدم الطالب الثاني")
                 password2 = st.text_input("كلمة السر الطالب الثاني", type="password")
             
-            # زر تسجيل الدخول - سهم يمين
+            # زر تسجيل الدخول - أزرق
             submitted = st.form_submit_button("➡️ تسجيل الدخول")
             if submitted:
                 if st.session_state.memo_type == "فردية":
@@ -531,7 +539,7 @@ elif st.session_state.user_type == "student":
         s1 = st.session_state.student1; s2 = st.session_state.student2
         col1, col2 = st.columns([4, 1])
         with col2:
-            # زر خروج - سهم يسار
+            # زر خروج - أزرق
             if st.button("⬅️ خروج", key="logout_btn"):
                 logout()
         
@@ -585,14 +593,15 @@ elif st.session_state.user_type == "student":
             with c2: st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
 
             if not st.session_state.show_confirmation:
-                if st.button("المتابعة للتأكيد", type="primary"):
+                if st.button("المتابعة للتأكيد"):
                     if not st.session_state.note_number or not st.session_state.prof_password: st.error("⚠️ يرجى إدخال البيانات")
                     else: st.session_state.show_confirmation = True; st.rerun()
             else:
                 st.warning(f"⚠️ تأكيد التسجيل - المذكرة رقم: {st.session_state.note_number}")
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("تأكيد نهائي", type="primary"):
+                    # زر تأكيد نهائي - أزرق
+                    if st.button("تأكيد نهائي"):
                         valid, prof_row, err = verify_professor_password(st.session_state.note_number, st.session_state.prof_password, df_memos, df_prof_memos)
                         if not valid: st.error(err); st.session_state.show_confirmation = False
                         else:
@@ -610,7 +619,7 @@ elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
         with col2:
-            # زر رجوع - سهم يسار
+            # زر رجوع - أزرق
             if st.button("⬅️ رجوع", key="back_prof"):
                 st.session_state.user_type = None
                 st.rerun()
@@ -628,7 +637,7 @@ elif st.session_state.user_type == "professor":
         prof = st.session_state.professor; prof_name = prof["الأستاذ"]
         col1, col2 = st.columns([4, 1])
         with col2:
-            # زر خروج - سهم يسار
+            # زر خروج - أزرق
             if st.button("⬅️ خروج"):
                 logout()
         
@@ -665,7 +674,6 @@ elif st.session_state.user_type == "professor":
         tab1, tab2, tab3 = st.tabs(["المذكرات المسجلة", "كلمات السر", "المذكرات المتاحة/المقترحة"])
         
         with tab1:
-            st.subheader("المذكرات المسجلة")
             registered = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
             
             if not registered.empty:
@@ -726,7 +734,6 @@ elif st.session_state.user_type == "professor":
                 st.info("لا توجد مذكرات مسجلة حتى الآن.")
 
         with tab2:
-            st.subheader("كلمات السر")
             pwds = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
             if not pwds.empty:
                 for _, row in pwds.iterrows():
@@ -768,7 +775,7 @@ elif st.session_state.user_type == "admin":
     if not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
         with col2:
-            # زر رجوع - سهم يسار
+            # زر رجوع - أزرق
             if st.button("⬅️ رجوع", key="back_admin"):
                 st.session_state.user_type = None
                 st.rerun()
@@ -782,7 +789,7 @@ elif st.session_state.user_type == "admin":
     else:
         col1, col2 = st.columns([4, 1])
         with col2:
-            # زر خروج - سهم يسار
+            # زر خروج - أزرق
             if st.button("⬅️ خروج"):
                 logout()
         st.header("لوحة تحكم الإدارة")
