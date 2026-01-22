@@ -22,7 +22,7 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
 html, body, [class*="css"] { font-family: 'Cairo', sans-serif !important; }
 .main { background-color: #0A1B2C; color: #ffffff; }
-.block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 12px; margin:auto;}
+.block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 12px; margin: auto;}
 label, h1, h2, h3, h4, h5, h6, p, span, .stTextInput label { color:#ffffff !important; }
 button { background-color:#256D85 !important; color:white !important; border:none !important; padding:10px 20px !important; border-radius:6px !important; }
 button:hover { background-color:#2C89A0 !important; }
@@ -30,6 +30,27 @@ button:hover { background-color:#2C89A0 !important; }
 .error-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #5a2d2d; border-radius: 8px; }
 .info-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #2d4a5a; border-radius: 8px; }
 .warning-msg { color: #FFFFFF; padding: 15px; margin: 10px 0; background-color: #5a4d2d; border-radius: 8px; }
+
+/* إزالة الحدود والمساحات الزائدة */
+.stSelectbox, .stTextInput, .stRadio {
+    margin-bottom: 10px;
+}
+
+/* تحسين مظهر العناوين */
+h1, h2, h3, h4, h5, h6 {
+    color: #FFD700 !important;
+    margin-bottom: 15px !important;
+}
+
+/* إزالة الخلفيات الزرقاء من العناصر */
+.element-container {
+    background-color: transparent !important;
+}
+
+/* تحسين المظهر العام */
+.stApp {
+    background-color: #0A1B2C;
+}
 
 /* بطاقات الإحصائيات */
 .stat-card { 
@@ -584,16 +605,16 @@ if df_students.empty or df_memos.empty or df_prof_memos.empty:
 
 # ---------------- اختيار نوع المستخدم ----------------
 if st.session_state.user_type is None:
-    st.markdown("""
-        <div style="text-align:center; margin:20px 0;">
-            <img src="https://raw.githubusercontent.com/SAMIR-MALEK/memoire-depot-2026/main/LOGO2.png" width="120">
-        </div>
-    """, unsafe_allow_html=True)
+    col_img, col_title = st.columns([1, 3])
+    with col_img:
+        st.image("https://raw.githubusercontent.com/SAMIR-MALEK/memoire-depot-2026/main/LOGO2.png", width=120)
+    with col_title:
+        st.title("🎓 نظام تسجيل المذكرات")
+        st.markdown("##### جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية")
     
-    st.markdown("<h2 style='text-align:center; color:#FFD700;'>🎓 نظام تسجيل المذكرات</h2>", unsafe_allow_html=True)
-    st.markdown("<h5 style='text-align:center;'>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</h5>", unsafe_allow_html=True)
+    st.markdown("---")
     
-    st.markdown("<br><h4 style='text-align:center;'>اختر نوع الدخول:</h4>", unsafe_allow_html=True)
+    st.subheader("اختر نوع الدخول:")
     
     col1, col2, col3 = st.columns(3)
     
@@ -623,7 +644,7 @@ elif st.session_state.user_type == "student":
                 st.session_state.user_type = None
                 st.rerun()
         
-        st.markdown("<h4 style='text-align:center; color:#FFD700;'>👨‍🎓 فضاء الطلبة</h4>", unsafe_allow_html=True)
+        st.subheader("👨‍🎓 فضاء الطلبة")
         
         st.session_state.memo_type = st.radio("اختر نوع المذكرة:", ["فردية", "ثنائية"])
         username1 = st.text_input("اسم المستخدم الطالب الأول", max_chars=50)
@@ -711,7 +732,7 @@ elif st.session_state.user_type == "student":
         
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown("<h2 style='text-align:center;'>📘 فضاء الطالب</h2>", unsafe_allow_html=True)
+            st.header("📘 فضاء الطالب")
         with col2:
             if st.button("🚪 خروج", key="logout_btn"):
                 logout()
@@ -740,7 +761,7 @@ elif st.session_state.user_type == "student":
                 st.markdown('</div>', unsafe_allow_html=True)
 
         elif st.session_state.mode == "register":
-            st.markdown("### 📝 تسجيل مذكرة جديدة")
+            st.subheader("📝 تسجيل مذكرة جديدة")
             
             all_profs = sorted(df_memos["الأستاذ"].dropna().unique())
             selected_prof = st.selectbox("🧑‍🏫 اختر الأستاذ المشرف:", [""] + all_profs)
@@ -828,7 +849,7 @@ elif st.session_state.user_type == "professor":
                 st.session_state.user_type = None
                 st.rerun()
         
-        st.markdown("<h4 style='text-align:center; color:#FFD700;'>👨‍🏫 فضاء الأساتذة</h4>", unsafe_allow_html=True)
+        st.subheader("👨‍🏫 فضاء الأساتذة")
         
         username = st.text_input("اسم المستخدم", max_chars=50)
         password = st.text_input("كلمة المرور", type="password", max_chars=50)
@@ -848,7 +869,7 @@ elif st.session_state.user_type == "professor":
         
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown(f"<h2 style='text-align:center;'>👨‍🏫 فضاء الأستاذ(ة) {prof_name}</h2>", unsafe_allow_html=True)
+            st.header(f"👨‍🏫 فضاء الأستاذ(ة) {prof_name}")
         with col2:
             if st.button("🚪 خروج", key="logout_prof"):
                 logout()
@@ -862,7 +883,7 @@ elif st.session_state.user_type == "professor":
         # تحقق من الاستنفاذ
         is_exhausted = registered_memos >= 4
         
-        st.markdown("### 📊 لوحة التحكم")
+        st.subheader("📊 لوحة التحكم")
         
         # بطاقات الإحصائيات
         col1, col2, col3 = st.columns(3)
@@ -899,7 +920,7 @@ elif st.session_state.user_type == "professor":
         
         # Tab 1: المذكرات المسجلة
         with tab1:
-            st.markdown("### ✅ المذكرات المسجلة")
+            st.subheader("✅ المذكرات المسجلة")
             registered = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
             
             if not registered.empty:
@@ -996,7 +1017,7 @@ elif st.session_state.user_type == "professor":
                 st.markdown("---")
                 
                 # قسم الطلبات المتعلقة بهذه المذكرة
-                st.markdown("### 📬 طلبات متعلقة بهذه المذكرة")
+                st.subheader("📬 طلبات متعلقة بهذه المذكرة")
                 
                 request_type = st.selectbox(
                     "نوع الطلب:",
@@ -1050,7 +1071,7 @@ elif st.session_state.user_type == "professor":
         
         # Tab 2: كلمات السر
         with tab2:
-            st.markdown("### 🔑 كلمات السر الخاصة بك")
+            st.subheader("🔑 كلمات السر الخاصة بك")
             prof_passwords = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
             
             if not prof_passwords.empty:
@@ -1074,9 +1095,9 @@ elif st.session_state.user_type == "professor":
         # Tab 3: المذكرات المتاحة/المقترحة
         with tab3:
             if is_exhausted:
-                st.markdown("### 💡 المذكرات المقترحة (استنفذت العناوين)")
+                st.subheader("💡 المذكرات المقترحة (استنفذت العناوين)")
             else:
-                st.markdown("### ⏳ المذكرات المتاحة للتسجيل")
+                st.subheader("⏳ المذكرات المتاحة للتسجيل")
             
             available = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
             
@@ -1103,7 +1124,7 @@ elif st.session_state.user_type == "admin":
                 st.session_state.user_type = None
                 st.rerun()
         
-        st.markdown("<h4 style='text-align:center; color:#FFD700;'>🔐 فضاء الإدارة</h4>", unsafe_allow_html=True)
+        st.subheader("🔐 فضاء الإدارة")
         
         username = st.text_input("اسم المستخدم", max_chars=50)
         password = st.text_input("كلمة المرور", type="password", max_chars=50)
@@ -1120,7 +1141,7 @@ elif st.session_state.user_type == "admin":
     else:
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown("<h2 style='text-align:center;'>🔐 لوحة تحكم الإدارة</h2>", unsafe_allow_html=True)
+            st.header("🔐 لوحة تحكم الإدارة")
         with col2:
             if st.button("🚪 خروج", key="logout_admin"):
                 logout()
@@ -1132,7 +1153,7 @@ elif st.session_state.user_type == "admin":
         available_memos = total_memos - registered_memos
         total_profs = len(df_prof_memos["الأستاذ"].unique())
         
-        st.markdown("### 📊 الإحصائيات العامة")
+        st.subheader("📊 الإحصائيات العامة")
         
         col1, col2, col3, col4, col5 = st.columns(5)
         
@@ -1172,7 +1193,7 @@ elif st.session_state.user_type == "admin":
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 المذكرات", "👨‍🎓 الطلاب", "👨‍🏫 الأساتذة", "📊 تقارير", "🔄 تحديث"])
         
         with tab1:
-            st.markdown("### 📝 جميع المذكرات")
+            st.subheader("📝 جميع المذكرات")
             
             filter_status = st.selectbox("تصفية حسب الحالة:", ["الكل", "مسجلة", "متاحة"])
             
@@ -1186,7 +1207,7 @@ elif st.session_state.user_type == "admin":
             st.dataframe(display_memos, use_container_width=True, height=400)
         
         with tab2:
-            st.markdown("### 👨‍🎓 جميع الطلاب")
+            st.subheader("👨‍🎓 جميع الطلاب")
             
             search_student = st.text_input("🔍 بحث عن طالب (اللقب أو الاسم):", "")
             
@@ -1200,7 +1221,7 @@ elif st.session_state.user_type == "admin":
                 st.dataframe(df_students, use_container_width=True, height=400)
         
         with tab3:
-            st.markdown("### 👨‍🏫 الأساتذة والمذكرات")
+            st.subheader("👨‍🏫 الأساتذة والمذكرات")
             
             profs_list = sorted(df_memos["الأستاذ"].dropna().unique())
             selected_prof = st.selectbox("اختر أستاذاً:", ["الكل"] + profs_list)
@@ -1220,7 +1241,7 @@ elif st.session_state.user_type == "admin":
                 st.dataframe(prof_summary, use_container_width=True)
         
         with tab4:
-            st.markdown("### 📊 تقارير مفصلة")
+            st.subheader("📊 تقارير مفصلة")
             
             st.markdown("#### 📈 توزيع المذكرات حسب التخصص")
             specialty_dist = df_memos.groupby("التخصص").agg({
@@ -1251,7 +1272,7 @@ elif st.session_state.user_type == "admin":
                 st.markdown(f'<div class="progress-container"><div class="progress-bar" style="width: {avg_progress}%;">{avg_progress:.1f}%</div></div>', unsafe_allow_html=True)
         
         with tab5:
-            st.markdown("### 🔄 تحديث البيانات")
+            st.subheader("🔄 تحديث البيانات")
             st.info("⚠️ استخدم هذا الخيار لتحديث البيانات من Google Sheets")
             
             if st.button("🔄 تحديث البيانات الآن", type="primary"):
