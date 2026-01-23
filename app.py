@@ -15,42 +15,47 @@ logger = logging.getLogger(__name__)
 st.set_page_config(page_title="نظام تسجيل المذكرات", page_icon="📘", layout="wide")
 
 # ---------------- CSS (تم دمج التصميم النهائي) ----------------
-st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-<style>
-html, body, [class*="css"] { font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right; }
-.main { background-color: #0A1B2C; color: #ffffff; }
-.block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 16px; margin:auto; }
-h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #F8FAFC; }
-label, p, span { color: #E2E8F0; }
-.stTextInput label, .stSelectbox label { color: #F8FAFC !important; font-weight: 600; }
+def apply_custom_css():
+    css = """
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+    html, body, [class*="css"] { font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right; }
+    .main { background-color: #0A1B2C; color: #ffffff; }
+    .block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 16px; margin:auto; }
+    h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #F8FAFC; }
+    label, p, span { color: #E2E8F0; }
+    .stTextInput label, .stSelectbox label { color: #F8FAFC !important; font-weight: 600; }
 
-/* الأزرار */
-.stButton>button { background-color: #2F6F7E !important; color: white !important; border: none; border-radius: 12px; font-weight: bold; padding: 10px 20px; }
-.stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
+    /* الأزرار */
+    .stButton>button { background-color: #2F6F7E !important; color: white !important; border: none; border-radius: 12px; font-weight: bold; padding: 10px 20px; }
+    .stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
 
-/* البطاقات */
-.card { background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px; margin-bottom: 20px; border-top: 3px solid #2F6F7E; }
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-.kpi-card { background: linear-gradient(145deg, #1E293B, #0F172A); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 1.5rem; text-align: center; }
-.kpi-value { font-size: 2rem; font-weight: 900; color: #FFD700; }
-.kpi-label { font-size: 0.9rem; color: #94A3B8; }
+    /* البطاقات */
+    .card { background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px; margin-bottom: 20px; border-top: 3px solid #2F6F7E; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .kpi-card { background: linear-gradient(145deg, #1E293B, #0F172A); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 1.5rem; text-align: center; }
+    .kpi-value { font-size: 2rem; font-weight: 900; color: #FFD700; }
+    .kpi-label { font-size: 0.9rem; color: #94A3B8; }
 
-/* الإشعارات */
-.alert-card { background: linear-gradient(90deg, #8B4513, #A0522D); border: 1px solid #CD853F; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
-.success-card { background: linear-gradient(90deg, #065f46, #047857); border: 1px solid #34d399; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+    /* الإشعارات */
+    .alert-card { background: linear-gradient(90deg, #8B4513, #A0522D); border: 1px solid #CD853F; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+    .success-card { background: linear-gradient(90deg, #065f46, #047857); border: 1px solid #34d399; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
 
-/* التبويبات */
-.stTabs [data-baseweb="tab-list"] { gap: 2rem; padding-bottom: 10px; }
-.stTabs [aria-selected="true"] { background: rgba(47, 111, 126, 0.2); color: #FFD700; border-bottom: 2px solid #FFD700; font-weight: bold; }
+    /* التبويبات */
+    .stTabs [data-baseweb="tab-list"] { gap: 2rem; padding-bottom: 10px; }
+    .stTabs [aria-selected="true"] { background: rgba(47, 111, 126, 0.2); color: #FFD700; border-bottom: 2px solid #FFD700; font-weight: bold; }
 
-/* شارات الحالة */
-.status-badge { padding: 4px 10px; border-radius: 99px; font-size: 0.8em; font-weight: bold; }
-.status-pending { background: #F59E0B; color: #fff; }
-.status-approved { background: #10B981; color: #fff; }
-.status-rejected { background: #EF4444; color: #fff; }
-</style>
-""", unsafe_allow_html=True)
+    /* شارات الحالة */
+    .status-badge { padding: 4px 10px; border-radius: 99px; font-size: 0.8em; font-weight: bold; }
+    .status-pending { background: #F59E0B; color: #fff; }
+    .status-approved { background: #10B981; color: #fff; }
+    .status-rejected { background: #EF4444; color: #fff; }
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+# تطبيق CSS في بداية الكود
+apply_custom_css()
 
 # ================= Google Sheets Config =================
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -425,6 +430,7 @@ if df_prof_memos.empty:
 # 1. HOME
 if st.session_state.user_type is None:
     st.markdown("<h1 style='text-align:center;'>نظام تسجيل المذكرات</h1>", unsafe_allow_html=True)
+    st.info("🔄 جاري عرض واجهة الدخول...")
     c1, c2, c3 = st.columns(3)
     with c1:
         if st.button("👨‍🎓 طلبة"): st.session_state.user_type = "student"; st.rerun()
@@ -506,7 +512,7 @@ elif st.session_state.user_type == "professor":
                 s1_email = ""
                 if not s1_data.empty:
                     s1_email = s1_data.iloc[0].get('البريد الإلكتروني', '')
-                    s1_name = s1_data.iloc[0].get('لقب', '') + ' ' + s1_data.iloc[0].get('الإسم', '')
+                    s1_name = s1_data.iloc[0].get('لقب', '') + ' ' + s1_data.iloc[0].get('إسم', '')
 
                 s2_name = ""
                 s2_email = ""
@@ -515,7 +521,7 @@ elif st.session_state.user_type == "professor":
                     s2_name = m.get('الطالب الثاني', '')
                     if not s2_data.empty:
                         s2_email = s2_data.iloc[0].get('البريد الإلكتروني', '')
-                        s2_name = s2_data.iloc[0].get('لقب', '') + ' ' + s2_data.iloc[0].get('الإسم', '')
+                        s2_name = s2_data.iloc[0].get('لقب', '') + ' ' + s2_data.iloc[0].get('إسم', '')
 
                 st.markdown(f"""
                 <div class='card'>
