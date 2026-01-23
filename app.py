@@ -140,7 +140,7 @@ def load_memos():
 
 @st.cache_data(ttl=30)
 def load_requests():
-    if not REQUESTS_SHEET_ID or REQUESTS_SHEET_ID == "YOUR_REQUESTS_SHEET_ID_HERE":
+    if not REQUESTS_SHEET_ID or REQUESTS_SHEET_ID == "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o":
         return pd.DataFrame()
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=REQUESTS_SHEET_ID, range=REQUESTS_RANGE).execute()
