@@ -146,7 +146,7 @@ def load_memos():
 
 @st.cache_data(ttl=30) # تحديث أسرع للطلبات
 def load_requests():
-    if REQUESTS_SHEET_ID == "YOUR_REQUESTS_SHEET_ID_HERE" or REQUESTS_SHEET_ID == "":
+    if REQUESTS_SHEET_ID == "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o" or REQUESTS_SHEET_ID == "":
         return pd.DataFrame()
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=REQUESTS_SHEET_ID, range=REQUESTS_RANGE).execute()
