@@ -80,7 +80,7 @@ MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 
 # ضع هنا معرف الشيت الجديد "الطلبات" الذي أنشأته
-REQUESTS_SHEET_ID = "YOUR_REQUESTS_SHEET_ID_HERE" 
+REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o" 
 
 # --- النطاقات (RANGES) ---
 # تم توسيع نطاق المذكرات ليشمل الأعمدة S و T
