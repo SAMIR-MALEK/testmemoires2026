@@ -146,7 +146,7 @@ PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 # ==========================================
 # ⚠️ يرجى وضع ID شيت الطلبات الجديد هنا ⚠️
 # ==========================================
-REQUESTS_SHEET_ID = "PUT_YOUR_NEW_REQUEST_SHEET_ID_HERE"
+REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o"
 
 # تحديث النطاقات لتشمل الأعمدة الجديدة
 STUDENTS_RANGE = "Feuille 1!A1:L1000"
