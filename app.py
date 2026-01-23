@@ -993,4 +993,4 @@ elif st.session_state.user_type == "admin":
                     st.rerun()
 
 st.markdown("---")
-st.markdown('<div style="text-align:center; color:#64748B8; font-size:12px; padding:20px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
