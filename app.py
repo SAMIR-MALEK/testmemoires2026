@@ -593,5 +593,6 @@ elif st.session_state.user_type == "admin":
         with tab2:
             st.dataframe(df_memos)
 
-st.markdown("---")
-st.markdown('<div style="text-align:center; color:#666; font-size:12px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True')
+# السطر الأخير المعدل
+footer_text = '<div style="text-align:center; color:#666; font-size:12px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>'
+st.markdown(footer_text, unsafe_allow_html=True)
