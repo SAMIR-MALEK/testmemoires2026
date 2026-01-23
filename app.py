@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # ---------------- إعداد الصفحة ----------------
-st.set_page_config(page_title="نظام تسجيل المذكرات", page_icon="📘", layout="wide")
+st.set_page_config(page_title="تسجيل مذكرات الماستر", page_icon="📘", layout="wide")
 
 # ---------------- CSS (تصميم زرقاء بلا حدود) ----------------
 st.markdown("""
