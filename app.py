@@ -28,39 +28,6 @@ if 'user_type' not in st.session_state:
     st.session_state.prof_password = ""
     st.session_state.show_confirmation = False
 
-# ---------------- CSS بسيط ----------------
-st.markdown("""
-<style>
-body {
-    font-family: 'Cairo', sans-serif;
-    direction: rtl;
-    text-align: right;
-    background-color: #0A1B2C;
-    color: white;
-}
-.main {
-    background-color: #0A1B2C;
-}
-.block-container {
-    background-color: #1A2A3D;
-    border-radius: 16px;
-    padding: 2rem;
-}
-h1, h2, h3 {
-    color: #F8FAFC;
-}
-.stButton>button {
-    background-color: #2F6F7E;
-    color: white;
-    border-radius: 12px;
-    padding: 10px 20px;
-}
-.stButton>button:hover {
-    background-color: #285E6B;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # ================= Google Sheets Config =================
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 try:
@@ -142,19 +109,21 @@ if st.session_state.user_type is None:
     st.markdown("<h1 style='text-align:center;'>نظام تسجيل المذكرات</h1>", unsafe_allow_html=True)
     st.info("🔄 جاري عرض واجهة الدخول...")
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("👨‍🎓 طلبة"): 
+    # استخدام selectbox بدلاً من أزرار لتجنب مشاكل CSS
+    user_type = st.selectbox(
+        "اختر نوع المستخدم:",
+        ["", "👨‍🎓 طلبة", "👨‍🏫 أساتذة", "⚙️ إدارة"],
+        index=0
+    )
+    
+    if user_type:
+        if "طلبة" in user_type:
             st.session_state.user_type = "student"
-            st.rerun()
-    with col2:
-        if st.button("👨‍🏫 أساتذة"): 
+        elif "أساتذة" in user_type:
             st.session_state.user_type = "professor"
-            st.rerun()
-    with col3:
-        if st.button("⚙️ إدارة"): 
+        elif "إدارة" in user_type:
             st.session_state.user_type = "admin"
-            st.rerun()
+        st.rerun()
 
 # 2. STUDENTS
 elif st.session_state.user_type == "student":
