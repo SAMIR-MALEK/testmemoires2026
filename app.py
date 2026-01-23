@@ -132,7 +132,7 @@ div[data-testid="stFormSubmitButton"] button:hover {
 
 # ---------------- Google Sheets ----------------
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-# ملاحظة: تأكد من إضافة المفاتيح في إعدادات Streamlit Secrets
+# تأكد من إعداد المفاتيح في إعدادات Streamlit Secrets
 try:
     info = st.secrets["service_account"]
     credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
@@ -278,7 +278,7 @@ def send_request_to_admin(prof_name, request_type, memo_number, details):
 def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2=None):
     try:
         if student2 is not None:
-            student2_info = f"<p><strong>الطالب الثاني:</strong> {student2['لقب']} {student2['الإسم']}</p>" 
+            student2_info = f"<p><strong>الطالب الثاني:</strong> {student2['لقب'] if 'لقب' in student2 else student2.get('اللقب','')} {student2['الإسم'] if 'الإسم' in student2 else student2.get('إسم','')}</p>" 
         else:
             student2_info = ""
             
@@ -290,7 +290,7 @@ def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2
         <div style="background:#f8f9fa; padding:15px; border-right:4px solid #2F6F7E; margin:15px 0;">
             <p><strong>رقم المذكرة:</strong> {memo_info['رقم المذكرة']}</p>
             <p><strong>عنوان المذكرة:</strong> {memo_info['عنوان المذكرة']}</p>
-            <p><strong>الطالب الأول:</strong> {student1['لقب']} {student1['الإسم']}</p>
+            <p><strong>الطالب الأول:</strong> {student1['لقب'] if 'لقب' in student1 else student1.get('اللقب','')} {student1['الإسم'] if 'الإسم' in student1 else student1.get('إسم','')}</p>
             {student2_info}
         </div>
     </div>
@@ -375,14 +375,20 @@ def update_registration(note_number, student1, student2=None):
         ].index[0] + 2
         col_names = df_prof_memos.columns.tolist()
         
+        # التعامل مع اختلاف اسم العمود "اللقب/لقب" و "الإسم/إسم"
+        s1_lname = student1.get('لقب', student1.get('اللقب', ''))
+        s1_fname = student1.get('الإسم', student1.get('إسم', ''))
+        
         updates = [
-            {"range": f"Feuille 1!{col_letter(col_names.index('الطالب الأول')+1)}{prof_row_idx}", "values": [[student1['اللقب'] + ' ' + student1['الإسم']]]},
+            {"range": f"Feuille 1!{col_letter(col_names.index('الطالب الأول')+1)}{prof_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
             {"range": f"Feuille 1!{col_letter(col_names.index('تم التسجيل')+1)}{prof_row_idx}", "values": [["نعم"]]},
             {"range": f"Feuille 1!{col_letter(col_names.index('تاريخ التسجيل')+1)}{prof_row_idx}", "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]},
             {"range": f"Feuille 1!{col_letter(col_names.index('رقم المذكرة')+1)}{prof_row_idx}", "values": [[note_number]]}
         ]
         if student2 is not None:
-            updates.append({"range": f"Feuille 1!{col_letter(col_names.index('الطالب الثاني')+1)}{prof_row_idx}", "values": [[student2['اللقب'] + ' ' + student2['الإسم']]]})
+            s2_lname = student2.get('لقب', student2.get('اللقب', ''))
+            s2_fname = student2.get('الإسم', student2.get('إسم', ''))
+            updates.append({"range": f"Feuille 1!{col_letter(col_names.index('الطالب الثاني')+1)}{prof_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
         
         sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=PROF_MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates}).execute()
 
@@ -390,14 +396,14 @@ def update_registration(note_number, student1, student2=None):
         memo_cols = df_memos.columns.tolist()
         
         updates2 = [
-            {"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الأول')+1)}{memo_row_idx}", "values": [[student1['اللقب'] + ' ' + student1['الإسم']]]},
+            {"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الأول')+1)}{memo_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
             {"range": f"Feuille 1!{col_letter(memo_cols.index('تم التسجيل')+1)}{memo_row_idx}", "values": [["نعم"]]},
             {"range": f"Feuille 1!{col_letter(memo_cols.index('تاريخ التسجيل')+1)}{memo_row_idx}", "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]}
         ]
         if 'كلمة سر التسجيل' in memo_cols:
             updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('كلمة سر التسجيل')+1)}{memo_row_idx}", "values": [[used_prof_password]]})
         if student2 is not None:
-            updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الثاني')+1)}{memo_row_idx}", "values": [[student2['لقب'] + ' ' + student2['إسم']]]})
+            updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الثاني')+1)}{memo_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
             
         sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates2}).execute()
 
@@ -420,7 +426,7 @@ def update_registration(note_number, student1, student2=None):
         prof_name = memo_data["الأستاذ"].strip()
         prof_memo_data = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name].iloc[0]
         prof_email = str(prof_memo_data.get("البريد الإلكتروني", "")).strip()
-        if prof_email and "@" in prof_email: send_email_to_professor(prof_email, prof_name, memo_data, student1, student2)
+        if prof_email and "@" in prof_email: send_email_to_professor(prof_email, prof_name, memo_data, st.session_state.student1, st.session_state.student2 if student2 else None)
         
         return True, "✅ تم تسجيل المذكرة بنجاح!"
     except Exception as e:
@@ -565,8 +571,8 @@ elif st.session_state.user_type == "student":
             if st.button("خروج", key="logout_btn"):
                 logout()
         
-        st.markdown(f'<div class="card"><h3>ملف الطالب</h3><p>الطالب الأول: <b style="color:#2F6F7E;">{s1["اللقب"]} {s1["الإسم"]}</b></p><p>التخصص: <b>{s1["التخصص"]}</b></p></div>', unsafe_allow_html=True)
-        if s2 is not None: st.markdown(f'<div class="card"><p>الطالب الثاني: <b style="color:#2F6F7E;">{s2["اللقب"]} {s2["الإسم"]}</b></p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><h3>ملف الطالب</h3><p>الطالب الأول: <b style="color:#2F6F7E;">{s1["لقب"] if "لقب" in s1 else s1["اللقب"]} {s1["الإسم"] if "الإسم" in s1 else s1["إسم"]}</b></p><p>التخصص: <b>{s1["التخصص"]}</b></p></div>', unsafe_allow_html=True)
+        if s2 is not None: st.markdown(f'<div class="card"><p>الطالب الثاني: <b style="color:#2F6F7E;">{s2["لقب"] if "لقب" in s2 else s2["اللقب"]} {s2["الإسم"] if "الإسم" in s2 else s2["إسم"]}</b></p></div>', unsafe_allow_html=True)
 
         if st.session_state.mode == "view":
             df_memos_fresh = load_memos()
@@ -634,7 +640,7 @@ elif st.session_state.user_type == "student":
                     if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
 
 # ============================================================
-# فضاء الأساتذة
+# فضاء الأساتذة (تم التعديل لإصلاح الخطأ)
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
@@ -710,36 +716,60 @@ elif st.session_state.user_type == "professor":
                         
                         students_display = f"<p><b>الطالب الأول:</b> {student1_name}</p>"
                         
-                        # عرض إيميل الطالب الأول
+                        # --- محاولة جلب إيميل الطالب الأول بأمان ---
                         student1_email = ""
                         if student1_name != '--':
                             s_parts = student1_name.strip().split(' ', 1)
                             if len(s_parts) == 2:
                                 s1_lname, s1_fname = s_parts[0], s_parts[1]
-                                s1_data = df_students[
-                                    (df_students["لقب"].astype(str).str.strip() == s1_lname) & 
-                                    (df_students["الإسم"].astype(str).str.strip() == s1_fname)
-                                ]
-                                if not s1_data.empty:
-                                    student1_email = s1_data.iloc[0].get("البريد الإلكتروني", "").strip()
-                                    if student1_email:
-                                        students_display += f"<p style='color:#94A3B8; font-size:0.9em;'>📧 {student1_email}</p>"
-                        else:
-                            student1_email = "غير معروف"
+                                
+                                # تحديد اسماء الأعمدة المتاحة (لمرونة أكبر)
+                                col_lname = None
+                                col_fname = None
+                                
+                                if "لقب" in df_students.columns: col_lname = "لقب"
+                                elif "اللقب" in df_students.columns: col_lname = "اللقب"
+                                
+                                if "الإسم" in df_students.columns: col_fname = "الإسم"
+                                elif "إسم" in df_students.columns: col_fname = "إسم"
+                                
+                                if col_lname and col_fname:
+                                    s1_data = df_students[
+                                        (df_students[col_lname].astype(str).str.strip() == s1_lname) & 
+                                        (df_students[col_fname].astype(str).str.strip() == s1_fname)
+                                    ]
+                                    if not s1_data.empty:
+                                        email_col = "البريد الإلكتروني" if "البريد الإلكتروني" in s1_data.columns else ("Email" if "Email" in s1_data.columns else None)
+                                        if email_col:
+                                            student1_email = s1_data.iloc[0].get(email_col, "").strip()
+                                            if student1_email:
+                                                students_display += f"<p style='color:#94A3B8; font-size:0.9em;'>📧 {student1_email}</p>"
                         
+                        # --- محاولة جلب إيميل الطالب الثاني ---
                         if student2_name and str(student2_name).strip():
                             students_display += f"<p><b>الطالب الثاني:</b> {student2_name}</p>"
                             s2_parts = student2_name.strip().split(' ', 1)
                             if len(s2_parts) == 2:
                                 s2_lname, s2_fname = s2_parts[0], s2_parts[1]
-                                s2_data = df_students[
-                                    (df_students["لقب"].astype(str).str.strip() == s2_lname) & 
-                                    (df_students["الإسم"].astype(str).str.strip() == s2_fname)
-                                ]
-                                if not s2_data.empty:
-                                    student2_email = s2_data.iloc[0].get("البريد الإلكتروني", "").strip()
-                                    if student2_email:
-                                        students_display += f"<p style='color:#94A3B8; font-size:0.9em;'>📧 {student2_email}</p>"
+                                
+                                col_lname = None
+                                col_fname = None
+                                if "لقب" in df_students.columns: col_lname = "لقب"
+                                elif "اللقب" in df_students.columns: col_lname = "اللقب"
+                                if "الإسم" in df_students.columns: col_fname = "الإسم"
+                                elif "إسم" in df_students.columns: col_fname = "إسم"
+                                
+                                if col_lname and col_fname:
+                                    s2_data = df_students[
+                                        (df_students[col_lname].astype(str).str.strip() == s2_lname) & 
+                                        (df_students[col_fname].astype(str).str.strip() == s2_fname)
+                                    ]
+                                    if not s2_data.empty:
+                                        email_col = "البريد الإلكتروني" if "البريد الإلكتروني" in s2_data.columns else ("Email" if "Email" in s2_data.columns else None)
+                                        if email_col:
+                                            student2_email = s2_data.iloc[0].get(email_col, "").strip()
+                                            if student2_email:
+                                                students_display += f"<p style='color:#94A3B8; font-size:0.9em;'>📧 {student2_email}</p>"
                         
                         st.markdown(f'''
                         <div class="card" style="border-right: 5px solid #10B981;">
@@ -909,6 +939,9 @@ elif st.session_state.user_type == "admin":
             q = st.text_input("بحث (لقب/الاسم):")
             if q:
                 f_st = df_students[df_students["لقب"].astype(str).str.contains(q, case=False, na=False) | df_students["الإسم"].astype(str).str.contains(q, case=False, na=False)]
+                # استخدام try-except للبحث أيضاً في حال اختلاف الأعمدة
+                if "اللقب" in df_students.columns:
+                     f_st = df_students[df_students["اللقب"].astype(str).str.contains(q, case=False, na=False) | df_students["الإسم"].astype(str).str.contains(q, case=False, na=False)]
                 st.dataframe(f_st, use_container_width=True, height=400)
             else: st.dataframe(df_students, use_container_width=True, height=400)
 
