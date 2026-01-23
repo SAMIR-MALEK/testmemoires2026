@@ -67,8 +67,8 @@ STUDENTS_SHEET_ID = "1gvNkOVVKo6AO07dRKMnSQw6vZ3KdUnW7I4HBk61Sqns"
 MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 
-# === ضع معرف الشيت الرابع (الطلبات) هنا ===
-REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o" 
+# === معرف شيت الطلبات (تم تحديثه) ===
+REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o"
 
 STUDENTS_RANGE = "Feuille 1!A1:L1000"
 MEMOS_RANGE = "Feuille 1!A1:T1000" 
@@ -99,13 +99,16 @@ def load_students():
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=STUDENTS_SHEET_ID, range=STUDENTS_RANGE).execute()
         values = result.get('values', [])
-        if not values: return pd.DataFrame()
+        if not values: 
+            st.warning("📝 شيت الطلاب فارغ")
+            return pd.DataFrame()
         df = pd.DataFrame(values[1:], columns=values[0])
         df.columns = [c.strip() for c in df.columns]
         if 'رقم تسجيل' in df.columns: df = df.rename(columns={'رقم تسجيل': 'رقم التسجيل'})
         return df
     except Exception as e:
         logger.error(f"Error loading students: {e}")
+        st.error(f"❌ خطأ في تحميل شيت الطلاب: {str(e)}")
         return pd.DataFrame()
 
 @st.cache_data(ttl=60)
@@ -113,7 +116,9 @@ def load_memos():
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=MEMOS_SHEET_ID, range=MEMOS_RANGE).execute()
         values = result.get('values', [])
-        if not values: return pd.DataFrame()
+        if not values: 
+            st.warning("📝 شيت المذكرات فارغ")
+            return pd.DataFrame()
         headers = values[0]
         while len(headers) < 20: headers.append(f"Col_{len(headers)}")
         df = pd.DataFrame(values[1:], columns=headers)
@@ -125,26 +130,49 @@ def load_memos():
         return df
     except Exception as e:
         logger.error(f"Error loading memos: {e}")
+        st.error(f"❌ خطأ في تحميل شيت المذكرات: {str(e)}")
         return pd.DataFrame()
 
 @st.cache_data(ttl=30)
 def load_requests():
     if not REQUESTS_SHEET_ID or REQUESTS_SHEET_ID == "YOUR_REQUESTS_SHEET_ID_HERE":
+        st.error("⚠️ معرف شيت الطلبات غير مخصص أو غير صحيح")
         return pd.DataFrame()
+    
+    try:
+        # التحقق من وجود الشيت
+        sheets_service.spreadsheets().get(spreadsheetId=REQUESTS_SHEET_ID).execute()
+        st.info("✅ الشيت موجود")
+    except Exception as e:
+        st.error(f"❌ الشيت غير موجود أو لا تملك صلاحيات: {str(e)}")
+        return pd.DataFrame()
+    
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=REQUESTS_SHEET_ID, range=REQUESTS_RANGE).execute()
         values = result.get('values', [])
-        if not values: return pd.DataFrame()
+        
+        if not values:
+            st.info("📝 الشيت موجود ولكن فارغ")
+            return pd.DataFrame()
+            
         expected_cols = ["رقم الطلب", "الوقت", "النوع", "الحالة", "الأستاذ", "رقم المذكرة", 
                          "رقم تسجيل الطالب 1", "رقم تسجيل الطالب 2", "العنوان الجديد", "المبررات", "ملاحظات الإدارة"]
-        if len(values) == 1: return pd.DataFrame(columns=expected_cols)
+        
+        if len(values) == 1:
+            st.info("📝 الشيت يحتوي على رأس فقط")
+            return pd.DataFrame(columns=expected_cols)
+            
         if len(values[0]) == len(expected_cols):
             df = pd.DataFrame(values[1:], columns=values[0])
+            st.success(f"✅ تم تحميل {len(df)} طلب(ات)")
         else:
+            st.warning(f"⚠️ عدد الأعمدة غير متطابق. المتوقع: {len(expected_cols)}, وجد: {len(values[0])}")
             df = pd.DataFrame(values[1:], columns=expected_cols)
+            
         return df
     except Exception as e:
         logger.error(f"Error loading requests: {e}")
+        st.error(f"❌ خطأ في تحميل الشيت: {str(e)}")
         return pd.DataFrame()
 
 @st.cache_data(ttl=60)
@@ -152,11 +180,15 @@ def load_prof_memos():
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=PROF_MEMOS_SHEET_ID, range=PROF_MEMOS_RANGE).execute()
         values = result.get('values', [])
-        if not values: return pd.DataFrame()
+        if not values: 
+            st.warning("📝 شيت الأساتذة فارغ")
+            return pd.DataFrame()
         df = pd.DataFrame(values[1:], columns=values[0])
         df.columns = [c.strip() for c in df.columns]
         return df
     except Exception as e:
+        logger.error(f"Error loading prof memos: {e}")
+        st.error(f"❌ خطأ في تحميل شيت الأساتذة: {str(e)}")
         return pd.DataFrame()
 
 # ================= Request Logic =================
@@ -190,9 +222,14 @@ def update_request_status(req_id, new_status, admin_note=""):
     if REQUESTS_SHEET_ID == "YOUR_REQUESTS_SHEET_ID_HERE": return False
     try:
         df_req = load_requests()
-        if df_req.empty: return False
+        if df_req.empty: 
+            st.warning("📝 لا توجد طلبات لتحديثها")
+            return False
+        
         row_idx = df_req[df_req["رقم الطلب"] == req_id].index
-        if len(row_idx) == 0: return False
+        if len(row_idx) == 0: 
+            st.warning("📝 الطلب غير موجود")
+            return False
         
         row_num = row_idx[0] + 2
         
@@ -210,6 +247,7 @@ def update_request_status(req_id, new_status, admin_note=""):
         return True
     except Exception as e:
         logger.error(f"Error updating request: {e}")
+        st.error(f"❌ خطأ في تحديث الطلب: {str(e)}")
         return False
 
 # ================= Registration Logic =================
@@ -218,8 +256,14 @@ def update_registration(note_number, student1, student2=None):
         df_memos = load_memos()
         df_prof_memos = load_prof_memos()
         
+        if df_memos.empty:
+            st.error("❌ خطأ: شيت المذكرات فارغ")
+            return False, "خطأ في تحميل البيانات"
+            
         memo_mask = df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()
-        if memo_mask.sum() == 0: return False, "المذكرة غير موجودة"
+        if memo_mask.sum() == 0: 
+            st.error("❌ المذكرة غير موجودة")
+            return False, "المذكرة غير موجودة"
         
         prof_name = df_memos[memo_mask]["الأستاذ"].iloc[0].strip()
         used_prof_password = st.session_state.prof_password.strip()
@@ -227,7 +271,9 @@ def update_registration(note_number, student1, student2=None):
         # 1. Update Prof Sheet
         prof_mask = (df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name) & \
                      (df_prof_memos["كلمة سر التسجيل"].astype(str).str.strip() == used_prof_password)
-        if prof_mask.sum() == 0: return False, "بيانات المشرف غير صحيحة"
+        if prof_mask.sum() == 0: 
+            st.error("❌ بيانات المشرف غير صحيحة")
+            return False, "بيانات المشرف غير صحيحة"
         
         prof_row_idx = prof_mask.index[0] + 2
         col_names = df_prof_memos.columns.tolist()
@@ -267,6 +313,10 @@ def update_registration(note_number, student1, student2=None):
 
         # 3. Update Students
         df_students = load_students()
+        if df_students.empty:
+            st.error("❌ خطأ: شيت الطلاب فارغ")
+            return False, "خطأ في تحميل بيانات الطلاب"
+            
         students_cols = df_students.columns.tolist()
         s1_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student1['اسم المستخدم'].strip()].index[0] + 2
         sheets_service.spreadsheets().values().update(
@@ -287,11 +337,14 @@ def update_registration(note_number, student1, student2=None):
         return True, "✅ تم التسجيل"
     except Exception as e:
         logger.error(f"Error updating: {e}")
+        st.error(f"❌ خطأ في عملية التسجيل: {str(e)}")
         return False, f"❌ خطأ: {str(e)}"
 
 # ================= Auth Logic =================
 def verify_student(username, password, df_students):
-    if df_students.empty: return False, "❌ خطأ في البيانات"
+    if df_students.empty: 
+        st.error("❌ خطأ في بيانات الطلاب")
+        return False, "خطأ في البيانات"
     s = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == username]
     if s.empty: return False, "❌ المستخدم غير موجود"
     if s.iloc[0]["كلمة السر"].strip() != password: return False, "❌ كلمة السر خاطئة"
@@ -307,7 +360,9 @@ def verify_students_batch(students_data, df_students):
 
 def verify_professor(username, password, df_prof_memos):
     username = sanitize_input(username); password = sanitize_input(password)
-    if df_prof_memos.empty: return False, "❌ خطأ في البيانات"
+    if df_prof_memos.empty: 
+        st.error("❌ خطأ في بيانات الأساتذة")
+        return False, "خطأ في البيانات"
     prof = df_prof_memos[
         (df_prof_memos["إسم المستخدم"].astype(str).str.strip() == username) &
         (df_prof_memos["كلمة المرور"].astype(str).str.strip() == password)
@@ -348,14 +403,24 @@ def logout():
 
 # ================= Main Logic =================
 
+# تحميل البيانات مع عرض رسائل حالة
+st.info("🔄 جاري تحميل البيانات...")
 df_students = load_students()
 df_memos = load_memos()
 df_prof_memos = load_prof_memos()
 df_requests = load_requests()
 
-if df_students.empty: st.error("❌ خطأ: شيت الطلاب فارغ."); st.stop()
-if df_memos.empty: st.error("❌ خطأ: شيت المذكرات فارغ."); st.stop()
-if df_prof_memos.empty: st.error("❌ خطأ: شيت الأساتذة فارغ."); st.stop()
+st.info("✅ انتهى تحميل البيانات")
+
+if df_students.empty: 
+    st.error("❌ خطأ: شيت الطلاب فارغ.")
+    st.stop()
+if df_memos.empty: 
+    st.error("❌ خطأ: شيت المذكرات فارغ.")
+    st.stop()
+if df_prof_memos.empty: 
+    st.error("❌ خطأ: شيت الأساتذة فارغ.")
+    st.stop()
 
 # 1. HOME
 if st.session_state.user_type is None:
@@ -529,4 +594,4 @@ elif st.session_state.user_type == "admin":
             st.dataframe(df_memos)
 
 st.markdown("---")
-st.markdown('<div style="text-align:center; color:#666; font-size:12px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#666; font-size:12px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True')
