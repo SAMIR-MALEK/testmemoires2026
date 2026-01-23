@@ -745,8 +745,8 @@ elif st.session_state.user_type == "professor":
                                         st.success(m) if r else st.error(m)
                                     else:
                                         st.warning("❌ الرجاء بإدخال البيانات الكاملة")
-                            else:
-                                st.warning("❌ الرجاء بإدخال البيانات الكاملة")
+                                else:
+                                    st.warning("❌ الرجاء بإدخال البيانات الكاملة")
             else:
                 st.info("لا توجد مذكرات مسجلة حتى الآن.")
 
