@@ -132,9 +132,14 @@ div[data-testid="stFormSubmitButton"] button:hover {
 
 # ---------------- Google Sheets ----------------
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-info = st.secrets["service_account"]
-credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
-sheets_service = build('sheets', 'v4', credentials=credentials)
+# ملاحظة: تأكد من إضافة المفاتيح في إعدادات Streamlit Secrets
+try:
+    info = st.secrets["service_account"]
+    credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
+    sheets_service = build('sheets', 'v4', credentials=credentials)
+except Exception as e:
+    st.error("⚠️ خطأ في الاتصال بـ Google Sheets: تأكد من ملف Secrets.")
+    st.stop()
 
 STUDENTS_SHEET_ID = "1gvNkOVVKo6AO07dRKMnSQw6vZ3KdUnW7I4HBk61Sqns"
 MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
@@ -272,13 +277,11 @@ def send_request_to_admin(prof_name, request_type, memo_number, details):
 # ---------------- إرسال البريد للأستاذ ----------------
 def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2=None):
     try:
-        # تعديل طالب ثانوي كامل لتجنب الأخطاء المحتملة
         if student2 is not None:
             student2_info = f"<p><strong>الطالب الثاني:</strong> {student2['لقب']} {student2['الإسم']}</p>" 
         else:
             student2_info = ""
             
-        # تعديل البريد الإلكتروني بتنسيق شكل محترف (حتى في حالات الأخطاء لا يعمل الإيميل، لن يتوقف التطبيق)
         email_body = f"""
 <html dir="rtl"><body style="font-family:sans-serif; padding:20px;">
     <div style="background:#fff; padding:30px; border-radius:10px; max-width:600px; margin:auto; color:#333;">
@@ -291,8 +294,7 @@ def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2
             {student2_info}
         </div>
     </div>
-</body></html>
-""" # تأكدت من إغلاق هذا الـ F-String بالكامل
+</body></html>"""
         msg = MIMEMultipart('alternative')
         msg['From'], msg['To'], msg['Subject'] = EMAIL_SENDER, prof_email, f"تسجيل مذكرة - {memo_info['رقم المذكرة']}"
         msg.attach(MIMEText(email_body, 'html', 'utf-8'))
@@ -409,7 +411,6 @@ def update_registration(note_number, student1, student2=None):
 
         time.sleep(2); clear_cache_and_reload(); time.sleep(1)
         
-        # إعادة تحميل الطلاب للحصول على بيانات محدثة (بما فيها الإيميل)
         df_students_updated = load_students()
         st.session_state.student1 = df_students_updated[df_students_updated["اسم المستخدم"].astype(str).str.strip() == student1['اسم المستخدم'].strip()].iloc[0]
         if student2 is not None:
@@ -439,7 +440,8 @@ def logout():
         if key not in ['user_type']: del st.session_state[key]
     st.session_state.update({
         'logged_in': False, 'student1': None, 'student2': None, 'professor': None,
-        'admin_user': None, 'mode': "register", 'note_number': "", 'prof_password': "", 'show_confirmation': False
+        'admin_user': None, 'mode': "register", 'note_number': "", 'prof_password': "", 'show_confirmation': False,
+        'user_type': None  # إعادة تعيين لنوع المستخدم للعودة للقائمة الرئيسية
     })
     st.rerun()
 
@@ -447,6 +449,42 @@ df_students = load_students(); df_memos = load_memos(); df_prof_memos = load_pro
 
 if df_students.empty or df_memos.empty or df_prof_memos.empty:
     st.error("❌ خطأ في تحميل البيانات. يرجى المحاولة لاحقاً."); st.stop()
+
+# ============================================================
+# الصفحة الرئيسية (اختيار الفضاء)
+# ============================================================
+if st.session_state.user_type is None:
+    st.markdown("<h1 style='text-align: center; margin-bottom: 1rem;'>نظام تسجيل المذكرات</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 1.2rem; margin-bottom: 3rem;'>الجامعة محمد البشير الإبراهيمي - كلية الحقوق</p>", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("<div class='card' style='text-align: center;'>", unsafe_allow_html=True)
+        st.markdown("<h3>👨‍🎓 فضاء الطلبة</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94A3B8'>تسجيل وعرض المذكرات</p>", unsafe_allow_html=True)
+        if st.button("دخول الطلبة", key="btn_student", use_container_width=True):
+            st.session_state.user_type = "student"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+            
+    with col2:
+        st.markdown("<div class='card' style='text-align: center;'>", unsafe_allow_html=True)
+        st.markdown("<h3>👨‍🏫 فضاء الأساتذة</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94A3B8'>متابعة التقدم والطلبات</p>", unsafe_allow_html=True)
+        if st.button("دخول الأساتذة", key="btn_prof", use_container_width=True):
+            st.session_state.user_type = "professor"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+            
+    with col3:
+        st.markdown("<div class='card' style='text-align: center;'>", unsafe_allow_html=True)
+        st.markdown("<h3>⚙️ فضاء الإدارة</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94A3B8'>إدارة النظام والتقارير</p>", unsafe_allow_html=True)
+        if st.button("دخول الإدارة", key="btn_admin", use_container_width=True):
+            st.session_state.user_type = "admin"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
 # فضاء الطلبة
