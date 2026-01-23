@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # ---------------- إعداد الصفحة ----------------
 st.set_page_config(page_title="نظام تسجيل المذكرات", page_icon="📘", layout="wide")
 
-# ---------------- CSS ----------------
+# ---------------- CSS (تم دمج الكود الذي أرسلته) ----------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -25,26 +25,26 @@ h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #F8FAFC; }
 label, p, span { color: #E2E8F0; }
 .stTextInput label, .stSelectbox label { color: #F8FAFC !important; font-weight: 600; }
 
-/* Buttons */
+/* الأزرار */
 .stButton>button { background-color: #2F6F7E !important; color: white !important; border: none; border-radius: 12px; font-weight: bold; padding: 10px 20px; }
-.stButton>button:hover { background-color: #285E6B !important; }
+.stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
 
-/* Cards */
+/* البطاقات */
 .card { background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px; margin-bottom: 20px; border-top: 3px solid #2F6F7E; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
 .kpi-card { background: linear-gradient(145deg, #1E293B, #0F172A); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 1.5rem; text-align: center; }
 .kpi-value { font-size: 2rem; font-weight: 900; color: #FFD700; }
 .kpi-label { font-size: 0.9rem; color: #94A3B8; }
 
-/* Notifications */
+/* الإشعارات */
 .alert-card { background: linear-gradient(90deg, #8B4513, #A0522D); border: 1px solid #CD853F; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
 .success-card { background: linear-gradient(90deg, #065f46, #047857); border: 1px solid #34d399; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
 
-/* Tabs */
+/* التبويبات */
 .stTabs [data-baseweb="tab-list"] { gap: 2rem; padding-bottom: 10px; }
 .stTabs [aria-selected="true"] { background: rgba(47, 111, 126, 0.2); color: #FFD700; border-bottom: 2px solid #FFD700; font-weight: bold; }
 
-/* Status Badges */
+/* شارات الحالة */
 .status-badge { padding: 4px 10px; border-radius: 99px; font-size: 0.8em; font-weight: bold; }
 .status-pending { background: #F59E0B; color: #fff; }
 .status-approved { background: #10B981; color: #fff; }
@@ -68,11 +68,10 @@ MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 
 # === ضع معرف الشيت الرابع (الطلبات) هنا ===
-# إذا كان المعرف فارغاً، سيعمل النظام لكن بدون ميزة الطلبات
 REQUESTS_SHEET_ID = "YOUR_REQUESTS_SHEET_ID_HERE" 
 
 STUDENTS_RANGE = "Feuille 1!A1:L1000"
-MEMOS_RANGE = "Feuille 1!A1:T1000" # شامل S و T
+MEMOS_RANGE = "Feuille 1!A1:T1000" 
 PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
 REQUESTS_RANGE = "Feuille 1!A1:K1000"
 
@@ -94,7 +93,7 @@ def clear_cache():
     st.cache_data.clear()
     time.sleep(0.5)
 
-# ================= Data Loading (Improved) =================
+# ================= Data Loading =================
 @st.cache_data(ttl=60)
 def load_students():
     try:
@@ -102,7 +101,6 @@ def load_students():
         values = result.get('values', [])
         if not values: return pd.DataFrame()
         df = pd.DataFrame(values[1:], columns=values[0])
-        # توحيد أسماء الأعمدة
         df.columns = [c.strip() for c in df.columns]
         if 'رقم تسجيل' in df.columns: df = df.rename(columns={'رقم تسجيل': 'رقم التسجيل'})
         return df
@@ -116,23 +114,14 @@ def load_memos():
         result = sheets_service.spreadsheets().values().get(spreadsheetId=MEMOS_SHEET_ID, range=MEMOS_RANGE).execute()
         values = result.get('values', [])
         if not values: return pd.DataFrame()
-        
-        # التعامل مع الرأس
         headers = values[0]
-        # التأكد من وجود 20 عمود على الأقل لـ S و T
-        while len(headers) < 20:
-            headers.append(f"Col_{len(headers)}")
-            
+        while len(headers) < 20: headers.append(f"Col_{len(headers)}")
         df = pd.DataFrame(values[1:], columns=headers)
         df.columns = [c.strip() for c in df.columns]
         
-        # إضافة أعمدة مساعدة للأعمدة S و T (الفهارس 18 و 19)
-        # هذه الخطوة تضمن أن الكود لن يفشل حتى لو لم يكن اسم العمود "رقم تسجيل ط1" في الشيت
-        if len(df.columns) > 18:
-            df['رقم تسجيل ط1'] = df.iloc[:, 18] # العمود S
-        if len(df.columns) > 19:
-            df['رقم تسجيل ط2'] = df.iloc[:, 19] # العمود T
-            
+        # Force columns S and T (Indices 18 and 19)
+        if len(df.columns) > 18: df['رقم تسجيل ط1'] = df.iloc[:, 18]
+        if len(df.columns) > 19: df['رقم تسجيل ط2'] = df.iloc[:, 19]
         return df
     except Exception as e:
         logger.error(f"Error loading memos: {e}")
@@ -140,25 +129,19 @@ def load_memos():
 
 @st.cache_data(ttl=30)
 def load_requests():
-    if not REQUESTS_SHEET_ID or REQUESTS_SHEET_ID == "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o":
+    if not REQUESTS_SHEET_ID or REQUESTS_SHEET_ID == "YOUR_REQUESTS_SHEET_ID_HERE":
         return pd.DataFrame()
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=REQUESTS_SHEET_ID, range=REQUESTS_RANGE).execute()
         values = result.get('values', [])
         if not values: return pd.DataFrame()
-        
         expected_cols = ["رقم الطلب", "الوقت", "النوع", "الحالة", "الأستاذ", "رقم المذكرة", 
                          "رقم تسجيل الطالب 1", "رقم تسجيل الطالب 2", "العنوان الجديد", "المبررات", "ملاحظات الإدارة"]
-        
-        # استخدام الأعمدة الموجودة، أو الافتراضية إذا كان الشيت فارغاً
-        if len(values) == 1: return pd.DataFrame(columns=expected_cols) # رأس فقط
-        
-        # محاولة استخدام الرأس الموجود، إذا كان عدده لا يطابق نستخدم الافتراضي
+        if len(values) == 1: return pd.DataFrame(columns=expected_cols)
         if len(values[0]) == len(expected_cols):
             df = pd.DataFrame(values[1:], columns=values[0])
         else:
             df = pd.DataFrame(values[1:], columns=expected_cols)
-            
         return df
     except Exception as e:
         logger.error(f"Error loading requests: {e}")
@@ -185,7 +168,6 @@ def create_request(prof_name, req_type, memo_number, s1_reg, s2_reg, new_title, 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     status = "قيد الانتظار"
     
-    # ترتيب البيانات: A, B, C, D, E, F, G, H, I, J, K
     row_data = [[
         req_id, timestamp, req_type, status, prof_name, 
         str(memo_number), str(s1_reg) if s1_reg else "", 
@@ -209,20 +191,16 @@ def update_request_status(req_id, new_status, admin_note=""):
     try:
         df_req = load_requests()
         if df_req.empty: return False
-        # البحث في dataframe محلي للعثور على الصف
-        # (بديل بسيط لعدم وجود دالة بحث فورية API)
         row_idx = df_req[df_req["رقم الطلب"] == req_id].index
         if len(row_idx) == 0: return False
         
         row_num = row_idx[0] + 2
         
-        # تحديث الحالة D
         sheets_service.spreadsheets().values().update(
             spreadsheetId=REQUESTS_SHEET_ID, range=f"Feuille 1!D{row_num}",
             valueInputOption="USER_ENTERED", body={"values": [[new_status]]}
         ).execute()
         
-        # تحديث ملاحظات K
         if admin_note:
             sheets_service.spreadsheets().values().update(
                 spreadsheetId=REQUESTS_SHEET_ID, range=f"Feuille 1!K{row_num}",
@@ -240,14 +218,13 @@ def update_registration(note_number, student1, student2=None):
         df_memos = load_memos()
         df_prof_memos = load_prof_memos()
         
-        # جلب بيانات المذكرة
         memo_mask = df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()
         if memo_mask.sum() == 0: return False, "المذكرة غير موجودة"
         
         prof_name = df_memos[memo_mask]["الأستاذ"].iloc[0].strip()
         used_prof_password = st.session_state.prof_password.strip()
         
-        # 1. تحديث شيت الأساتذة
+        # 1. Update Prof Sheet
         prof_mask = (df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name) & \
                      (df_prof_memos["كلمة سر التسجيل"].astype(str).str.strip() == used_prof_password)
         if prof_mask.sum() == 0: return False, "بيانات المشرف غير صحيحة"
@@ -271,25 +248,24 @@ def update_registration(note_number, student1, student2=None):
         
         sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=PROF_MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates}).execute()
 
-        # 2. تحديث الشيت الرئيسي للمذكرات (S و T)
-        # استخدام iloc للكتابة في الأعمدة 19 و 20 (S و T) مباشرة بتحديد العمود الحرفي
+        # 2. Update Main Memos Sheet (S and T)
         memo_row_idx = memo_mask.index[0] + 2
+        memo_cols = df_memos.columns.tolist()
         
-        # الأعمدة S=19, T=20
         updates2 = [
-            {"range": f"Feuille 1!S{memo_row_idx}", "values": [[student1.get('رقم التسجيل', '')]]}, # كتابة رقم تسجيل ط1 في S
-            {"range": f"Feuille 1!{col_letter(df_memos.columns.tolist().index('الطالب الأول')+1)}{memo_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
-            {"range": f"Feuille 1!{col_letter(df_memos.columns.tolist().index('تم التسجيل')+1)}{memo_row_idx}", "values": [["نعم"]]},
-            {"range": f"Feuille 1!{col_letter(df_memos.columns.tolist().index('تاريخ التسجيل')+1)}{memo_row_idx}", "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]}
+            {"range": f"Feuille 1!S{memo_row_idx}", "values": [[student1.get('رقم التسجيل', '')]]}, # Col S
+            {"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الأول')+1)}{memo_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
+            {"range": f"Feuille 1!{col_letter(memo_cols.index('تم التسجيل')+1)}{memo_row_idx}", "values": [["نعم"]]},
+            {"range": f"Feuille 1!{col_letter(memo_cols.index('تاريخ التسجيل')+1)}{memo_row_idx}", "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]}
         ]
         
         if student2:
-            updates2.append({"range": f"Feuille 1!T{memo_row_idx}", "values": [[student2.get('رقم التسجيل', '')]]}) # T
-            updates2.append({"range": f"Feuille 1!{col_letter(df_memos.columns.tolist().index('الطالب الثاني')+1)}{memo_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
+            updates2.append({"range": f"Feuille 1!T{memo_row_idx}", "values": [[student2.get('رقم التسجيل', '')]]}) # Col T
+            updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الثاني')+1)}{memo_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
             
         sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates2}).execute()
 
-        # 3. تحديث الطلبة
+        # 3. Update Students
         df_students = load_students()
         students_cols = df_students.columns.tolist()
         s1_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student1['اسم المستخدم'].strip()].index[0] + 2
@@ -372,22 +348,14 @@ def logout():
 
 # ================= Main Logic =================
 
-# Load Data with Error Handling
 df_students = load_students()
 df_memos = load_memos()
 df_prof_memos = load_prof_memos()
 df_requests = load_requests()
 
-# Check Essential Data
-if df_students.empty:
-    st.error("❌ خطأ: شيت الطلاب فارغ أو لا يمكن الوصول إليه.")
-    st.stop()
-if df_memos.empty:
-    st.error("❌ خطأ: شيت المذكرات فارغ أو لا يمكن الوصول إليه (تأكد من الأعمدة S و T).")
-    st.stop()
-if df_prof_memos.empty:
-    st.error("❌ خطأ: شيت مذكرات الأساتذة فارغ أو لا يمكن الوصول إليه.")
-    st.stop()
+if df_students.empty: st.error("❌ خطأ: شيت الطلاب فارغ."); st.stop()
+if df_memos.empty: st.error("❌ خطأ: شيت المذكرات فارغ."); st.stop()
+if df_prof_memos.empty: st.error("❌ خطأ: شيت الأساتذة فارغ."); st.stop()
 
 # 1. HOME
 if st.session_state.user_type is None:
@@ -415,7 +383,6 @@ elif st.session_state.user_type == "student":
         st.markdown(f"<h2>مرحباً {s['لقب']} {s['الإسم']}</h2>", unsafe_allow_html=True)
         my_reg = s.get('رقم التسجيل', '')
         
-        # Notifications (Requests affecting student)
         my_reqs = df_requests[
             (df_requests["رقم تسجيل الطالب 1"].astype(str).str.strip() == my_reg) | 
             (df_requests["رقم تسجيل الطالب 2"].astype(str).str.strip() == my_reg)
@@ -424,7 +391,7 @@ elif st.session_state.user_type == "student":
             st.markdown("### 📬 تنبيهات")
             for _, r in my_reqs.iterrows():
                 if r['الحالة'] == "مرفوض":
-                    st.markdown(f"<div class='alert-card'>تم رفض طلب {r['نوع']}. السبب: {r['ملاحظات الإدارة']}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='alert-card'>تم رفض طلب {r['نوع']}. {r['ملاحظات الإدارة']}</div>", unsafe_allow_html=True)
                 elif r['الحالة'] == "موافق عليه":
                      st.markdown(f"<div class='success-card'>تم الموافقة على طلب {r['نوع']}.</div>", unsafe_allow_html=True)
 
@@ -466,7 +433,6 @@ elif st.session_state.user_type == "professor":
         
         with tab1:
             for _, m in reg_memos.iterrows():
-                # استخدام أرقام التسجيل الموجودة في العمودين 18 و 19 مباشرة
                 s1_reg = str(m['رقم تسجيل ط1']).strip()
                 s2_reg = str(m['رقم تسجيل ط2']).strip()
                 
@@ -501,7 +467,6 @@ elif st.session_state.user_type == "professor":
                 r_memo = st.selectbox("المذكرة:", [""] + sorted(reg_memos["رقم المذكرة"].astype(str).unique()))
                 reason = st.text_area("المبررات")
                 
-                # Dynamic Fields
                 s1_reg = ""; s2_reg = ""; new_title = ""
                 if r_memo:
                     m_data = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == r_memo].iloc[0]
@@ -517,7 +482,6 @@ elif st.session_state.user_type == "professor":
                     if s: st.success(m); time.sleep(1); clear_cache(); st.rerun()
                     else: st.error(m)
 
-            # Show History
             my_reqs = df_requests[df_requests["الأستاذ"] == prof_name]
             if not my_reqs.empty:
                 st.markdown("---")
