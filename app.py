@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # ---------------- إعداد الصفحة ----------------
 st.set_page_config(page_title="نظام تسجيل المذكرات", page_icon="📘", layout="wide")
 
-# ---------------- CSS (تم دمج الكود الذي أرسلته) ----------------
+# ---------------- CSS (تم دمج التصميم النهائي) ----------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -62,13 +62,13 @@ except Exception as e:
     st.error("⚠️ خطأ في ملف Secrets أو الاتصال بـ Google.")
     st.stop()
 
-# --- معرفات الشيتات (4 شيتات) ---
+# --- معرفات الشيتات ---
 STUDENTS_SHEET_ID = "1gvNkOVVKo6AO07dRKMnSQw6vZ3KdUnW7I4HBk61Sqns"
 MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 
 # === ضع معرف الشيت الرابع (الطلبات) هنا ===
-REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o" 
+REQUESTS_SHEET_ID = "YOUR_REQUESTS_SHEET_ID_HERE" 
 
 STUDENTS_RANGE = "Feuille 1!A1:L1000"
 MEMOS_RANGE = "Feuille 1!A1:T1000" 
@@ -529,4 +529,4 @@ elif st.session_state.user_type == "admin":
             st.dataframe(df_memos)
 
 st.markdown("---")
-st.markdown('<div style="text-align:center; color:#666; font-size:12px;">© 2026 System</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#666; font-size:12px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
