@@ -461,7 +461,7 @@ if df_students.empty or df_memos.empty or df_prof_memos.empty:
 # ============================================================
 if st.session_state.user_type is None:
     st.markdown("<h1 style='text-align: center; margin-bottom: 1rem;'>نظام تسجيل المذكرات</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 1.2rem; margin-bottom: 3rem;'>الجامعة محمد البشير الإبراهيمي - كلية الحقوق</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 1.2rem; margin-bottom: جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
 
