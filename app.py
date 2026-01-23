@@ -677,7 +677,7 @@ elif st.session_state.user_type == "professor":
                         if student1_name != '--':
                             s_parts = student1_name.strip().split(' ', 1)
                             if len(s_parts) == 2:
-                                s1_lname, s1_fname = s_parts[0], s1_parts[1]
+                                s1_lname, s1_fname = s_parts[0], s_parts[1]
                                 s1_data = df_students[
                                     (df_students["لقب"].astype(str).str.strip() == s1_lname) & 
                                     (df_students["الإسم"].astype(str).str.strip() == s1_fname)
