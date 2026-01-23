@@ -14,6 +14,20 @@ logger = logging.getLogger(__name__)
 # ---------------- إعداد الصفحة ----------------
 st.set_page_config(page_title="نظام تسجيل المذكرات", page_icon="📘", layout="wide")
 
+# ---------------- تهيئة Session State ----------------
+if 'user_type' not in st.session_state:
+    st.session_state.user_type = None
+    st.session_state.logged_in = False
+    st.session_state.student1 = None
+    st.session_state.student2 = None
+    st.session_state.professor = None
+    st.session_state.admin_user = None
+    st.session_state.memo_type = "فردية"
+    st.session_state.mode = "register"
+    st.session_state.note_number = ""
+    st.session_state.prof_password = ""
+    st.session_state.show_confirmation = False
+
 # ---------------- CSS بسيط ----------------
 st.markdown("""
 <style>
