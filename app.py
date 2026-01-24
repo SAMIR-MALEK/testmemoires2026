@@ -1099,7 +1099,7 @@ elif st.session_state.user_type == "admin":
             st.subheader("قائمة الطلاب")
             q = st.text_input("بحث (لقب/الاسم):")
             if q:
-                f_st = df_students[df_students["لقب"].astype(str).str.contains(q, case=False, na=False) | df_students["إسم"].astype(str).str.contains(q, case=False, na=False)]
+                f_st = df_students[df_students["لقب"].astype(str).str.contains(q, case=False, na=False) | df_students["الإسم"].astype(str).str.contains(q, case=False, na=False)]
                 # استخدام try-except للبحث أيضاً في حال اختلاف الأعمدة
                 if "اللقب" in df_students.columns:
                      f_st = df_students[df_students["اللقب"].astype(str).str.contains(q, case=False, na=False) | df_students["الإسم"].astype(str).str.contains(q, case=False, na=False)]
@@ -1127,7 +1127,6 @@ elif st.session_state.user_type == "admin":
                 st.markdown("##### توزيع المذكرات حسب التخصص")
                 spec_dist = df_memos.groupby("التخصص").size()
                 st.bar_chart(spec_dist, color="#2F6F7E")
-            
             with col2:
                 st.markdown("##### حالة التسجيل حسب التخصص")
                 reg_status = df_memos.groupby("التخصص")["تم التسجيل"].apply(lambda x: (x.astype(str).str.strip() == "نعم").sum())
