@@ -1,597 +1,529 @@
-import streamlit as st
-from datetime import datetime
-import pandas as pd
-from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
-import logging
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import time
-
-# ---------------- إعداد Logging ----------------
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# ---------------- إعداد الصفحة ----------------
-st.set_page_config(page_title="تسجيل مذكرات الماستر", page_icon="📘", layout="wide")
-
-# ---------------- CSS (تصميم زرقاء بلا حدود) ----------------
-st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-<style>
-html, body, [class*="css"] { font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right; }
-.main { background-color: #0A1B2C; color: #ffffff; }
-.block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 16px; margin:auto; }
-h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #F8FAFC; }
-label, p, span { color: #E2E8F0; }
-.stTextInput label, .stSelectbox label { color: #F8FAFC !important; font-weight: 600; }
-
-.stButton>button, button[kind="primary"], div[data-testid="stFormSubmitButton"] button {
-    background-color: #2F6F7E !important; color: #ffffff !important; font-size: 16px;
-    font-weight: 600; padding: 14px 32px; border: none !important; border-radius: 12px !important;
-    cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); transition: all 0.3s ease;
-    width: 100%; text-align: center; display: flex; justify-content: center; align-items: center; gap: 10px;
-}
-.stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
-
-.card { 
-    background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255,255, 255, 0.08);
-    border-radius: 20px; padding: 30px; margin-bottom: 20px; 
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); border-top: 3px solid #2F6F7E;
-}
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
-.kpi-card {
-    background: linear-gradient(145deg, #1E293B, #0F172A); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 2.5rem 1rem;
-    text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-}
-.kpi-value { font-size: 2.5rem; font-weight: 900; color: #FFD700; margin: 15px 0; }
-.kpi-label { font-size: 1.2rem; color: #94A3B8; font-weight: 600; text-transform: uppercase; }
-.alert-card { background: linear-gradient(90deg, #8B4513 0%, #A0522D 100%); border: 1px solid #CD853F; color: white; padding: 25px; border-radius: 12px; text-align: center; }
-.progress-container { background-color: #0F172A; border-radius: 99px; padding: 6px; margin: 20px 0; overflow: hidden; }
-.progress-bar { height: 24px; border-radius: 99px; background: linear-gradient(90deg, #2F6F7E 0%, #285E6B 50%, #FFD700 100%); transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
-.stDataFrame { border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,  white, 0.1); background: #1E293B; }
-.stDataFrame th { background-color: #0F172A; color: #FFD700; font-weight: bold; }
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------- Google Sheets ----------------
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-try:
-    info = st.secrets["service_account"]
-    credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
-    sheets_service = build('sheets', 'v4', credentials=credentials)
-except Exception as e:
-    st.error("⚠️ خطأ في الاتصال بـ Google Sheets")
-    st.stop()
-
-STUDENTS_SHEET_ID = "1gvNkOVVKo6AO07dRKMnSQw6vZ3KdUnW7I4HBk61Sqns"
-MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
-PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
-REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o"
-
-STUDENTS_RANGE = "Feuille 1!A1:L1000"
-MEMOS_RANGE = "Feuille 1!A1:T1000" 
-PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
-REQUESTS_RANGE = "Feuille 1!A1:K1000"
-
-ADMIN_CREDENTIALS = {"admin": "admin2026", "dsp": "dsp@2026"}
-EMAIL_SENDER = "domaine.dsp@univ-bba.dz"
-EMAIL_PASSWORD = "oevruyiztgikwzah"
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-ADMIN_EMAIL = "domaine.dsp@univ-bba.dz"
-
-# ---------------- Helpers & Init ----------------
-def col_letter(n):
-    result = ""
-    while n > 0:
-        n, remainder = divmod(n - 1, 26)
-        result = chr(65 + remainder) + result
-    return result
-
-def normalize_name(name):
-    if pd.isna(name): return ""
-    return " ".join(str(name).strip().split())
-
-def get_student_email(reg_no, full_name, df_students):
-    # البحث في عدة أعمدة محتملة
-    email_cols = ["البريد الإلكتروني", "البريد المهني", "email", "Email"]
-    if reg_no:
-        match = df_students[df_students["رقم التسجيل"].astype(str).str.strip() == str(reg_no).strip()]
-        if not match.empty:
-            for col in email_cols:
-                if col in match.columns:
-                    email = match.iloc[0].get(col, "").strip()
-                    if email and "@" in email: return email
-    # الاحتياطي بالاسم
-    if full_name:
-        clean_name = normalize_name(full_name)
-        for col_l in ["لقب", "اللقب"]:
-            for col_f in ["إسم", "إسم", "اسم"]:
-                if col_l in df_students.columns and col_f in df_students.columns:
-                    match = df_students[(df_students[col_l].astype(str).str.strip() == clean_name.split()[0]) & (df_students[col_f].astype(str).str.strip() == " ".join(clean_name.split()[1:]))]
-                    if not match.empty:
-                        for col in email_cols:
-                            if col in match.columns:
-                                email = match.iloc[0].get(col, "").strip()
-                                if email and "@" in email: return email
-    return ""
-
-# ================= تحديد حالة Session State بأمان =================
-# نقوم بتعريف المتغيرات هنا لتجنب الخطأ عند إعادة التشغيل
-if 'user_type' not in st.session_state:
-    st.session_state.user_type = None
-    st.session_state.logged_in = False
-    st.session_state.student1 = None
-    st.session_state.student2 = None
-    st.session_state.professor = None
-    st.session_state.admin_user = None
-    st.session_state.memo_type = "فردية"
-    st.session_state.mode = "register"
-    st.session_state.note_number = ""
-    st.session_state.prof_password = ""
-    st.session_state.show_confirmation = False
-    
-    # المتغيرات الجديدة للأمن
-    if 'selected_memo' not in st.session_state:
-        st.session_state.selected_memo = None
-    if 'admin_edit_req' not in st.session_state:
-        st.session_state.admin_edit_req = None
-
-# ---------------- تحميل البيانات ----------------
-@st.cache_data(ttl=60)
-def load_students():
-    try:
-        result = sheets_service.spreadsheets().values().get(spreadsheetId=STUDENTS_SHEET_ID, range=STUDENTS_RANGE).execute()
-        values = result.get('values', [])
-        if not values: return pd.DataFrame()
-        df = pd.DataFrame(values[1:], columns=values[0])
-        return df
-    except: return pd.DataFrame()
-
-@st.cache_data(ttl=60)
-def load_memos():
-    try:
-        result = sheets_service.spreadsheets().values().get(spreadsheetId=MEMOS_SHEET_ID, range=MEMOS_RANGE).execute()
-        values = result.get('values', [])
-        if not values: return pd.DataFrame()
-        df = pd.DataFrame(values[1:], columns=values[0])
-        return df
-    except: return pd.DataFrame()
-
-@st.cache_data(ttl=60)
-def load_prof_memos():
-    try:
-        result = sheets_service.spreadsheets().values().get(spreadsheetId=PROF_MEMOS_SHEET_ID, range=PROF_MEMOS_RANGE).execute()
-        values = result.get('values', [])
-        if not values: return pd.DataFrame()
-        df = pd.DataFrame(values[1:], columns=values[0])
-        return df
-    except: return pd.DataFrame()
-
-@st.cache_data(ttl=60)
-def load_requests():
-    try:
-        result = sheets_service.spreadsheets().values().get(spreadsheetId=REQUESTS_SHEET_ID, range=REQUESTS_RANGE).execute()
-        values = result.get('values', [])
-        if not values: return pd.DataFrame()
-        df = pd.DataFrame(values[1:], columns=values[0])
-        return df
-    except: return pd.DataFrame()
-
-def clear_cache():
-    st.cache_data.clear()
-
-# ---------------- ربط ذكي مع تقرير تفصيلي (يحل مشكلة الربط) ----------------
-def sync_student_registration_numbers():
-    try:
-        st.info("⏳ جاري بدء الربط الذكي...")
-        df_s = load_students()
-        df_m = load_memos()
-        
-        updates = []
-        col_s_idx = 19 # S
-        col_t_idx = 20 # T
-        
-        # تنظيف أسماء الطلبة في الشيت المصدر
-        for col in ["لقب", "اللقب", "إسم", "إسم", "اسم"]:
-            if col in df_s.columns: df_s[col] = df_s[col].astype(str).str.strip()
-        
-        # إنشاء عمود مؤقت للاسم الموحد
-        lname_col = "لقب" if "لقب" in df_s.columns else ("اللقب" if "اللقب" in df_s.columns else None)
-        fname_col = "إسم" if "إسم" in df_s.columns else ("إسم" if "إسم" in df_s.columns else None)
-        
-        if not lname_col or not fname_col:
-            return False, "❌ تعذر العثور على أعمدة الاسماء في شيت الطلبة."
-
-        df_s["full_name_clean"] = df_s[lname_col] + " " + df_s[fname_col]
-        students_with_memo = df_s[df_s["رقم المذكرة"].notna() & (df_s["رقم المذكرة"] != "")]
-        
-        # القاموس: رقم المذكرة -> قائمة الطلاب
-        memo_to_students = {}
-        for _, s_row in students_with_memo.iterrows():
-            m_id = str(s_row["رقم المذكرة"]).strip()
-            reg_no = str(s_row.get("رقم التسجيل", "")).strip()
-            full_name = s_row["full_name_clean"]
-            if m_id not in memo_to_students: memo_to_students[m_id] = []
-            memo_to_students[m_id].append({"reg": reg_no, "name": full_name})
-
-        report_log = [] # تقرير للعرض
-
-        for index, row in df_m.iterrows():
-            memo_id = str(row.get("رقم المذكرة", "")).strip()
-            if not memo_id or memo_id not in memo_to_students: continue
-            
-            # تنظيف أسماء المذكرات
-            s1_name = normalize_name(row.get("الطالب الأول", ""))
-            s2_name = normalize_name(row.get("الطالب الثاني", ""))
-            
-            students_in_this_memo = memo_to_students[memo_id]
-            reg_s1 = ""
-            reg_s2 = ""
-            
-            # منطق الطالب الثاني
-            if s2_name:
-                found_s2 = next((s for s in students_in_this_memo if s["name"] == s2_name), None)
-                if found_s2:
-                    reg_s2 = found_s2["reg"]
-                    students_in_this_memo.remove(found_s2)
-                    report_log.append(f"✅ تم ربط الطالب الثاني (T): {s2_name}")
-                else:
-                    report_log.append(f"⚠️ لم يتم العثور على الطالب الثاني في شيت الطلبة: {s2_name}")
-            
-            # منطق الطالب الأول
-            if students_in_this_memo:
-                candidate_s1 = students_in_this_memo[0]
-                if candidate_s1["name"] == s1_name or not s1_name:
-                    reg_s1 = candidate_s1["reg"]
-                    report_log.append(f"✅ تم ربط الطالب الأول (S): {candidate_s1['name']}")
-                else:
-                    report_log.append(f"⚠️ تضارض في اسم الطالب الأول.")
-            else:
-                 report_log.append(f"⚠️ لم يتم العثور على طالب لهذه المذكرة.")
-
-            row_idx = index + 2 
-            if reg_s1:
-                updates.append({"range": f"Feuille 1!S{row_idx}", "values": [[reg_s1]]})
-            if reg_s2:
-                updates.append({"range": f"Feuille 1!T{row_idx}", "values": [[reg_s2]]})
-        
-        if updates:
-            body = {"valueInputOption": "USER_ENTERED", "data": updates}
-            sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body=body).execute()
-            return True, f"✅ تم تحديث {len(updates)} خلية.\n\nتفاصيل العملية:\n" + "\n".join(report_log)
-        else:
-            return False, "ℹ️ جميع البيانات محدثة أو لا توجد تطابقات.\n\n" + "\n".join(report_log)
-            
-    except Exception as e:
-        return False, f"❌ حدث خطأ: {str(e)}"
-
-# ---------------- نظام الطلبات ----------------
-def save_and_send_request(req_type, prof_name, memo_id, memo_title, details_text):
-    try:
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        new_row = ["", timestamp, req_type, "قيد المراجعة", prof_name, memo_id, "", "", details_text, "", ""]
-        body_append = {"values": [new_row]}
-        sheets_service.spreadsheets().values().append(
-            spreadsheetId=REQUESTS_SHEET_ID, range="Feuille 1!A2",
-            valueInputOption="USER_ENTERED", body=body_append, insertDataOption="INSERT_ROWS"
-        ).execute()
-        
-        # إرسال إيميل مبسط
-        subject = f"طلب {req_type} - {memo_id}"
-        msg = MIMEMultipart('alternative')
-        msg['From'], msg['To'], msg['Subject'] = EMAIL_SENDER, ADMIN_EMAIL, subject
-        msg.attach(MIMEText(f"{details_text}", 'plain', 'utf-8'))
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls(); server.login(EMAIL_SENDER, EMAIL_PASSWORD); server.send_message(msg)
-        return True, "✅ تم الإرسال"
-    except Exception as e:
-        return False, f"❌ خطأ: {str(e)}"
-
-# ---------------- منطق التسجيل ----------------
-def update_registration(note_number, student1, student2=None):
-    try:
-        df_memos = load_memos(); df_prof_memos = load_prof_memos(); df_students = load_students()
-        prof_name = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()]["الأستاذ"].iloc[0].strip()
-        used_prof_password = st.session_state.prof_password.strip()
-        
-        prof_row_idx = df_prof_memos[
-            (df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name) &
-            (df_prof_memos["كلمة سر التسجيل"].astype(str).str.strip() == used_prof_password)
-        ].index[0] + 2
-        col_names = df_prof_memos.columns.tolist()
-        
-        s1_lname = student1.get('لقب', student1.get('اللقب', ''))
-        s1_fname = student1.get('إسم', student1.get('إسم', ''))
-        
-        updates = [
-            {"range": f"Feuille 1!{col_letter(col_names.index('الطالب الأول')+1)}{prof_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
-            {"range": f"Feuille 1!{col_letter(col_names.index('تم التسجيل')+1)}{prof_row_idx}", "values": [["نعم"]]},
-            {"range": f"Feuille 1!{col_letter(col_names.index('تاريخ التسجيل')+1)}{prof_row_idx}", "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]},
-            {"range": f"Feuille 1!{col_letter(col_names.index('رقم المذكرة')+1)}{prof_row_idx}", "values": [[note_number]]}
-        ]
-        if student2 is not None:
-            s2_lname = student2.get('لقب', student2.get('اللقب', ''))
-            s2_fname = student2.get('إسم', student2.get('إسم', ''))
-            updates.append({"range": f"Feuille 1!{col_letter(col_names.index('الطالب الثاني')+1)}{prof_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
-        
-        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=PROF_MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates}).execute()
-
-        memo_row_idx = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()].index[0] + 2
-        memo_cols = df_memos.columns.tolist()
-        
-        reg1 = str(student1.get('رقم التسجيل', ''))
-        reg2 = str(student2.get('رقم التسجيل', '')) if student2 else ""
-        
-        updates2 = [
-            {"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الأول')+1)}{memo_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
-            {"range": f"Feuille 1!{col_letter(memo_cols.index('تم التسجيل')+1)}{memo_row_idx}", "values": [["نعم"]]},
-            {"range": f"Feuille 1!{col_letter(memo_cols.index('تاريخ التسجيل')+1)}{memo_row_idx}", "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]},
-            {"range": f"Feuille 1!S{memo_row_idx}", "values": [[reg1]]}
-        ]
-        if 'كلمة سر التسجيل' in memo_cols:
-            updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('كلمة سر التسجيل')+1)}{memo_row_idx}", "values": [[used_prof_password]]})
-        if student2 is not None:
-            updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الثاني')+1)}{memo_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
-            updates2.append({"range": f"Feuille 1!T{memo_row_idx}", "values": [[reg2]]})
-            
-        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates2}).execute()
-
-        students_cols = df_students.columns.tolist()
-        s1_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student1['اسم المستخدم'].strip()].index[0] + 2
-        sheets_service.spreadsheets().values().update(spreadsheetId=STUDENTS_SHEET_ID, range=f"Feuille 1!{col_letter(students_cols.index('رقم المذكرة')+1)}{s1_idx}", valueInputOption="USER_ENTERED", body={"values": [[note_number]]}).execute()
-        
-        if student2 is not None:
-            s2_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student2['اسم المستخدم'].strip()].index[0] + 2
-            sheets_service.spreadsheets().values().update(spreadsheetId=STUDENTS_SHEET_ID, range=f"Feuille 1!{col_letter(students_cols.index('رقم المذكرة')+1)}{s2_idx}", valueInputOption="USER_ENTERED", body={"values": [[note_number]]}).execute()
-
-        clear_cache()
-        return True, "✅ تم التسجيل"
-    except Exception as e:
-        return False, f"❌ {str(e)}"
-
-# ---------------- التحقق ----------------
-def verify_student(username, password, df_students):
-    student = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == username]
-    if student.empty: return False, "❌ غير موجود"
-    if student.iloc[0]["كلمة السر"].strip() != password: return False, "❌ كلمة سر خطأ"
-    return True, student.iloc[0]
-
-def verify_professor(username, password, df_prof_memos):
-    prof = df_prof_memos[
-        (df_prof_memos["إسم المستخدم"].astype(str).str.strip() == username) &
-        (df_prof_memos["كلمة المرور"].astype(str).str.strip() == password)
-    ]
-    if prof.empty: return False, "❌ بيانات خاطئة"
-    return True, prof.iloc[0]
-
-def verify_admin(username, password):
-    if username in ADMIN_CREDENTIALS and ADMIN_CREDENTIALS[username] == password: return True, username
-    return False, False
-
-# ================= MAIN APP LOGIC =================
-df_students = load_students(); df_memos = load_memos(); df_prof_memos = load_prof_memos(); df_requests = load_requests()
-
-if df_students.empty or df_memos.empty or df_prof_memos.empty:
-    st.error("❌ خطأ في تحميل البيانات."); st.stop()
-
-# الصفحة الرئيسية
-if st.session_state.user_type is None:
-    st.markdown("<h1 style='text-align: center;'>نظام تسجيل المذكرات</h1>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown("<div class='card' style='text-align: center;'><h3>👨‍🎓 فضاء الطلبة</h3></div>", unsafe_allow_html=True)
-        if st.button("دخول الطلبة"): st.session_state.user_type = "student"; st.rerun()
-    with c2:
-        st.markdown("<div class='card' style='text-align: center;'><h3>👨‍🏫 فضاء الأساتذة</h3></div>", unsafe_allow_html=True)
-        if st.button("دخول الأساتذة"): st.session_state.user_type = "professor"; st.rerun()
-    with c3:
-        st.markdown("<div class='card' style='text-align: center;'><h3>⚙️ فضاء الإدارة</h3></div>", unsafe_allow_html=True)
-        if st.button("دخول الإدارة"): st.session_state.user_type = "admin"; st.rerun()
-
-# فضاء الطلبة
-elif st.session_state.user_type == "student":
-    if not st.session_state.logged_in:
-        with st.form("login"):
-            u = st.text_input("اسم المستخدم"); p = st.text_input("كلمة المرور", type="password")
-            if st.form_submit_button("دخول"):
-                v, r = verify_student(u, p, df_students)
-                if v: st.session_state.student1 = r; st.session_state.logged_in = True; st.rerun()
-                else: st.error(r)
-    else:
         s1 = st.session_state.student1
-        tab1, tab2 = st.tabs(["مذكرتي", "إشعاراتي"])
-        with tab1:
-            note_id = s1.get('رقم المذكرة', '').strip()
-            if note_id:
-                info = df_memos[df_memos["رقم المذكرة"] == note_id].iloc[0]
-                st.markdown(f"<div class='card'><h3>{info['عنوان المذكرة']}</h3><p>المشرف: {info['الأستاذ']}</p></div>", unsafe_allow_html=True)
-            else: st.info("لم تسجل مذكرة")
-        with tab2:
-            reqs = df_requests[df_requests["رقم المذكرة"].astype(str).str.strip() == note_id]
-            if not reqs.empty:
-                for _, r in reqs.iterrows():
-                    hide = r['نوع الطلب'] in ["حذف طالب", "تنازل"]
-                    det = r.get('العنوان الجديد', r.get('المبررات', ''))
-                    st.markdown(f"<div class='card'><h4>{r['نوع الطلب']}</h4><p>{det if not hide else 'مخفي'}</p></div>", unsafe_allow_html=True)
-            else: st.info("لا توجد إشعارات")
+        s2 = st.session_state.student2
+        
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("خروج", key="logout_btn"):
+                logout()
+        
+        st.markdown(f'<div class="card"><h3>ملف الطالب</h3><p>الطالب الأول: <b style="color:#2F6F7E;">{s1["لقب"] if "لقب" in s1 else s1["اللقب"]} {s1["الإسم"] if "الإسم" in s1 else s1["إسم"]}</b></p><p>التخصص: <b>{s1["التخصص"]}</b></p></div>', unsafe_allow_html=True)
+        if s2 is not None: st.markdown(f'<div class="card"><p>الطالب الثاني: <b style="color:#2F6F7E;">{s2["لقب"] if "لقب" in s2 else s2["اللقب"]} {s2["الإسم"] if "الإسم" in s2 else s2["إسم"]}</b></p></div>', unsafe_allow_html=True)
 
-# فضاء الأساتذة (التصميم الجديد)
+        # تبويبات الطالب
+        tab_memo, tab_notify = st.tabs(["مذكرتي", "الإشعارات والطلبات"])
+
+        with tab_memo:
+            if st.session_state.mode == "view":
+                df_memos_fresh = load_memos()
+                note_num = str(s1.get('رقم المذكرة', '')).strip()
+                memo_info = df_memos_fresh[df_memos_fresh["رقم المذكرة"].astype(str).str.strip() == note_num]
+                if not memo_info.empty:
+                    memo_info = memo_info.iloc[0]
+                    st.markdown(f'''<div class="card" style="border-left: 5px solid #FFD700;">
+                        <h3>✅ أنت مسجل في المذكرة التالية:</h3>
+                        <p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p>
+                        <p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p>
+                        <p><b>المشرف:</b> {memo_info['الأستاذ']}</p>
+                        <p><b>التخصص:</b> {memo_info['التخصص']}</p>
+                        <p><b>التاريخ:</b> {memo_info.get('تاريخ التسجيل','')}</p>
+                    </div>''', unsafe_allow_html=True)
+
+            elif st.session_state.mode == "register":
+                st.markdown('<div class="card"><h3>تسجيل مذكرة جديدة</h3></div>', unsafe_allow_html=True)
+                all_profs = sorted(df_memos["الأستاذ"].dropna().unique())
+                selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + all_profs)
+                
+                if selected_prof:
+                    student_specialty = s1["التخصص"]
+                    prof_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()]
+                    reg_count = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+                    
+                    if reg_count >= 4:
+                        st.error(f'❌ الأستاذ {selected_prof} استنفذ كل العناوين')
+                    else:
+                        avail_memos = df_memos[
+                            (df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()) &
+                            (df_memos["التخصص"].astype(str).str.strip() == student_specialty.strip()) &
+                            (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")
+                        ][["رقم المذكرة", "عنوان المذكرة"]]
+                        
+                        if not avail_memos.empty:
+                            st.success(f'✅ المذكرات المتاحة في تخصصك ({student_specialty}):')
+                            for _, row in avail_memos.iterrows():
+                                st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
+                        else:
+                            st.error('لا توجد مذكرات متاحة ❌')
+                
+                st.markdown("---")
+                c1, c2 = st.columns(2)
+                with c1: st.session_state.note_number = st.text_input("رقم المذكرة", value=st.session_state.note_number)
+                with c2: st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
+
+                if not st.session_state.show_confirmation:
+                    if st.button("المتابعة للتأكيد"):
+                        if not st.session_state.note_number or not st.session_state.prof_password: st.error("⚠️ يرجى إدخال البيانات")
+                        else: st.session_state.show_confirmation = True; st.rerun()
+                else:
+                    st.warning(f"⚠️ تأكيد التسجيل - المذكرة رقم: {st.session_state.note_number}")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("تأكيد نهائي", type="primary"):
+                            valid, prof_row, err = verify_professor_password(st.session_state.note_number, st.session_state.prof_password, df_memos, df_prof_memos)
+                            if not valid: st.error(err); st.session_state.show_confirmation = False
+                            else:
+                                with st.spinner('⏳ جاري تسجيل...'):
+                                    success, msg = update_registration(st.session_state.note_number, s1, s2)
+                                if success: st.success(msg); st.balloons(); clear_cache_and_reload(); st.session_state.mode = "view"; st.session_state.show_confirmation = False; time.sleep(2); st.rerun()
+                                else: st.error(msg); st.session_state.show_confirmation = False
+                    with col2:
+                        if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
+
+        with tab_notify:
+            st.subheader("تنبيهات خاصة بك")
+            my_memo_id = str(s1.get('رقم المذكرة', '')).strip()
+            if my_memo_id:
+                my_reqs = df_requests[df_requests["رقم المذكرة"].astype(str).str.strip() == my_memo_id]
+                if not my_reqs.empty:
+                    for _, r in my_reqs.iterrows():
+                        req_type = r['نوع الطلب']
+                        details = str(r.get('العنوان الجديد', r.get('المبررات', ''))).strip()
+                        
+                        # القواعد: إخفاء المبررات في حذف طالب والتنازل
+                        show_details = True
+                        if req_type in ["حذف طالب", "تنازل"]:
+                            show_details = False
+
+                        st.markdown(f"""
+                        <div class='card' style='border-right: 4px solid #F59E0B; padding: 20px;'>
+                            <h4>{req_type}</h4>
+                            <p>التاريخ: {r['الوقت']}</p>
+                            <p>الحالة: <b>{r['الحالة']}</b></p>
+                            {'<p>التفاصيل: ' + details + '</p>' if show_details else '<p><i>التفاصيل مخفية</i></p>'}
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("لا توجد تنبيهات جديدة.")
+            else:
+                st.info("يجب تسجيل مذكرة أولاً لتلقي التنبيهات.")
+
+# ============================================================
+# فضاء الأساتذة (تصميم جديد)
+# ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
-        with st.form("p_login"):
-            u = st.text_input("اسم المستخدم"); p = st.text_input("كلمة المرور", type="password")
-            if st.form_submit_button("دخول"):
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("رجوع", key="back_prof"):
+                st.session_state.user_type = None
+                st.rerun()
+        
+        st.markdown("<h2>فضاء الأساتذة</h2>", unsafe_allow_html=True)
+        
+        with st.form("prof_login_form"):
+            c1, c2 = st.columns(2)
+            with c1: u = st.text_input("اسم المستخدم")
+            with c2: p = st.text_input("كلمة المرور", type="password")
+            if st.form_submit_button("تسجيل الدخول"):
                 v, r = verify_professor(u, p, df_prof_memos)
-                if v: st.session_state.professor = r; st.session_state.logged_in = True; st.rerun()
-                else: st.error(r)
+                if not v: st.error(r)
+                else: st.session_state.professor = r; st.session_state.logged_in = True; st.rerun()
     else:
         prof = st.session_state.professor
         p_name = prof["الأستاذ"]
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("خروج"):
+                logout()
         
-        t1, t2, t3, t4 = st.tabs(["المذكرات المسجلة", "كلمات السر", "الإشعارات", "المتاحة"])
+        st.markdown(f"<h2 style='margin-bottom:20px;'>فضاء الأستاذ <span style='color:#FFD700;'>{p_name}</span></h2>", unsafe_allow_html=True)
+
+        prof_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
+        total = len(prof_memos)
+        registered = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+        available = total - registered
+        is_exhausted = registered >= 4
+
+        st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
+        st.markdown(f'''
+            <div class="kpi-card">
+                <div class="kpi-value">{total}</div>
+                <div class="kpi-label">إجمالي المذكرات</div>
+            </div>
+            <div class="kpi-card" style="border-color: #10B981;">
+                <div class="kpi-value" style="color: #10B981;">{registered}</div>
+                <div class="kpi-label">المذكرات المسجلة</div>
+            </div>
+            <div class="kpi-card" style="border-color: #F59E0B;">
+                <div class="kpi-value" style="color: #F59E0B;">{available}</div>
+                <div class="kpi-label">المذكرات المتاحة</div>
+            </div>
+        ''', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        if is_exhausted:
+            st.markdown('<div class="alert-card">لقد استنفذت العناوين الأربعة المخصصة لك.</div>', unsafe_allow_html=True)
         
-        with t1:
-            # التحقق الآمن باستخدام .get()
+        # --- Tabs ---
+        tab1, tab2, tab3, tab4 = st.tabs(["المذكرات المسجلة", "كلمات السر", "التنبيهات", "المتاحة/المقترحة"])
+        
+        with tab1:
+            st.subheader("المذكرات المسجلة")
+            
+            # منطق الصفحة المنبثقة (Modal) مقابل القائمة
             if st.session_state.get('selected_memo'):
-                # صفحة التفاصيل (Modal)
+                # عرض صفحة التفاصيل فقط
                 sel_mid = st.session_state.selected_memo
-                sel_memo = df_memos[(df_memos["الأستاذ"] == p_name) & (df_memos["رقم المذكرة"] == sel_mid)].iloc[0]
+                sel_memo = prof_memos[prof_memos["رقم المذكرة"] == sel_mid].iloc[0]
                 
-                st.empty() # إخفاء القائمة
+                st.empty() # إخفاء القائمة الرئيسية مؤقتاً
+                st.markdown("<div class='card' style='border: 2px solid #2F6F7E;'><h2>🔧 تفاصيل وإدارة المذكرة</h2></div>", unsafe_allow_html=True)
                 
+                # زر العودة
                 col1, col2, col3 = st.columns([1, 6, 1])
-                with col1: 
-                    if st.button("⬅ عودة"):
+                with col1:
+                    if st.button("⬅ عودة للقائمة"):
                         del st.session_state.selected_memo
                         st.rerun()
-                
-                st.markdown(f"<div class='card' style='border: 2px solid #2F6F7E;'><h2>🔧 تفاصيل المذكرة: {sel_mid}</h2></div>", unsafe_allow_html=True)
-                
+
+                # معلومات الطلاب والإيميلات
                 s1_name = sel_memo['الطالب الأول']
                 s2_name = sel_memo.get('الطالب الثاني', '')
+                
+                # جلب الإيميلات
                 s1_email = get_student_email(sel_memo.get('رقم تسجيل الطالب 1', ''), s1_name, df_students)
                 s2_email = get_student_email(sel_memo.get('رقم تسجيل الطالب 2', ''), s2_name, df_students) if s2_name else ""
                 
-                st.markdown(f"<div style='background:#1E293B; padding:15px; border-radius:10px; margin-bottom:15px;'><h4>الطالب الأول: {s1_name}</h4><p>📧 {s1_email if s1_email else 'لا يوجد'}</p></div>", unsafe_allow_html=True)
-                if s2_name:
-                    st.markdown(f"<div style='background:#1E293B; padding:15px; border-radius:10px; margin-bottom:15px;'><h4>الطالب الثاني: {s2_name}</h4><p>📧 {s2_email if s2_email else 'لا يوجد'}</p></div>", unsafe_allow_html=True)
-
-                # التحكم
-                prog_val = int(sel_memo.get('نسبة التقدم', 0)) if str(sel_memo.get('نسبة التقدم', 0)).isdigit() else 0
-                st.markdown(f"<div class='progress-container'><div class='progress-bar' style='width:{prog_val}%;'></div></div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style='background:#1E293B; padding:15px; border-radius:10px; margin-bottom:15px;'>
+                    <h4>الطالب الأول: {s1_name}</h4>
+                    {f"<p style='color:#10B981;'>📧 {s1_email}</p>" if s1_email else "<p style='color:#EF4444;'>لا يوجد إيميل</p>"}
+                </div>
+                """, unsafe_allow_html=True)
                 
-                new_prog = st.selectbox("تحديث التقدم:", ["0%", "30%", "60%", "100%"], key=f"np_{sel_mid}")
-                if st.button("حفظ", key=f"sv_{sel_mid}"):
-                    sheets_service.spreadsheets().values().update(spreadsheetId=MEMOS_SHEET_ID, range=f"Feuille 1!Q{df_memos[df_memos['رقم المذكرة']==sel_mid].index[0]+2}", valueInputOption="USER_ENTERED", body={"values": [[int(new_prog[:-1])]]}).execute()
-                    st.success("تم"); clear_cache(); st.rerun()
+                if s2_name:
+                    st.markdown(f"""
+                    <div style='background:#1E293B; padding:15px; border-radius:10px; margin-bottom:15px;'>
+                        <h4>الطالب الثاني: {s2_name}</h4>
+                        {f"<p style='color:#10B981;'>📧 {s2_email}</p>" if s2_email else "<p style='color:#EF4444;'>لا يوجد إيميل</p>"}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # شريط التقدم
+                progress_val = str(sel_memo.get('نسبة التقدم', '0')).strip()
+                try: prog_int = int(progress_val) if progress_val else 0
+                except: prog_int = 0
+                
+                st.markdown(f"<div class='progress-container'><div class='progress-bar' style='width: {prog_int}%;'></div></div>", unsafe_allow_html=True)
+
+                # التحكم في التقدم
+                new_prog = st.selectbox("تحديث نسبة التقدم:", [
+                    "0%", "10% - ضبط المقدمة", "30% - الفصل الأول", 
+                    "60% - الفصل الثاني", "80% - الخاتمة", "100% - مكتملة"
+                ], key=f"np_{sel_mid}")
+                if st.button("حفظ التقدم", key=f"sv_{sel_mid}"):
+                    mapping = {"0%":0, "10% - ضبط المقدمة":10, "30% - الفصل الأول":30, "60% - الفصل الثاني":60, "80% - الخاتمة":80, "100% - مكتملة":100}
+                    s, m = update_progress(sel_mid, mapping[new_prog])
+                    st.success(m) if s else st.error(m); time.sleep(1); st.rerun()
 
                 st.markdown("---")
-                st.markdown("### 📨 تقديم طلب")
-                rtype = st.selectbox("نوع الطلب:", ["", "تغيير عنوان", "حذف طالب", "إضافة طالب", "تنازل"], key=f"rt_{sel_mid}")
-                details = ""
-                if rtype == "تغيير عنوان": details = st.text_input("العنوان الجديد:", key=f"ch_{sel_mid}")
-                elif rtype == "تنازل": details = st.text_area("المبررات:", key=f"re_{sel_mid}")
-                elif rtype == "حذف طالب":
-                    to_del = st.selectbox("اختر:", ["", s1_name, s2_name], key=f"del_{sel_mid}")
-                    details = st.text_area("السبب:", key=f"jus_del_{sel_mid}")
-                    if to_del and details: details = f"حذف {to_del}: {details}"
-                elif rtype == "إضافة طالب":
-                    r_add = st.text_input("رقم التسجيل:", key=f"add_{sel_mid}")
-                    details = st.text_area("ملاحظات:", key=f"jus_add_{sel_mid}")
-                    if r_add and details: details = f"إضافة {r_add}: {details}"
+                st.markdown("### 📨 تقديم طلب جديد")
                 
-                if details and rtype != "":
-                    if st.button("إرسال", key=f"send_{sel_mid}"):
-                        res, msg = save_and_send_request(rtype, p_name, sel_mid, sel_memo['عنوان المذكرة'], details)
-                        st.success(msg) if res else st.error(msg)
+                # نظام الطلبات
+                req_op = st.selectbox("نوع الطلب:", ["", "تغيير عنوان المذكرة", "حذف طالب (ثنائية)", "إضافة طالب (فردية)", "تنازل عن الإشراف"], key=f"req_{sel_mid}")
+                
+                details_to_save = ""
+                validation_error = None
+                
+                if req_op == "تغيير عنوان المذكرة":
+                    new_title = st.text_input("العنوان الجديد:", key=f"nt_{sel_mid}")
+                    if st.button("إرسال طلب تغيير العنوان", key=f"btn_ch_{sel_mid}"):
+                        if new_title: details_to_save = f"العنوان الجديد المقترح: {new_title}"
+                        else: validation_error = "الرجاء إدخال العنوان"
+                            
+                elif req_op == "حذف طالب (ثنائية)":
+                    if not s2_name: st.warning("هذه مذكرة فردية!")
+                    else:
+                        st.write("الطالبان:")
+                        st.write(f"1. {s1_name}")
+                        st.write(f"2. {s2_name}")
+                        to_del = st.selectbox("اختر الطالب للحذف:", ["", "الطالب الأول", "الطالب الثاني"], key=f"del_{sel_mid}")
+                        just = st.text_area("تبريرات الحذف:", key=f"jus_del_{sel_mid}")
+                        if st.button("إرسال طلب الحذف", key=f"btn_del_{sel_mid}"):
+                            if to_del and just: details_to_save = f"حذف: {to_del}. السبب: {just}"
+                            else: validation_error = "اكمل البيانات"
+                            
+                elif req_op == "إضافة طالب (فردية)":
+                    if s2_name: st.warning("هذه مذكرة ثنائية بالفعل!")
+                    else:
+                        reg_to_add = st.text_input("رقم التسجيل:", key=f"add_{sel_mid}")
+                        if st.button("تحقق وإرسال", key=f"btn_add_{sel_mid}"):
+                            target = df_students[df_students["رقم التسجيل"] == reg_to_add]
+                            if target.empty: validation_error = "رقم التسجيل غير موجود"
+                            elif target.iloc[0].get("رقم المذكرة"): validation_error = "الطالب لديه مذكرة بالفعل"
+                            elif target.iloc[0].get("التخصص") != sel_memo['التخصص']: validation_error = "التخصص غير متطابق"
+                            else:
+                                just = st.text_area("ملاحظات (اختياري):", key=f"jus_add_{sel_mid}")
+                                details_to_save = f"إضافة الطالب المسجل: {reg_to_add}. ملاحظات: {just}"
+                                
+                elif req_op == "تنازل عن الإشراف":
+                    just = st.text_area("مبررات التنازل:", key=f"res_{sel_mid}")
+                    if st.button("إرسال طلب التنازل", key=f"btn_res_{sel_mid}"):
+                        if just: details_to_save = f"التنازل عن الإشراف. المبررات: {just}"
+                        else: validation_error = "الرجاء كتابة المبررات"
+
+                # تنفيذ الطلب
+                if validation_error:
+                    st.error(validation_error)
+                elif details_to_save:
+                    suc, msg = save_and_send_request(p_name, sel_mid, sel_memo['عنوان المذكرة'], req_op, details_to_save)
+                    if suc: st.success(msg); time.sleep(1); st.rerun()
+                    else: st.error(msg)
+
             else:
-                # القائمة (List View)
-                memos = df_memos[(df_memos["الأستاذ"] == p_name) & (df_memos["تم التسجيل"] == "نعم")]
-                if not memos.empty:
+                # عرض القائمة (List View)
+                registered_memos = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
+                
+                if not registered_memos.empty:
                     cols = st.columns(2)
-                    for i, (_, m) in enumerate(memos.iterrows()):
-                        with cols[i%2]:
+                    for i, (_, memo) in enumerate(registered_memos.iterrows()):
+                        with cols[i % 2]:
+                            mid = memo['رقم المذكرة']
+                            title = memo['عنوان المذكرة']
+                            
                             st.markdown(f"""
-                            <div class="card" style="cursor:pointer; border-top:5px solid #10B981;">
-                                <h4>{m['رقم المذكرة']} - {m['عنوان المذكرة']}</h4>
-                                <p style="font-size:0.8em; color:#94A3B8;">انقر على الزر بالأسفل للتفاصيل</p>
+                            <div class="card" style="border-right: 5px solid #10B981;">
+                                <h4>{mid} - {title}</h4>
+                                <p style="color:#94A3B8; font-size:0.9em;">تخصص: {memo['التخصص']}</p>
+                                <p style="font-size:0.8em; color:#2F6F7E;">انقر على الزر بالأسفل للتفاصيل</p>
                             </div>
                             """, unsafe_allow_html=True)
-                            if st.button("⚙️ إدارة وتفاصيل", key=f"mgr_{m['رقم المذكرة']}"):
-                                st.session_state.selected_memo = m['رقم المذكرة']
+                            
+                            # زر يفتح الصفحة المنبثقة
+                            if st.button("⚙️ إدارة وتفاصيل", key=f"mgr_{mid}"):
+                                st.session_state.selected_memo = mid
                                 st.rerun()
+                else:
+                    st.info("لا توجد مذكرات مسجلة حتى الآن.")
 
-        with t2: # كلمات السر
-            pwds = df_prof_memos[df_prof_memos["الأستاذ"] == p_name]
-            for _, r in pwds.iterrows():
-                st.markdown(f"<h3 style='color:#FFD700'>{r['كلمة سر التسجيل']}</h3>", unsafe_allow_html=True)
+        with tab2:
+            st.subheader("كلمات السر")
+            pwds = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
+            if not pwds.empty:
+                for _, row in pwds.iterrows():
+                    stat = str(row.get("تم التسجيل", "")).strip()
+                    pwd = str(row.get("كلمة سر التسجيل", "")).strip()
+                    if pwd:
+                        color = "#10B981" if stat == "نعم" else "#F59E0B"
+                        status_txt = "مستخدمة" if stat == "نعم" else "متاحة"
+                        st.markdown(f'''
+                        <div class="card" style="border-right: 5px solid {color}; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3>
+                                <p style="margin:5px 0 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p>
+                            </div>
+                        </div>
+                        ''', unsafe_allow_html=True)
+            else: st.info("لا توجد كلمات سر مسندة إليك.")
 
-        with t3: # إشعارات
+        with tab3:
+            st.subheader("إشعاراتي")
             my_reqs = df_requests[df_requests["الأستاذ"] == p_name]
             if not my_reqs.empty:
                 for _, r in my_reqs.iterrows():
-                    c = "#10B981" if r['الحالة'] == "مقبول" else "#F59E0B"
-                    st.markdown(f"<div class='card' style='border-right:4px solid {c};'><h4>{r['نوع الطلب']} - {r['رقم المذكرة']}</h4><p>الحالة: <b>{r['الحالة']}</b></p></div>", unsafe_allow_html=True)
+                    status_color = "#10B981" if r['الحالة'] == "مقبول" else "#F59E0B"
+                    st.markdown(f"""
+                    <div class="card" style="border-right: 4px solid {status_color};">
+                        <h4>{r['نوع الطلب']} - {r['رقم المذكرة']}</h4>
+                        <p>التاريخ: {r['الوقت']}</p>
+                        <p>الحالة: <b>{r['الحالة']}</b></p>
+                    </div>
+                    """, unsafe_allow_html=True)
             else: st.info("لا توجد إشعارات")
 
-        with t4: # المتاحة
-            avail = df_memos[(df_memos["الأستاذ"] == p_name) & (df_memos["تم التسجيل"] != "نعم")]
-            for _, m in avail.iterrows():
-                st.markdown(f"<div class='card'><h4>{m['رقم المذكرة']}</h4><p>{m['عنوان المذكرة']}</p></div>", unsafe_allow_html=True)
+        with tab4:
+            if is_exhausted: st.subheader("💡 المذكرات المقترحة")
+            else: st.subheader("⏳ المذكرات المتاحة للتسجيل")
+            
+            avail = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
+            if not avail.empty:
+                for _, m in avail.iterrows():
+                    st.markdown(f"""
+                    <div class="card" style="border-left: 4px solid #64748B;">
+                        <h4>{m['رقم المذكرة']}</h4>
+                        <p>{m['عنوان المذكرة']}</p>
+                        <p style="color:#94A3B8;">تخصص: {m['التخصص']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else: st.success("✅ جميع المذكرات مسجلة أو مقترحة!")
 
+# ============================================================
 # فضاء الإدارة
+# ============================================================
 elif st.session_state.user_type == "admin":
     if not st.session_state.logged_in:
-        with st.form("a_login"):
-            u = st.text_input("User"); p = st.text_input("Pass", type="password")
-            if st.form_submit_button("Login"):
-                if verify_admin(u,p)[0]: st.session_state.logged_in = True; st.rerun()
-    else:
-        t1, t2, t3 = st.tabs(["بيانات", "إدارة الطلبات", "صيانة"])
-        with t1: st.dataframe(df_memos)
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("رجوع", key="back_admin"):
+                st.session_state.user_type = None
+                st.rerun()
         
-        with t2:
-            if not st.session_state.get('admin_edit_req'):
-                # عرض الجدول
-                st.subheader("سجل الطلبات الواردة")
-                for idx, row in df_requests.iterrows():
-                    c = "#10B981" if row['الحالة'] == "مقبول" else "#F59E0B"
-                    c1, c2, c3 = st.columns([4, 1, 1])
-                    with c1:
-                        st.markdown(f"<div style='background:#1E293B; padding:10px; border-radius:5px; margin-bottom:5px; border-right:3px solid {c};'><b>{row['نوع الطلب']}</b> - {row['رقم المذكرة']} <br> {row['الحالة']}</div>", unsafe_allow_html=True)
-                    with c3:
-                        if st.button("⚙️", key=f"edit_{idx}"):
-                            st.session_state.admin_edit_req = idx
-                            st.rerun()
+        st.markdown("<h2>⚙️ فضاء الإدارة</h2>", unsafe_allow_html=True)
+        
+        with st.form("admin_login"):
+            u = st.text_input("اسم المستخدم")
+            p = st.text_input("كلمة المرور", type="password")
+            if st.form_submit_button("دخول"):
+                v, r = verify_admin(u, p)
+                if not v: st.error(r)
+                else: st.session_state.admin_user = r; st.session_state.logged_in = True; st.rerun()
+    else:
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("خروج"):
+                logout()
+        st.header("📊 لوحة تحكم الإدارة")
+        
+        # --- Stats ---
+        st_s = len(df_students); t_m = len(df_memos); r_m = len(df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+        a_m = t_m - r_m; t_p = len(df_prof_memos["الأستاذ"].unique())
+        reg_st = df_students["رقم المذكرة"].notna().sum()
+        unreg_st = st_s - reg_st
+        
+        st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
+        st.markdown(f'''
+            <div class="kpi-card">
+                <div class="kpi-value">{st_s}</div>
+                <div class="kpi-label">الطلاب</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">{t_p}</div>
+                <div class="kpi-label">الأساتذة</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value">{t_m}</div>
+                <div class="kpi-label">إجمالي المذكرات</div>
+            </div>
+            <div class="kpi-card" style="border-color: #10B981;">
+                <div class="kpi-value" style="color: #10B981;">{r_m}</div>
+                <div class="kpi-label">مذكرات مسجلة</div>
+            </div>
+            <div class="kpi-card" style="border-color: #F59E0B;">
+                <div class="kpi-value" style="color: #F59E0B;">{a_m}</div>
+                <div class="kpi-label">مذكرات متاحة</div>
+            </div>
+            <div class="kpi-card" style="border-color: #10B981;">
+                <div class="kpi-value" style="color: #10B981;">{reg_st}</div>
+                <div class="kpi-label">طلاب مسجلين</div>
+            </div>
+            <div class="kpi-card" style="border-color: #F59E0B;">
+                <div class="kpi-value" style="color: #F59E0B;">{unreg_st}</div>
+                <div class="kpi-label">طلاب غير مسجلين</div>
+            </div>
+        ''', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # إضافة تبويب الطلبات
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["المذكرات", "إدارة الطلبات", "الصيانة والربط"])
+
+        with tab1:
+            st.subheader("جدول المذكرات")
+            f_status = st.selectbox("تصفية:", ["الكل", "مسجلة", "متاحة"])
+            if f_status == "الكل":
+                d_memos = df_memos
+            elif f_status == "مسجلة":
+                d_memos = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
             else:
-                # صفحة التعديل
+                d_memos = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
+            
+            st.dataframe(d_memos, use_container_width=True, height=400)
+
+        with tab2:
+            st.subheader("إدارة الطلبات الواردة")
+            
+            # منطق التعديل (Modal vs List)
+            if st.session_state.get('admin_edit_req'):
+                # صفحة تعديل الطلب
                 idx = st.session_state.admin_edit_req
                 req_row = df_requests.iloc[idx]
                 
-                st.empty()
-                st.markdown("<div class='card'><h2>⚖️ إدارة الطلب</h2></div>", unsafe_allow_html=True)
+                st.empty() # إخفاء القائمة
+                st.markdown("<div class='card'><h2>⚖️ اتخاذ قرار للطلب</h2></div>", unsafe_allow_html=True)
                 
+                # عرض معلومات الطلب
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.write(f"**النوع:** {req_row['نوع الطلب']}")
+                    st.write(f"**نوع الطلب:** {req_row['نوع الطلب']}")
                     st.write(f"**الأستاذ:** {req_row['الأستاذ']}")
-                    st.write(f"**المذكرة:** {req_row['رقم المذكرة']}")
-                    st.info(f"**التفاصيل:** {req_row['العنوان الجديد']}")
+                    st.write(f"**رقم المذكرة:** {req_row['رقم المذكرة']}")
+                    st.info(f"**تفاصيل الطلب:** {req_row['العنوان الجديد']}")
                 
                 with c2:
-                    new_status = st.selectbox("القرار:", ["قيد المراجعة", "مقبول", "مرفوض"], index=["قيد المراجعة", "مقبول", "مرفوض"].index(req_row['الحالة']))
-                    admin_notes = st.text_area("ملاحظاتك:", value=req_row.get('ملاحظات الإدارة', ''))
+                    new_status = st.selectbox("قرار الإدارة:", 
+                        ["قيد المراجعة", "مقبول", "مرفوض"], 
+                        index=["قيد المراجعة", "مقبول", "مرفوض"].index(req_row['الحالة'])])
+                    admin_notes = st.text_area("ملاحظات الإدارة:", value=req_row.get('ملاحظات الإدارة', ''))
                 
-                c_b1, c_b2 = st.columns(2)
-                with c_b1:
-                    if st.button("💾 حفظ", type="primary"):
+                # الأزرار
+                col_b1, col_b2 = st.columns(2)
+                with col_b1:
+                    if st.button("💾 حفظ القرار", type="primary"):
                         # تحديث الشيت
-                        sheet_idx = idx + 2
+                        # A=0, B=1, C=2, D=3 ... J=9
+                        sheet_row = idx + 2
+                        
                         body = {
                             "valueInputOption": "USER_ENTERED",
                             "data": [
-                                {"range": f"Feuille 1!D{sheet_idx}", "values": [[new_status]]},
-                                {"range": f"Feuille 1!J{sheet_idx}", "values": [[admin_notes]]}
+                                {"range": f"Feuille 1!D{sheet_row}", "values": [[new_status]]}, # العمود D (الحالة)
+                                {"range": f"Feuille 1!J{sheet_row}", "values": [[admin_notes]]}  # العمود J (ملاحظات الإدارة)
                             ]
                         }
                         sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=REQUESTS_SHEET_ID, body=body).execute()
-                        st.success("تم الحفظ"); clear_cache()
+                        st.success("تم حفظ القرار")
+                        clear_cache_and_reload()
                         del st.session_state.admin_edit_req
                         st.rerun()
-                with c_b2:
+                
+                with col_b2:
                     if st.button("إلغاء"):
                         del st.session_state.admin_edit_req
                         st.rerun()
 
-        with t3:
-            st.subheader("الربط والصيانة")
-            if st.button("🔄 بدء عملية الربط (مع تقرير)", type="primary"):
-                with st.spinner("جاري..."):
+            else:
+                # عرض الجدول
+                for index, row in df_requests.iterrows():
+                    c = "#10B981" if row['الحالة'] == "مقبول" else "#F59E0B"
+                    
+                    col1, col2, col3 = st.columns([3, 6, 1])
+                    with col1:
+                        st.markdown(f"""
+                        <div style='background:#1E293B; padding:10px; border-radius:5px; margin-bottom:5px; border-right:3px solid {c};'>
+                            <b>{row['نوع الطلب']}</b> - {row['رقم المذكرة']} <br>
+                            <span style="font-size:0.9em;">{row['الوقت']}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with col3:
+                        if st.button("⚙️ اتخاذ قرار", key=f"edit_{index}"):
+                            st.session_state.admin_edit_req = index
+                            st.rerun()
+
+        with tab3:
+            st.subheader("الصيانة والربط الذكي (S & T)")
+            st.warning("⚠️ استخدم هذا الزر لربط أرقام التسجيل لأول مرة أو لإصلاح الأخطاء.")
+            if st.button("🔄 بدء عملية الربط (مع تقرير تفصيلي)", type="primary"):
+                with st.spinner("جاري المعالجة... قد يستغرق وقتاً"):
                     s, m = sync_student_registration_numbers()
                     st.success(m) if s else st.info(m)
-                    if s: clear_cache(); st.rerun()
+                    if s: 
+                        clear_cache_and_reload()
+                        st.rerun()
+            
+            st.markdown("---")
+            if st.button("تحديث البيانات من Google Sheets"):
+                with st.spinner("جاري التحديث..."):
+                    clear_cache_and_reload()
+                    st.success("✅ تم التحديث")
+                    st.rerun()
 
-st.markdown("<div style='text-align:center; color:#64748B;'>© 2026 جامعة محمد البشير الإبراهيمي</div>", unsafe_allow_html=True)
+st.markdown("---")
+st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
