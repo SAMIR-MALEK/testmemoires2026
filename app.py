@@ -1,4 +1,3 @@
-
 import streamlit as st
 from datetime import datetime
 import pandas as pd
@@ -9,6 +8,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
+import json
+import hashlib
 
 # ---------------- إعداد Logging ----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,19 +20,13 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 
 # ---------------- CSS (تصميم زرقاء بلا حدود) ----------------
 st.markdown("""
-<!-- استدعاء خط احترافي -->
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-
 <style>
 html, body, [class*="css"] { 
     font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right; 
 }
-
-/* الخلفية الأساسية */
 .main { background-color: #0A1B2C; color: #ffffff; }
 .block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 16px; margin:auto; }
-
-/* النصوص والعناوين */
 h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #F8FAFC; }
 label, p, span { color: #E2E8F0; }
 .stTextInput label, .stSelectbox label { color: #F8FAFC !important; font-weight: 600; }
@@ -42,13 +37,13 @@ label, p, span { color: #E2E8F0; }
 .stButton>button,
 button[kind="primary"],
 div[data-testid="stFormSubmitButton"] button {
-    background-color: #2F6F7E !important;   /* خلفية زرقاء للجميع */
-    color: #ffffff !important;              /* كتابة بيضاء للجميع */
+    background-color: #2F6F7E !important;
+    color: #ffffff !important;
     font-size: 16px;
     font-weight: 600;
     padding: 14px 32px;
-    border: none !important;                /* بدون حدود */
-    border-radius: 12px !important;        /* تدوير الزوايا */
+    border: none !important;
+    border-radius: 12px !important;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
@@ -56,12 +51,10 @@ div[data-testid="stFormSubmitButton"] button {
     text-align: center;
     display: flex; justify-content: center; align-items: center; gap: 10px;
 }
-
-/* تأثير عند مرور الماوس */
 .stButton>button:hover,
 button[kind="primary"]:hover,
 div[data-testid="stFormSubmitButton"] button:hover {
-    background-color: #285E6B !important;   /* لون أغمق عند المرور */
+    background-color: #285E6B !important;
     transform: translateY(-2px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
     font-weight: 700;
@@ -70,7 +63,7 @@ div[data-testid="stFormSubmitButton"] button:hover {
 /* البطاقات الاحترافية (Glassmorphism) */
 .card { 
     background: rgba(30, 41, 59, 0.95);
-    border: 1px solid rgba(255,255,  white, 0.08);
+    border: 1px solid rgba(255,255,255,0.08);
     border-radius: 20px; padding: 30px; margin-bottom: 20px; 
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); 
     border-top: 3px solid #2F6F7E;
@@ -115,7 +108,7 @@ div[data-testid="stFormSubmitButton"] button:hover {
 }
 
 /* الجداول */
-.stDataFrame { border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,  white, 0.1); background: #1E293B; }
+.stDataFrame { border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: #1E293B; }
 .stDataFrame th { background-color: #0F172A; color: #FFD700; font-weight: bold; }
 
 /* التبويبات */
@@ -133,7 +126,6 @@ div[data-testid="stFormSubmitButton"] button:hover {
 
 # ---------------- Google Sheets ----------------
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-# تأكد من إعداد المفاتيح في إعدادات Streamlit Secrets
 try:
     info = st.secrets["service_account"]
     credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
@@ -145,12 +137,10 @@ except Exception as e:
 STUDENTS_SHEET_ID = "1gvNkOVVKo6AO07dRKMnSQw6vZ3KdUnW7I4HBk61Sqns"
 MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
-# إضافة شيت الطلبات الجديد
 REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o"
 
 STUDENTS_RANGE = "Feuille 1!A1:L1000"
-# توسيع النطاق ليشمل الأعمدة S و T
-MEMOS_RANGE = "Feuille 1!A1:T1000" 
+MEMOS_RANGE = "Feuille 1!A1:T1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
 REQUESTS_RANGE = "Feuille 1!A1:K1000"
 
@@ -190,6 +180,247 @@ def validate_note_number(note_number):
     if not note_number: return False, "⚠️ رقم المذكرة فارغ"
     if len(note_number) > 20: return False, "⚠️ رقم المذكرة غير صالح"
     return True, note_number
+
+# ---------------- نظام الإشعارات ----------------
+class NotificationManager:
+    """مدير الإشعارات المخزنة في عمود 'ملاحظات الإدارة'"""
+    
+    @staticmethod
+    def generate_notification_id(message, recipient):
+        """إنشاء معرف فريد للإشعار"""
+        unique_string = f"{message}{recipient}{time.time()}"
+        return f"notif_{hashlib.md5(unique_string.encode()).hexdigest()[:10]}"
+    
+    @staticmethod
+    def format_notification(notification_type, sender, message, priority="normal"):
+        """تنسيق الإشعار كـ JSON"""
+        notification_id = NotificationManager.generate_notification_id(message, sender)
+        
+        notification = {
+            "id": notification_id,
+            "type": notification_type,  # alert, progress_update, request_update, system
+            "sender": sender,  # student, professor, admin, system
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "priority": priority,  # low, normal, high, urgent
+            "status": "unread"  # unread, read, archived
+        }
+        return json.dumps(notification, ensure_ascii=False)
+    
+    @staticmethod
+    def add_notification(memo_id, notification_type, sender, message, priority="normal", student_reg_numbers=None, professor_name=None):
+        """إضافة إشعار جديد لطلب مرتبط بمذكرة"""
+        try:
+            df_requests = load_requests()
+            request_rows = df_requests[df_requests["رقم المذكرة"].astype(str).str.strip() == str(memo_id).strip()]
+            
+            if request_rows.empty:
+                # إنشاء طلب جديد للإشعار
+                notification_json = NotificationManager.format_notification(notification_type, sender, message, priority)
+                
+                new_request = [
+                    f"NOTIF_{int(time.time())}",
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    "إشعار نظام",
+                    "مكتمل",
+                    professor_name or "",
+                    memo_id,
+                    student_reg_numbers[0] if student_reg_numbers and len(student_reg_numbers) > 0 else "",
+                    student_reg_numbers[1] if student_reg_numbers and len(student_reg_numbers) > 1 else "",
+                    "",  # العنوان الجديد
+                    message[:500],  # المبررات (جزء من الرسالة)
+                    notification_json  # ملاحظات الإدارة (JSON كامل)
+                ]
+                
+                body = {"values": [new_request]}
+                sheets_service.spreadsheets().values().append(
+                    spreadsheetId=REQUESTS_SHEET_ID,
+                    range="Feuille 1!A2",
+                    valueInputOption="USER_ENTERED",
+                    body=body,
+                    insertDataOption="INSERT_ROWS"
+                ).execute()
+                
+            else:
+                # تحديث الطلب الحالي بإضافة الإشعار
+                for idx, row in request_rows.iterrows():
+                    row_idx = idx + 2
+                    current_notes = str(row.get("ملاحظات الإدارة", "")).strip()
+                    
+                    notification_json = NotificationManager.format_notification(notification_type, sender, message, priority)
+                    
+                    if current_notes and current_notes.startswith("["):
+                        try:
+                            notes_list = json.loads(current_notes)
+                            if not isinstance(notes_list, list):
+                                notes_list = []
+                        except:
+                            notes_list = []
+                    else:
+                        notes_list = []
+                    
+                    notes_list.append(json.loads(notification_json))
+                    
+                    # تحديث الخلية
+                    sheets_service.spreadsheets().values().update(
+                        spreadsheetId=REQUESTS_SHEET_ID,
+                        range=f"Feuille 1!K{row_idx}",
+                        valueInputOption="USER_ENTERED",
+                        body={"values": [[json.dumps(notes_list, ensure_ascii=False)]]}
+                    ).execute()
+            
+            clear_cache_and_reload()
+            return True
+            
+        except Exception as e:
+            logger.error(f"خطأ في إضافة الإشعار: {str(e)}")
+            return False
+    
+    @staticmethod
+    def get_notifications_for_user(user_type, user_id):
+        """جلب الإشعارات الخاصة بمستخدم معين"""
+        try:
+            df_requests = load_requests()
+            user_notifications = []
+            
+            for _, row in df_requests.iterrows():
+                notes_json = str(row.get("ملاحظات الإدارة", "")).strip()
+                memo_id = str(row.get("رقم المذكرة", "")).strip()
+                
+                if not notes_json or not notes_json.startswith("["):
+                    continue
+                
+                try:
+                    notifications = json.loads(notes_json)
+                    if not isinstance(notifications, list):
+                        continue
+                    
+                    for notif in notifications:
+                        if not isinstance(notif, dict):
+                            continue
+                        
+                        # إضافة معلومات إضافية من الطلب
+                        notif["request_type"] = row.get("النوع", "")
+                        notif["request_status"] = row.get("الحالة", "")
+                        notif["request_time"] = row.get("الوقت", "")
+                        notif["memo_id"] = memo_id
+                        
+                        # إضافة للإشعارات العامة (بدون فلترة)
+                        user_notifications.append(notif)
+                            
+                except json.JSONDecodeError:
+                    continue
+            
+            # فلترة حسب نوع المستخدم
+            filtered_notifications = []
+            for notif in user_notifications:
+                if user_type == "student":
+                    # تحقق إذا كان الطالب هو صاحب المذكرة
+                    student1 = str(row.get("رقم تسجيل الطالب 1", "")).strip()
+                    student2 = str(row.get("رقم تسجيل الطالب 2", "")).strip()
+                    if student1 == user_id or student2 == user_id:
+                        filtered_notifications.append(notif)
+                elif user_type == "professor":
+                    # تحقق إذا كان الأستاذ هو المشرف
+                    prof = str(row.get("الأستاذ", "")).strip()
+                    if prof == user_id:
+                        filtered_notifications.append(notif)
+                elif user_type == "admin":
+                    # الإدارة ترى كل الإشعارات
+                    filtered_notifications.append(notif)
+            
+            # ترتيب حسب الوقت (الأحدث أولاً)
+            filtered_notifications.sort(
+                key=lambda x: x.get("timestamp", ""), 
+                reverse=True
+            )
+            
+            return filtered_notifications
+            
+        except Exception as e:
+            logger.error(f"خطأ في جلب الإشعارات: {str(e)}")
+            return []
+    
+    @staticmethod
+    def mark_notification_as_read(notification_id):
+        """تحديث حالة الإشعار إلى مقروء"""
+        try:
+            df_requests = load_requests()
+            updated = False
+            
+            for idx, row in df_requests.iterrows():
+                notes_json = str(row.get("ملاحظات الإدارة", "")).strip()
+                
+                if not notes_json or not notes_json.startswith("["):
+                    continue
+                
+                try:
+                    notifications = json.loads(notes_json)
+                    
+                    for i, notif in enumerate(notifications):
+                        if notif.get("id") == notification_id:
+                            notif["status"] = "read"
+                            updated = True
+                    
+                    if updated:
+                        row_idx = idx + 2
+                        sheets_service.spreadsheets().values().update(
+                            spreadsheetId=REQUESTS_SHEET_ID,
+                            range=f"Feuille 1!K{row_idx}",
+                            valueInputOption="USER_ENTERED",
+                            body={"values": [[json.dumps(notifications, ensure_ascii=False)]]}
+                        ).execute()
+                        clear_cache_and_reload()
+                        return True
+                        
+                except json.JSONDecodeError:
+                    continue
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"خطأ في تحديث حالة الإشعار: {str(e)}")
+            return False
+    
+    @staticmethod
+    def send_registration_notification(memo_id, student_reg_numbers, professor_name):
+        """إرسال إشعار تسجيل مذكرة"""
+        message = f"تم تسجيل مذكرة جديدة برقم {memo_id}"
+        return NotificationManager.add_notification(
+            memo_id=memo_id,
+            notification_type="system",
+            sender="system",
+            message=message,
+            priority="normal",
+            student_reg_numbers=student_reg_numbers,
+            professor_name=professor_name
+        )
+    
+    @staticmethod
+    def send_progress_notification(memo_id, old_progress, new_progress, professor_name):
+        """إرسال إشعار تحديث التقدم"""
+        message = f"تم تحديث تقدم المذكرة {memo_id} من {old_progress}% إلى {new_progress}%"
+        return NotificationManager.add_notification(
+            memo_id=memo_id,
+            notification_type="progress_update",
+            sender="professor",
+            message=message,
+            priority="normal",
+            professor_name=professor_name
+        )
+    
+    @staticmethod
+    def send_request_notification(memo_id, request_type, professor_name, details=""):
+        """إرسال إشعار طلب جديد"""
+        message = f"طلب جديد: {request_type} للمذكرة {memo_id}. {details[:100]}..."
+        return NotificationManager.add_notification(
+            memo_id=memo_id,
+            notification_type="request_update",
+            sender="professor",
+            message=message,
+            priority="high",
+            professor_name=professor_name
+        )
 
 # ---------------- تحميل البيانات ----------------
 @st.cache_data(ttl=60)
@@ -233,8 +464,24 @@ def load_requests():
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=REQUESTS_SHEET_ID, range=REQUESTS_RANGE).execute()
         values = result.get('values', [])
-        if not values: return pd.DataFrame()
-        df = pd.DataFrame(values[1:], columns=values[0])
+        expected_headers = [
+            "رقم الطلب", "الوقت", "النوع", "الحالة", "الأستاذ", 
+            "رقم المذكرة", "رقم تسجيل الطالب 1", "رقم تسجيل الطالب 2",
+            "العنوان الجديد", "المبررات", "ملاحظات الإدارة"
+        ]
+        
+        if not values:
+            return pd.DataFrame(columns=expected_headers)
+        
+        # التأكد من صحة العناوين
+        headers = values[0]
+        for i in range(len(expected_headers)):
+            if i >= len(headers):
+                headers.append(expected_headers[i])
+            elif headers[i] != expected_headers[i]:
+                headers[i] = expected_headers[i]
+        
+        df = pd.DataFrame(values[1:], columns=headers)
         return df
     except Exception as e:
         logger.error(f"خطأ في تحميل بيانات الطلبات: {str(e)}")
@@ -244,7 +491,7 @@ def clear_cache_and_reload():
     st.cache_data.clear()
     logger.info("تم مسح السجلات")
 
-# ---------------- الجديد: عملية الربط الآلي لـ S و T ----------------
+# ---------------- عملية الربط الآلي لـ S و T ----------------
 def sync_student_registration_numbers():
     try:
         st.info("⏳ جاري بدء عملية الربط...")
@@ -252,7 +499,6 @@ def sync_student_registration_numbers():
         df_m = load_memos()
         
         updates = []
-        # الأعمدة 19 و 20 هي S و T
         col_s_idx = 19
         col_t_idx = 20
         
@@ -285,7 +531,7 @@ def sync_student_registration_numbers():
             if not reg_s1 and len(matched_students) > 0:
                  reg_s1 = str(matched_students.iloc[0].get("رقم التسجيل", ""))
 
-            row_idx = index + 2 
+            row_idx = index + 2
             
             if reg_s1:
                 updates.append({"range": f"Feuille 1!S{row_idx}", "values": [[reg_s1]]})
@@ -303,21 +549,23 @@ def sync_student_registration_numbers():
         logger.error(f"Migration Error: {str(e)}")
         return False, f"❌ حدث خطأ: {str(e)}"
 
-# ---------------- الجديد: نظام الطلبات والشيت والايميل ----------------
+# ---------------- نظام الطلبات والشيت والايميل ----------------
 def save_and_send_request(req_type, prof_name, memo_id, memo_title, details_text):
     try:
         # 1. الحفظ في شيت الطلبات
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         new_row = [
-            "", timestamp, req_type, "قيد المراجعة", prof_name, memo_id, "", "", details_text, "", ""
+            f"REQ_{int(time.time())}", timestamp, req_type, "قيد المراجعة", prof_name, 
+            memo_id, "", "", "", details_text, ""
         ]
+        
         body_append = {"values": [new_row]}
         sheets_service.spreadsheets().values().append(
             spreadsheetId=REQUESTS_SHEET_ID, range="Feuille 1!A2",
             valueInputOption="USER_ENTERED", body=body_append, insertDataOption="INSERT_ROWS"
         ).execute()
         
-        # 2. إرسال الإيميل (كما هو مطلوب)
+        # 2. إرسال الإيميل
         request_titles = {
             "تغيير عنوان المذكرة": "طلب تغيير عنوان مذكرة",
             "حذف طالب": "طلب حذف طالب من مذكرة ثنائية",
@@ -343,32 +591,46 @@ def save_and_send_request(req_type, prof_name, memo_id, memo_title, details_text
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls(); server.login(EMAIL_SENDER, EMAIL_PASSWORD); server.send_message(msg)
             
-        return True, "✅ تم تسجيل الطلب في النظام وإرسال الإيميل للإدارة"
+        # 3. إرسال إشعار داخلي
+        NotificationManager.send_request_notification(memo_id, req_type, prof_name, details_text)
+        
+        return True, "✅ تم تسجيل الطلب في النظام وإرسال الإيميل والإشعار"
     except Exception as e:
         logger.error(f"Request Error: {str(e)}")
         return False, f"❌ حدث خطأ أثناء تسجيل الطلب: {str(e)}"
 
-# ---------------- تحديث نسبة التقدم ----------------
+# ---------------- تحديث نسبة التقدم مع الإشعار ----------------
 def update_progress(memo_number, progress_value):
     try:
         df_memos = load_memos()
         memo_row = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(memo_number).strip()]
         if memo_row.empty: return False, "❌ لم يتم العثور على المذكرة"
+        
+        # الحصول على التقدم القديم والأستاذ
+        old_progress = memo_row.iloc[0].get("نسبة التقدم", 0)
+        professor_name = memo_row.iloc[0].get("الأستاذ", "")
+        
         row_idx = memo_row.index[0] + 2
         sheets_service.spreadsheets().values().update(
-            spreadsheetId=MEMOS_SHEET_ID, range=f"Feuille 1!Q{row_idx}",
-            valueInputOption="USER_ENTERED", body={"values": [[str(progress_value)]]}
+            spreadsheetId=MEMOS_SHEET_ID,
+            range=f"Feuille 1!Q{row_idx}",
+            valueInputOption="USER_ENTERED",
+            body={"values": [[str(progress_value)]]}
         ).execute()
+        
         clear_cache_and_reload()
         logger.info(f"تم تحديث نسبة التقدم للمذكرة {memo_number} إلى {progress_value}%")
+        
+        # إرسال إشعار التقدم
+        NotificationManager.send_progress_notification(memo_number, old_progress, progress_value, professor_name)
+        
         return True, "✅ تم تحديث نسبة التقدم بنجاح"
     except Exception as e:
         logger.error(f"خطأ في تحديث نسبة التقدم: {str(e)}")
         return False, f"❌ خطأ: {str(e)}"
 
-# ---------------- إرسال طلب للإدارة (القديم للحفاظ على التوافق) ----------------
+# ---------------- إرسال طلب للإدارة ----------------
 def send_request_to_admin(prof_name, request_type, memo_number, details):
-    # هذه الدالة ستعتمد الآن على الدالة الجديدة المختلطة
     return save_and_send_request(request_type, prof_name, memo_number, "", details)
 
 # ---------------- إرسال البريد للأستاذ ----------------
@@ -459,7 +721,7 @@ def verify_professor_password(note_number, prof_password, df_memos, df_prof_memo
     if prof_row.empty: return False, None, "❌ كلمة سر المشرف غير صحيحة"
     return True, prof_row.iloc[0], None
 
-# ---------------- تحديث المذكرات ----------------
+# ---------------- تحديث المذكرات مع إشعارات ----------------
 def update_registration(note_number, student1, student2=None):
     try:
         df_memos = load_memos(); df_prof_memos = load_prof_memos(); df_students = load_students()
@@ -475,7 +737,6 @@ def update_registration(note_number, student1, student2=None):
         s1_lname = student1.get('لقب', student1.get('اللقب', ''))
         s1_fname = student1.get('إسم', student1.get('إسم', ''))
         
-        # التعامل مع اختلاف اسم العمود "اللقب/لقب" و "الإسم/إسم"
         updates = [
             {"range": f"Feuille 1!{col_letter(col_names.index('الطالب الأول')+1)}{prof_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
             {"range": f"Feuille 1!{col_letter(col_names.index('تم التسجيل')+1)}{prof_row_idx}", "values": [["نعم"]]},
@@ -492,7 +753,6 @@ def update_registration(note_number, student1, student2=None):
         memo_row_idx = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()].index[0] + 2
         memo_cols = df_memos.columns.tolist()
         
-        # إضافة منطق ربط أرقام التسجيل (S و T) للتسجيلات الجديدة
         reg1 = str(student1.get('رقم التسجيل', ''))
         reg2 = str(student2.get('رقم التسجيل', '')) if student2 else ""
         
@@ -500,13 +760,13 @@ def update_registration(note_number, student1, student2=None):
             {"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الأول')+1)}{memo_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
             {"range": f"Feuille 1!{col_letter(memo_cols.index('تم التسجيل')+1)}{memo_row_idx}", "values": [["نعم"]]},
             {"range": f"Feuille 1!{col_letter(memo_cols.index('تاريخ التسجيل')+1)}{memo_row_idx}", "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]},
-            {"range": f"Feuille 1!S{memo_row_idx}", "values": [[reg1]]} # العمود S
+            {"range": f"Feuille 1!S{memo_row_idx}", "values": [[reg1]]}
         ]
         if 'كلمة سر التسجيل' in memo_cols:
             updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('كلمة سر التسجيل')+1)}{memo_row_idx}", "values": [[used_prof_password]]})
         if student2 is not None:
             updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الثاني')+1)}{memo_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
-            updates2.append({"range": f"Feuille 1!T{memo_row_idx}", "values": [[reg2]]}) # العمود T
+            updates2.append({"range": f"Feuille 1!T{memo_row_idx}", "values": [[reg2]]})
             
         sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates2}).execute()
 
@@ -526,10 +786,15 @@ def update_registration(note_number, student1, student2=None):
             st.session_state.student2 = df_students_updated[df_students_updated["اسم المستخدم"].astype(str).str.strip() == student2['اسم المستخدم'].strip()].iloc[0]
         
         memo_data = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()].iloc[0]
-        prof_name = memo_data["الأستاذ"].strip()
         prof_memo_data = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name].iloc[0]
         prof_email = str(prof_memo_data.get("البريد الإلكتروني", "")).strip()
         if prof_email and "@" in prof_email: send_email_to_professor(prof_email, prof_name, memo_data, st.session_state.student1, st.session_state.student2 if student2 else None)
+        
+        # إرسال إشعار التسجيل
+        student_reg_numbers = [str(student1.get('رقم التسجيل', ''))]
+        if student2:
+            student_reg_numbers.append(str(student2.get('رقم التسجيل', '')))
+        NotificationManager.send_registration_notification(note_number, student_reg_numbers, prof_name)
         
         return True, "✅ تم تسجيل المذكرة بنجاح!"
     except Exception as e:
@@ -550,7 +815,7 @@ def logout():
     st.session_state.update({
         'logged_in': False, 'student1': None, 'student2': None, 'professor': None,
         'admin_user': None, 'mode': "register", 'note_number': "", 'prof_password': "", 'show_confirmation': False,
-        'user_type': None  # إعادة تعيين لنوع المستخدم للعودة للقائمة الرئيسية
+        'user_type': None
     })
     st.rerun()
 
@@ -596,7 +861,7 @@ if st.session_state.user_type is None:
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
-# فضاء الطلبة (تم التعديل لإضافة التبويبات)
+# فضاء الطلبة مع تبويب الإشعارات
 # ============================================================
 elif st.session_state.user_type == "student":
     if not st.session_state.logged_in:
@@ -677,8 +942,8 @@ elif st.session_state.user_type == "student":
         st.markdown(f'<div class="card"><h3>ملف الطالب</h3><p>الطالب الأول: <b style="color:#2F6F7E;">{s1["لقب"] if "لقب" in s1 else s1["اللقب"]} {s1["الإسم"] if "الإسم" in s1 else s1["إسم"]}</b></p><p>التخصص: <b>{s1["التخصص"]}</b></p></div>', unsafe_allow_html=True)
         if s2 is not None: st.markdown(f'<div class="card"><p>الطالب الثاني: <b style="color:#2F6F7E;">{s2["لقب"] if "لقب" in s2 else s2["اللقب"]} {s2["الإسم"] if "الإسم" in s2 else s2["إسم"]}</b></p></div>', unsafe_allow_html=True)
 
-        # تبويبات الطالب (جديد)
-        tab_memo, tab_notify = st.tabs(["مذكرتي", "الإشعارات والطلبات"])
+        # تبويبات الطالب
+        tab_memo, tab_notifications = st.tabs(["مذكرتي", "الإشعارات"])
 
         with tab_memo:
             if st.session_state.mode == "view":
@@ -713,7 +978,7 @@ elif st.session_state.user_type == "student":
                             (df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()) &
                             (df_memos["التخصص"].astype(str).str.strip() == student_specialty.strip()) &
                             (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")
-                        ][["رقم المذكرة", "عنوان المذكرة"]]
+                         ][["رقم المذكرة", "عنوان المذكرة"]]
                         
                         if not avail_memos.empty:
                             st.success(f'✅ المذكرات المتاحة في تخصصك ({student_specialty}):')
@@ -746,36 +1011,142 @@ elif st.session_state.user_type == "student":
                     with col2:
                         if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
 
-        with tab_notify:
-            st.subheader("تنبيهات خاصة بك")
-            my_memo_id = str(s1.get('رقم المذكرة', '')).strip()
-            if my_memo_id:
-                my_reqs = df_requests[df_requests["رقم المذكرة"].astype(str).str.strip() == my_memo_id]
-                if not my_reqs.empty:
-                    for _, r in my_reqs.iterrows():
-                        req_type = r['نوع الطلب']
-                        details = str(r.get('العنوان الجديد', r.get('المبررات', ''))).strip()
+        with tab_notifications:
+            st.subheader("📢 الإشعارات")
+            
+            if st.session_state.logged_in and st.session_state.student1:
+                student_reg = str(st.session_state.student1.get("رقم التسجيل", "")).strip()
+                
+                if student_reg:
+                    # زر تحديث الإشعارات
+                    col1, col2 = st.columns([3, 1])
+                    with col2:
+                        if st.button("🔄 تحديث", key="refresh_notifs"):
+                            st.cache_data.clear()
+                            st.rerun()
+                    
+                    # جلب الإشعارات
+                    student_notifications = NotificationManager.get_notifications_for_user("student", student_reg)
+                    
+                    if student_notifications:
+                        # إحصائيات سريعة
+                        unread_count = sum(1 for n in student_notifications if n.get("status") == "unread")
+                        st.info(f"📬 لديك {len(student_notifications)} إشعار ({unread_count} غير مقروء)")
                         
-                        # القواعد: إخفاء المبررات في حذف طالب والتنازل
-                        show_details = True
-                        if req_type in ["حذف طالب", "تنازل"]:
-                            show_details = False
-
-                        st.markdown(f"""
-                        <div class='card' style='border-right: 4px solid #F59E0B; padding: 20px;'>
-                            <h4>{req_type}</h4>
-                            <p>التاريخ: {r['الوقت']}</p>
-                            <p>الحالة: <b>{r['الحالة']}</b></p>
-                            {'<p>التفاصيل: ' + details + '</p>' if show_details else '<p><i>التفاصيل مخفية</i></p>'}
+                        # فلترة الإشعارات
+                        filter_col1, filter_col2, filter_col3 = st.columns(3)
+                        with filter_col1:
+                            filter_status = st.selectbox("الحالة:", ["الكل", "غير المقروء", "المقروء"], key="notif_filter")
+                        
+                        with filter_col2:
+                            filter_type = st.selectbox("النوع:", ["الكل", "تنبيه", "تحديث تقدم", "طلب", "نظام"], key="type_filter")
+                        
+                        with filter_col3:
+                            filter_priority = st.selectbox("الأولوية:", ["الكل", "عادي", "عالي", "عاجل"], key="priority_filter")
+                        
+                        # تطبيق الفلاتر
+                        filtered_notifs = student_notifications
+                        
+                        if filter_status != "الكل":
+                            status_map = {"غير المقروء": "unread", "المقروء": "read"}
+                            filtered_notifs = [n for n in filtered_notifs if n.get("status") == status_map.get(filter_status)]
+                        
+                        if filter_type != "الكل":
+                            type_map = {"تنبيه": "alert", "تحديث تقدم": "progress_update", "طلب": "request_update", "نظام": "system"}
+                            filtered_notifs = [n for n in filtered_notifs if n.get("type") == type_map.get(filter_type)]
+                        
+                        if filter_priority != "الكل":
+                            priority_map = {"عادي": "normal", "عالي": "high", "عاجل": "urgent"}
+                            filtered_notifs = [n for n in filtered_notifs if n.get("priority") == priority_map.get(filter_priority)]
+                        
+                        # عرض الإشعارات
+                        for notif in filtered_notifs:
+                            # تخصيص الألوان حسب الأولوية
+                            priority_colors = {
+                                "low": "#64748B",
+                                "normal": "#3B82F6",
+                                "high": "#F59E0B",
+                                "urgent": "#EF4444"
+                            }
+                            
+                            status_colors = {
+                                "unread": "#FFD700",
+                                "read": "#94A3B8",
+                                "archived": "#475569"
+                            }
+                            
+                            border_color = priority_colors.get(notif.get("priority", "normal"), "#3B82F6")
+                            status_color = status_colors.get(notif.get("status", "unread"), "#94A3B8")
+                            
+                            # تحويل الوقت
+                            time_str = ""
+                            try:
+                                dt = datetime.fromisoformat(notif.get("timestamp", ""))
+                                time_str = dt.strftime("%Y-%m-%d %H:%M")
+                            except:
+                                time_str = notif.get("timestamp", "")
+                            
+                            # إنشاء بطاقة الإشعار
+                            with st.container():
+                                st.markdown(f"""
+                                <div style='
+                                    border-right: 4px solid {border_color};
+                                    border-left: 2px solid {status_color};
+                                    padding: 15px;
+                                    margin: 10px 0;
+                                    background-color: #1e293b;
+                                    border-radius: 8px;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                '>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <h4 style="margin: 0; color: #f8fafc;">{notif.get('type', 'إشعار')}</h4>
+                                        <span style="font-size: 0.8em; color: #94a3b8;">{time_str}</span>
+                                    </div>
+                                    <p style="margin: 10px 0; color: #e2e8f0;">{notif.get('message', '')}</p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 0.8em; color: #cbd5e1;">
+                                            من: {notif.get('sender', 'النظام')} | 
+                                            الأولوية: {notif.get('priority', 'عادي')}
+                                        </span>
+                                        <span style="font-size: 0.8em; padding: 2px 8px; border-radius: 12px; 
+                                                background-color: {status_color}20; color: {status_color};">
+                                            {notif.get('status', 'unread')}
+                                        </span>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # أزرار الإجراءات
+                                col_a, col_b = st.columns(2)
+                                
+                                with col_a:
+                                    if notif.get("status") == "unread":
+                                        if st.button("✅ مقروء", key=f"read_{notif.get('id')}", use_container_width=True):
+                                            if NotificationManager.mark_notification_as_read(notif.get("id")):
+                                                st.success("تم تحديد الإشعار كمقروء")
+                                                time.sleep(1)
+                                                st.rerun()
+                                
+                                with col_b:
+                                    if st.button("🗑️ حذف", key=f"delete_{notif.get('id')}", use_container_width=True):
+                                        st.info("ميزة الحذف قيد التطوير")
+                                
+                                st.markdown("---")
+                    else:
+                        st.success("🎉 لا توجد إشعارات جديدة!")
+                        st.markdown("""
+                        <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <h3>📭 صندوق الوارد فارغ</h3>
+                            <p>جميع إشعاراتك محدثة وتمت قراءتها</p>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.info("لا توجد إشعارات جديدة.")
+                    st.warning("⚠️ لا يوجد رقم تسجيل للطالب")
             else:
-                st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
+                st.info("👈 يرجى تسجيل الدخول أولاً")
 
 # ============================================================
-# فضاء الأساتذة (تم التعديل لإصلاح الخطأ وإضافة المميزات)
+# فضاء الأساتذة مع تبويب الإشعارات
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
@@ -830,9 +1201,9 @@ elif st.session_state.user_type == "professor":
         if is_exhausted:
             st.markdown('<div class="alert-card">لقد استنفذت العناوين الأربعة المخصصة لك.</div>', unsafe_allow_html=True)
         
-        # --- Tabs ---
-        tab1, tab2, tab3 = st.tabs(["المذكرات المسجلة", "كلمات السر", "المذكرات المتاحة/المقترحة"])
-        
+        # تبويبات الأساتذة
+        tab1, tab2, tab3, tab4 = st.tabs(["المذكرات المسجلة", "كلمات السر", "المذكرات المتاحة/المقترحة", "الإشعارات"])
+
         with tab1:
             st.subheader("المذكرات المسجلة")
             registered_memos = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
@@ -848,10 +1219,9 @@ elif st.session_state.user_type == "professor":
                         student1_name = memo.get('الطالب الأول', '--')
                         student2_name = memo.get('الطالب الثاني', '')
                         
-                        # --- عرض الإيميلات عبر الربط الجديد (أعمدة S و T) ---
                         students_display = f"<p><b>الطالب الأول:</b> {student1_name}</p>"
                         
-                        # محاولة جلب رقم التسجيل من العمود S (رقم 19)
+                        # محاولة جلب أرقام التسجيل
                         reg1 = str(memo.get('رقم تسجيل الطالب 1', '')).strip()
                         reg2 = str(memo.get('رقم تسجيل الطالب 2', '')).strip()
 
@@ -868,37 +1238,6 @@ elif st.session_state.user_type == "professor":
                                 student2_email = s2_data.iloc[0].get("البريد الإلكتروني", "")
                                 if student2_email:
                                     students_display += f"<p style='color:#94A3B8; font-size:0.9em;'>📧 {student2_email}</p>"
-                        
-                        # --- (احتياطي): إذا لم يتم الربط بعد، نستخدم الاسم ---
-                        if not reg1 and student1_name != '--':
-                             s_parts = student1_name.strip().split(' ', 1)
-                             if len(s_parts) == 2:
-                                 s1_lname, s1_fname = s_parts[0], s_parts[1]
-                                 col_lname = "لقب" if "لقب" in df_students.columns else ("اللقب" if "اللقب" in df_students.columns else None)
-                                 col_fname = "إسم" if "إسم" in df_students.columns else ("إسم" if "إسم" in df_students.columns else None)
-                                 if col_lname and col_fname:
-                                     s1_data = df_students[(df_students[col_lname].astype(str).str.strip() == s1_lname) & (df_students[col_fname].astype(str).str.strip() == s1_fname)]
-                                     if not s1_data.empty:
-                                         email_col = "البريد الإلكتروني" if "البريد الإلكتروني" in s1_data.columns else ("Email" if "Email" in s1_data.columns else None)
-                                         if email_col:
-                                             student1_email = s1_data.iloc[0].get(email_col, "").strip()
-                                             if student1_email:
-                                                 students_display += f"<p style='color:#94A3B8; font-size:0.9em;'>📧 {student1_email}</p>"
-
-                        if student2_name and not reg2:
-                             s2_parts = student2_name.strip().split(' ', 1)
-                             if len(s2_parts) == 2:
-                                 s2_lname, s2_fname = s2_parts[0], s2_parts[1]
-                                 col_lname = "لقب" if "لقب" in df_students.columns else ("اللقب" if "اللقب" in df_students.columns else None)
-                                 col_fname = "إسم" if "إسم" in df_students.columns else ("إسم" if "إسم" in df_students.columns else None)
-                                 if col_lname and col_fname:
-                                     s2_data = df_students[(df_students[col_lname].astype(str).str.strip() == s2_lname) & (df_students[col_fname].astype(str).str.strip() == s2_fname)]
-                                     if not s2_data.empty:
-                                         email_col = "البريد الإلكتروني" if "البريد الإلكتروني" in s2_data.columns else ("Email" if "Email" in s2_data.columns else None)
-                                         if email_col:
-                                             student2_email = s2_data.iloc[0].get(email_col, "").strip()
-                                             if student2_email:
-                                                 students_display += f"<p style='color:#94A3B8; font-size:0.9em;'>📧 {student2_email}</p>"
                         
                         st.markdown(f'''
                         <div class="card" style="border-right: 5px solid #10B981;">
@@ -925,7 +1264,6 @@ elif st.session_state.user_type == "professor":
                             st.markdown("---")
                             st.markdown("📨 إرسال طلب جديد")
                             
-                            # نظام الطلبات المطور
                             req_op = st.selectbox("نوع الطلب:", ["", "تغيير عنوان المذكرة", "حذف طالب (ثنائية)", "إضافة طالب (فردية)", "تنازل عن الإشراف"], key=f"req_{memo['رقم المذكرة']}")
                             
                             details_to_save = ""
@@ -968,7 +1306,6 @@ elif st.session_state.user_type == "professor":
                                     if just: details_to_save = f"التنازل عن الإشراف. المبررات: {just}"
                                     else: validation_error = "الرجاء كتابة المبررات"
 
-                            # تنفيذ الطلب
                             if validation_error:
                                 st.error(validation_error)
                             elif details_to_save:
@@ -1014,6 +1351,121 @@ elif st.session_state.user_type == "professor":
                     </div>
                     ''', unsafe_allow_html=True)
             else: st.success("✅ جميع المذكرات مسجلة أو مقترحة!")
+
+        with tab4:
+            st.subheader("📢 إشعارات الأستاذ")
+            
+            if st.session_state.logged_in and st.session_state.professor:
+                prof_name = st.session_state.professor["الأستاذ"]
+                
+                col1, col2 = st.columns([3, 1])
+                with col2:
+                    if st.button("🔄 تحديث", key="prof_refresh_notifs"):
+                        st.cache_data.clear()
+                        st.rerun()
+                
+                # جلب إشعارات الأستاذ
+                prof_notifications = NotificationManager.get_notifications_for_user("professor", prof_name)
+                
+                if prof_notifications:
+                    unread_count = sum(1 for n in prof_notifications if n.get("status") == "unread")
+                    st.metric("الإشعارات غير المقروءة", unread_count, delta=None if unread_count == 0 else f"+{unread_count}")
+                    
+                    # فلترة الإشعارات
+                    filter_col1, filter_col2, filter_col3 = st.columns(3)
+                    with filter_col1:
+                        filter_status = st.selectbox("الحالة:", ["الكل", "غير المقروء", "المقروء"], key="prof_notif_filter")
+                    
+                    with filter_col2:
+                        filter_type = st.selectbox("النوع:", ["الكل", "تنبيه", "تحديث تقدم", "طلب", "نظام"], key="prof_type_filter")
+                    
+                    with filter_col3:
+                        filter_priority = st.selectbox("الأولوية:", ["الكل", "عادي", "عالي", "عاجل"], key="prof_priority_filter")
+                    
+                    # تطبيق الفلاتر
+                    filtered_notifs = prof_notifications
+                    
+                    if filter_status != "الكل":
+                        status_map = {"غير المقروء": "unread", "المقروء": "read"}
+                        filtered_notifs = [n for n in filtered_notifs if n.get("status") == status_map.get(filter_status)]
+                    
+                    if filter_type != "الكل":
+                        type_map = {"تنبيه": "alert", "تحديث تقدم": "progress_update", "طلب": "request_update", "نظام": "system"}
+                        filtered_notifs = [n for n in filtered_notifs if n.get("type") == type_map.get(filter_type)]
+                    
+                    if filter_priority != "الكل":
+                        priority_map = {"عادي": "normal", "عالي": "high", "عاجل": "urgent"}
+                        filtered_notifs = [n for n in filtered_notifs if n.get("priority") == priority_map.get(filter_priority)]
+                    
+                    # عرض الإشعارات
+                    for notif in filtered_notifs:
+                        priority_colors = {
+                            "low": "#64748B",
+                            "normal": "#3B82F6",
+                            "high": "#F59E0B",
+                            "urgent": "#EF4444"
+                        }
+                        
+                        border_color = priority_colors.get(notif.get("priority", "normal"), "#3B82F6")
+                        
+                        time_str = ""
+                        try:
+                            dt = datetime.fromisoformat(notif.get("timestamp", ""))
+                            time_str = dt.strftime("%Y-%m-%d %H:%M")
+                        except:
+                            time_str = notif.get("timestamp", "")
+                        
+                        with st.container():
+                            st.markdown(f"""
+                            <div style='
+                                border-right: 4px solid {border_color};
+                                padding: 15px;
+                                margin: 10px 0;
+                                background-color: #1e293b;
+                                border-radius: 8px;
+                            '>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <h4 style="margin: 0; color: #f8fafc;">{notif.get('type', 'إشعار')}</h4>
+                                    <span style="font-size: 0.8em; color: #94a3b8;">{time_str}</span>
+                                </div>
+                                <p style="margin: 10px 0; color: #e2e8f0;">{notif.get('message', '')}</p>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 0.8em; color: #cbd5e1;">
+                                        من: {notif.get('sender', 'النظام')} | 
+                                        الأولوية: {notif.get('priority', 'عادي')} |
+                                        المذكرة: {notif.get('memo_id', '')}
+                                    </span>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            col_a, col_b = st.columns(2)
+                            
+                            with col_a:
+                                if notif.get("status") == "unread":
+                                    if st.button("✅ مقروء", key=f"prof_read_{notif.get('id')}", use_container_width=True):
+                                        if NotificationManager.mark_notification_as_read(notif.get("id")):
+                                            st.success("تم تحديد الإشعار كمقروء")
+                                            time.sleep(1)
+                                            st.rerun()
+                            
+                            with col_b:
+                                if st.button("📝 تفاصيل", key=f"prof_details_{notif.get('id')}", use_container_width=True):
+                                    memo_id = notif.get("memo_id")
+                                    if memo_id:
+                                        st.info(f"عرض تفاصيل المذكرة: {memo_id}")
+                            
+                            st.markdown("---")
+                else:
+                    st.success("🎉 لا توجد إشعارات جديدة!")
+                    st.markdown("""
+                    <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <h3>📭 صندوق الوارد فارغ</h3>
+                        <p>جميع إشعاراتك محدثة وتمت قراءتها</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("👈 يرجى تسجيل الدخول أولاً")
 
 # ============================================================
 # فضاء الإدارة
@@ -1081,9 +1533,8 @@ elif st.session_state.user_type == "admin":
         ''', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # إضافة تبويب الطلبات
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["المذكرات", "الطلاب", "الأساتذة", "تقارير", "تحديث", "إدارة الطلبات"])
-        
+
         with tab1:
             st.subheader("جدول المذكرات")
             f_status = st.selectbox("تصفية:", ["الكل", "مسجلة", "متاحة"])
@@ -1101,7 +1552,6 @@ elif st.session_state.user_type == "admin":
             q = st.text_input("بحث (لقب/الاسم):")
             if q:
                 f_st = df_students[df_students["لقب"].astype(str).str.contains(q, case=False, na=False) | df_students["الإسم"].astype(str).str.contains(q, case=False, na=False)]
-                # استخدام try-except للبحث أيضاً في حال اختلاف الأعمدة
                 if "اللقب" in df_students.columns:
                      f_st = df_students[df_students["اللقب"].astype(str).str.contains(q, case=False, na=False) | df_students["الإسم"].astype(str).str.contains(q, case=False, na=False)]
                 st.dataframe(f_st, use_container_width=True, height=400)
