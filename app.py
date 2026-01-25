@@ -8,8 +8,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
-import textwrap # استيرداد textwrap لضمان تنسيق الكود
-import textwrap # استدعاد textwrap لضمان تنسيق الكود
+import textwrap 
 
 # ---------------- إعداد Logging ----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,7 +23,7 @@ st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 
 <style>
-* { box-sizing: border-box; } /* تصحيح حسابات المشو */
+* { box-sizing: border-box; }
 
 html, body, [class*="css"] { 
     font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right; 
@@ -64,7 +63,7 @@ label, p, span { color: #E2E8F0; }
     background: linear-gradient(145deg, #1E293B, #0F172A); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 2.5rem 1rem;
     text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); position: relative; overflow: hidden;
 }
-.kpi-value { font-size: 2.5rem; font-weight: 900; color: #FFD700; margin: 15px 0; line-height: 1.2; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }
+.kpi-value { font-size: 2.5rem; font-weight: 900; color: #FFD700; margin: 15px 0; }
 .kpi-label { font-size: 1.2rem; color: #94A3B8; font-weight: 600; margin-top: 10px; }
 
 /* التنبيهات */
@@ -96,6 +95,7 @@ label, p, span { color: #E2E8F0; }
     background: rgba(47, 111, 126, 0.2); color: #FFD700; border: 1px solid #2F6F7E; font-weight: bold; box-shadow: 0 0 15px rgba(47, 111, 126, 0.2);
 }
 
+/* تصميم زر الاختيار */
 .btn-select {
     margin-top: 10px; background-color: transparent !important;
     border: 1px dashed #2F6F7E !important; color: #94A3B8 !important; padding: 8px !important; font-size: 14px !important;
@@ -106,19 +106,19 @@ label, p, span { color: #E2E8F0; }
    تصميم العرض الكامل (Fixed Layout) 
    ======================= */
 .full-view-container {
-    max-width: 1000px; /* تحديد عرض أقصى صارم */
-    margin: 0 auto;   /* توسيط المحتوى */
+    max-width: 1000px;
+    margin: 0 auto;   
     padding: 40px;
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(15,23, 42, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 24px;
-    box-shadow: 0 0 40px rgba(0,0,0, 0.6);
-    overflow: hidden; /* لضمان بقاء المحتوى داخل الحاوية */
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
 }
 
 .students-grid {
     display: flex;
-    justify-content: center; /* توسيط البطاقات */
+    justify-content: center; 
     gap: 40px;
     flex-wrap: wrap;
     margin-top: 20px;
@@ -127,7 +127,7 @@ label, p, span { color: #E2E8F0; }
 
 .student-card {
     flex: 1;
-    max-width: 450px; /* منع التمدد الأفقي */
+    max-width: 450px; 
     min-width: 300px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -217,27 +217,37 @@ def get_student_info_from_memo(memo_row, df_students):
     if not s1_email and student1_name != '--':
         parts = student1_name.strip().split(' ', 1)
         if len(parts) == 2:
-            col_l = "لقب" if "لقب" in df_students.columns else ("اللقب" if "اللقب" in df_students.columns else None)
+            col_l = "لقب" if "لقب" in df_students.columns else ("اللقب" if "لقب" in df_students.columns else None)
             col_f = "إسم" if "إسم" in df_students.columns else ("إسم" if "إسم" in df_students.columns else None)
             if col_l and col_f:
                 s_data = df_students[(df_students[col_l].astype(str).str.strip() == parts[0]) & (df_students[col_f].astype(str).str.strip() == parts[1])]
                 if not s_data.empty:
                     s1_email = s_data.iloc[0].get("البريد الإلكتروني", "")
                     s1_reg_display = s_data.iloc[0].get("رقم التسجيل", "")
+    if not s1_email and student1_name != '--':
+        parts = student1_name.strip().split(' ', 1)
+        if len(parts) == 2:
+            col_l = "لقب" if "لقب" in df_students.columns else ("اللقب" if "لقب" in df_students.columns else None)
+            col_f = "إسم" if "إسم" in df_students.columns else ("إسم" if "إسم" in df_students.columns else None)
+            if col_l and col_f:
+                s_data = df_students[(df_students[col_l].astype(str).str.strip() == parts[0]) & (df_students[col_f].astype(str).str.strip() == parts[1])]
+                if not s_data.empty:
+                    s1_email = s_data.iloc[0].get("البريد الإلكتروني", "")
+                    s1_reg_display = s_data.iloc[0].get("رقم التسجيل", "")
+
     if student2_name and reg2:
         s_data = df_students[df_students["رقم التسجيل"].astype(str).str.strip() == reg2]
         if not s_data.empty: s2_email = s_data.iloc[0].get("البريد الإلكتروني", "")
     if student2_name and not s2_email:
         parts = student2_name.strip().split(' ', 1)
         if len(parts) == 2:
-            col_l = "لقب" if "لقب" in df_students.columns else ("اللقب" if "اللقب" in df_students.columns else None)
+            col_l = "لقب" if "لقب" in df_students.columns else ("اللقب" if "لقب" in df_students.columns else None)
             col_f = "إسم" if "إسم" in df_students.columns else ("إسم" if "إسم" in df_students.columns else None)
             if col_l and col_f:
                 s_data = df_students[(df_students[col_l].astype(str).str.strip() == parts[0]) & (df_students[col_f].astype(str).str.strip() == parts[1])]
                 if not s_data.empty:
                     s2_email = s_data.iloc[0].get("البريد الإلكتروني", "")
                     s2_reg_display = s_data.iloc[0].get("رقم التسجيل", "")
-
     return {
         "s1_name": student1_name, "s1_email": s1_email, "s1_reg": s1_reg_display or reg1,
         "s2_name": student2_name, "s2_email": s2_email, "s2_reg": s2_reg_display or reg2
@@ -255,7 +265,7 @@ def load_students():
         logger.error(f"خطأ في تحميل بيانات الطلاب: {str(e)}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttil=60)
 def load_memos():
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=MEMOS_SHEET_ID, range=MEMOS_RANGE).execute()
@@ -267,7 +277,7 @@ def load_memos():
         logger.error(f"خطأ في تحميل بيانات المذكرات: {str(e)}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttil=60)
 def load_prof_memos():
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=PROF_MEMOS_SHEET_ID, range=PROF_MEMOS_RANGE).execute()
@@ -279,7 +289,7 @@ def load_prof_memos():
         logger.error(f"خطأ في تحميل بيانات مذكرات الأساتذة: {str(e)}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttil=60)
 def load_requests():
     try:
         result = sheets_service.spreadsheets().values().get(spreadsheetId=REQUESTS_SHEET_ID, range=REQUESTS_RANGE).execute()
@@ -311,12 +321,13 @@ def sync_student_registration_numbers():
             s2_name = str(row.get("الطالب الثاني", "")).strip()
             reg_s1 = ""; reg_s2 = ""
             for _, s_row in matched_students.iterrows():
-                lname = s_row.get('لقب', s_row.get('لقب', ''))
+                lname = s_row.get('لقب', s_row.get('اللقب', ''))
                 fname = s_row.get('إسم', s_row.get('إسم', ''))
                 full_name = f"{lname} {fname}".strip()
                 if full_name == s1_name: reg_s1 = str(s_row.get("رقم التسجيل", ""))
                 elif s2_name and full_name == s2_name: reg_s2 = str(s_row.get("رقم التسجيل", ""))
             if not reg_s1 and len(matched_students) > 0: reg_s1 = str(matched_students.iloc[0].get("رقم التسجيل", ""))
+            if not reg_s2 and len(matched_students) > 0: reg_s2 = str(matched_students.iloc[0].get("رقم التسجيل", ""))
             row_idx = index + 2 
             if reg_s1: updates.append({"range": f"Feuille 1!S{row_idx}", "values": [[reg_s1]]})
             if reg_s2: updates.append({"range": f"Feuille 1!T{row_idx}", "values": [[reg_s2]]})
@@ -371,7 +382,7 @@ def update_progress(memo_number, progress_value):
 def send_email_to_professor(prof_email, prof_name, memo_info, student1, student2=None):
     try:
         if student2 is not None:
-            student2_info = f"<p><strong>الطالب الثاني:</strong> {student2['لقب'] if 'لقب' in student2 else student2.get('لقب','')} {student2['إسم'] if 'الإسم' in student2 else student2.get('إسم','')} {student2['الإسم'] if 'الإسم' in student2 else student2.get('إسم','')}</p>" 
+            student2_info = f"<p><strong>الطالب الثاني:</strong> {student2['لقب'] if 'لقب' in student2 else student2.get('لقب','')} {student2['الإسم'] if 'الإسم' in student2 else student2.get('إسم','')} {student2['الإسم'] if 'الإسم' in student2 else student2.get('إسم','')} {student2['الإسم'] if 'الإسم' in student2 else student2.get('إسم','')}</p>" 
         else: student2_info = ""
         email_body = f"<html dir='rtl'><body style='font-family:sans-serif; padding:20px;'><div style='background:#fff; padding:30px; border-radius:10px; max-width:600px; margin:auto; color:#333;'><h2 style='background:#2F6F7E; color:white; padding:20px; border-radius:8px; text-align:center;'>تسجيل مذكرة جديدة</h2><p>الأستاذ(ة) <strong>{prof_name}</strong>،</p><div style='background:#f8f9fa; padding:15px; border-right:4px solid #2F6F7E; margin:15px 0; border-radius: 8px;'><p><strong>رقم المذكرة:</strong> {memo_info['رقم المذكرة']}</p><p><strong>عنوان المذكرة:</strong> {memo_info['عنوان المذكرة']}</p><p><strong>الطالب الأول:</strong> {student1['لقب'] if 'لقب' in student1 else student1.get('لقب','')} {student1['إسم'] if 'الإسم' in student1 else student1.get('إسم','')} {student1['الإسم'] if 'الإسم' in student1 else student1.get('إسم','')}</p>{student2_info}</div></div></body></html>"
         msg = MIMEMultipart('alternative')
@@ -524,8 +535,10 @@ elif st.session_state.user_type == "student":
         col1, col2 = st.columns([4, 1])
         with col2:
             if st.button("رجوع", key="back_student"): st.session_state.user_type = None; st.rerun()
+        
         st.markdown("<h2>فضاء الطلبة</h2>", unsafe_allow_html=True)
         st.session_state.memo_type = st.radio("اختر نوع المذكرة:", ["فردية", "ثنائية"], horizontal=True)
+        
         with st.form("student_login_form"):
             username1 = st.text_input("اسم المستخدم الطالب الأول")
             password1 = st.text_input("كلمة السر الطالب الأول", type="password")
@@ -548,17 +561,19 @@ elif st.session_state.user_type == "student":
                 else:
                     verified_students = result
                     if not verified_students: st.error("حدث خطأ غير متوقع في التحقق من البيانات"); st.stop()
+                    
                     st.session_state.student1 = verified_students[0]
                     st.session_state.student2 = verified_students[1] if len(verified_students) > 1 else None
+                    
                     if st.session_state.memo_type == "ثنائية" and st.session_state.student2 is not None:
                         s1_note = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
                         s2_note = str(st.session_state.student2.get('رقم المذكرة', '')).strip()
                         s1_spec = str(st.session_state.student1.get('التخصص', '')).strip()
-                        s2_spec = str(st.session_state.student2.get('التخصص', '')).strip()
+                        s2_spec = str(st.session_state.student2.get('تخصص', '')).strip()
                         
                         if s1_spec != s2_spec: st.error("❌ لا يمكن التسجيل الثنائي. الطالبان في تخصصين مختلفين"); st.session_state.logged_in=False; st.stop()
                         if (s1_note and not s2_note) or (not s1_note and s2_note): st.error("❌ أحد الطالبين مسجل مسبقاً"); st.session_state.logged_in=False; st.stop()
-                        if (s1_note and s2_note and s1_note != s2_note: st.error(f"❌ الطالبان مسجلان في مذكرتين مختلفتين"); st.session_state.logged_in=False; st.stop()
+                        if s1_note and s2_note and s1_note != s2_note: st.error(f"❌ الطالبان مسجلان في مذكرتين مختلفتين"); st.session_state.logged_in=False; st.stop()
                         if s1_note and s2_note and s1_note == s2_note: st.session_state.mode = "view"; st.session_state.logged_in = True; st.rerun()
                     if st.session_state.memo_type == "فردية":
                         fardiya_val = str(st.session_state.student1.get('فردية', '')).strip()
@@ -566,16 +581,18 @@ elif st.session_state.user_type == "student":
                     note_num = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
                     st.session_state.mode = "view" if note_num else "register"
                     st.session_state.logged_in = True; st.rerun()
+
     else:
         s1 = st.session_state.student1; s2 = st.session_state.student2
         col1, col2 = st.columns([4, 1])
         with col2:
             if st.button("خروج", key="logout_btn"): logout()
         
-        st.markdown(f'<div class="card"><h3>ملف الطالب</h3><p>الطالب الأول: <b style="color:#2F6F7E;">{s1["لقب"] if "لقب" in s1 else s1["اللقب"]} {s1["الإسم"] if "الإسم" in s1 else s1["الإسم"]}</b></p><p>التخصص: <b>{s1["التخصص"]}</b></p></div>', unsafe_allow_html=True)
-        if s2 is not None: st.markdown(f'<div class="card"><p>الطالب الثاني: <b style="color:#2F6F7E;">{s2["لقب"] if "لقب" in s2 else s2["لقب"]} {s2["إسم"] if "إسم" in s2 else s2["إسم"]}</b></p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><h3>ملف الطالب</h3><p>الطالب الأول: <b style="color:#2F6F7E;">{s1["لقب"] if "لقب" in s1 else s1["لقب"]} {s1["إسم"] if "الإسم" in s1 else s1["لقب"]} {s1["إسم"] if "الإسم" in s1 else s1["إسم"]}</b></p><p>التخصص: <b>{s1["التخصص"]}</b></p></div>', unsafe_allow_html=True)
+        if s2 is not None: st.markdown(f'<div class="card"><p>الطالب الثاني: <b style="color:#2F6F7E;">{s2["لقب"] if "لقب" in s2 else s2["لقب"]} {s2["إسم"] if "إسم" in s2 else s2["لقب"]} {s2["إسم"] if "إسم" in s2 else s2["إسم"]}</b></p></div>', unsafe_allow_html=True)
 
         tab_memo, tab_notify = st.tabs(["مذكرتي", "الإشعارات والطلبات"])
+
         with tab_memo:
             if st.session_state.mode == "view":
                 df_memos_fresh = load_memos()
@@ -583,7 +600,7 @@ elif st.session_state.user_type == "student":
                 memo_info = df_memos_fresh[df_memos_fresh["رقم المذكرة"].astype(str).str.strip() == note_num]
                 if not memo_info.empty:
                     memo_info = memo_info.iloc[0]
-                    st.markdown(f'''<div class="card" style="border-left:5px solid #FFD700;"><h3>✅ أنت مسجل في المذكرة التالية:</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {memo_info['الأستاذ']}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p><p><b>التاريخ:</b> {memo_info.get('تاريخ التسجيل','')}</p></div>''', unsafe_allow_html=True)
+                    st.markdown(f'''<div class="card" style="border-left: 5px solid #FFD700;"><h3>✅ أنت مسجل في المذكرة التالية:</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {memo_info['الأستاذ']}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p><p><b>التاريخ:</b> {memo_info.get('تاريخ التسجيل','')}</p></div>''', unsafe_allow_html=True)
 
             elif st.session_state.mode == "register":
                 st.markdown('<div class="card"><h3>تسجيل مذكرة جديدة</h3></div>', unsafe_allow_html=True)
@@ -597,24 +614,32 @@ elif st.session_state.user_type == "student":
                     prof_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()]
                     reg_count = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
                     
-                    # رسائل مساعدة للديبج المشكلة
-                    st.markdown(f'� جاري التحقق من البيانات...', unsafe_allow_html=True)
-                    if reg_count >= 4:
-                        st.error(f'❌ الأستاذ {selected_prof} استنفذ كل العناوين الأربعة المخصصة لك.')
-                    else:
-                        avail_memos = df_memos[
-                            (df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()) &
-                            (df_memos["التخصص"].astype(str).str.strip() == student_specialty.strip()) &
-                            (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")
-                        ][["رقم المذكرة", "عنوان المذكرة"]]
-                        
-                        if not avail_memos.empty:
-                            st.success(f'✅ المذكرات المتاحة في تخصصك ({student_specialty}):')
-                            for _, row in avail_memos.iterrows():
-                                st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
+                    # رسائل مساعدة للتشخيل من الطالبان الموجودين في الشيت "الطالب الثاني" ولكن لا يوجد له مذكرة.
+                    if st.session_state.memo_type == "ثنائية" and not s2_name:
+                        reg2 = str(df_students[df_students["رقم التسجيل"].astype(str).str.strip() == s2_name]).strip()
+                        if reg2:
+                            st.error("❌ الطالب الثاني مسجل مسبقاً (رقم التسجيل " + reg2 + ")")
                         else:
-                            st.error('لا توجد مذكرات متاحة ❌')
-                
+                            # محاولة محاولة الطالب الثاني
+                            if reg_count >= 4: st.error(f'❌ الأستاذ {selected_prof} استنفذ كل العناوين الأربعة.')
+                            else:
+                                # جلب عناوين الأستاذ المتاحة
+                                avail_memos = df_memos[
+                                    (df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()) &
+                                    (df_memos["التخصص"].astype(str).str.strip() == student_specialty.strip()) &
+                                    (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")
+                                ][["رقم المذكرة", "عنوان المذكرة"]]
+                                
+                                if not avail_memos.empty:
+                                    st.success(f'✅ المذكرات المتاحة في تخصصك ({student_specialty}):')
+                                    for _, row in avail_memos.iterrows():
+                                        st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
+                                else:
+                                    st.error('لا توجد مذكرات متاحة.')
+                else:
+                    if reg_count >= 4:
+                        st.error(f'❌ الأستاذ {selected_prof} استنفذ كل العناوين المخصصة لك.')
+
                 st.markdown("---")
                 c1, c2 = st.columns(2)
                 with c1: st.session_state.note_number = st.text_input("رقم المذكرة", value=st.session_state.note_number)
@@ -639,10 +664,22 @@ elif st.session_state.user_type == "student":
                     with col2:
                         if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
                 else:
-                    st.markdown("---", unsafe_allow_html=True)
+                    st.markdown("---")
                     c1, c2 = st.columns(2)
                     with c1: st.session_state.note_number = st.text_input("رقم المذكرة", value=st.session_state.note_number)
                     with c2: st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
+                    
+                    if st.session_state.memo_type == "فردية":
+                        if st.button("تأكيد نهائي", type="primary"):
+                            valid, prof_row, err = verify_professor_password(st.session_state.note_number, st.session_state.prof_password, df_memos, df_prof_memos)
+                            if not valid: st.error(err); st.session_state.show_confirmation = False
+                            else:
+                                with st.spinner('⏳ جاري تسجيل...'):
+                                    success, msg = update_registration(st.session_state.note_number, s1, s2)
+                                    if success: st.success(msg); st.balloons(); clear_cache_and_reload(); st.session_state.mode = "view"; st.session_state.show_confirmation = False; time.sleep(2); st.rerun()
+                                    else: st.error(msg); st.session_state.show_confirmation = False
+                    with col2:
+                        if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
 
         with tab_notify:
             st.subheader("تنبيهات خاصة بك")
@@ -655,19 +692,22 @@ elif st.session_state.user_type == "student":
                         details = str(r.get('العنوان الجديد', r.get('المبررات', ''))).strip()
                         show_details = True
                         if req_type in ["حذف طالب", "تنازل"]: show_details = False
-
                         st.markdown(f"""<div class='card' style='border-right: 4px solid #F59E0B; padding: 20px;'><h4>{req_type}</h4><p>التاريخ: {r['الوقت']}</p><p>الحالة: <b>{r['الحالة']}</b></p>{'<p>التفاصيل: ' + details + '</p>' if show_details else '<p><i>التفاصيل مخفية</i></p>'}</div>""", unsafe_allow_html=True)
-                else: st.info("لا توجد إشعارات جديدة.")
-            else: st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
+                else:
+                    st.info("لا توجد إشعارات جديدة.")
+            else:
+                st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
 
 # ============================================================
-# فضاء الأساتذة (تم التصحيح نهائياً)
+# فضاء الأساتذة (تم التصحيح النهائي)
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
         with col2:
-            if st.button("رجوع", key="back_prof"): st.session_state.user_type = None; st.rerun()
+            if st.button("رجوع", key="back_prof"):
+                st.session_state.user_type = None
+                st.rerun()
         
         st.markdown("<h2>فضاء الأساتذة</h2>", unsafe_allow_html=True)
         
@@ -700,65 +740,68 @@ elif st.session_state.user_type == "professor":
             # بناء كود الطلبة في متغير واحد
             student_cards_html = ""
             
-            # الطالب الأول
+            # الطالب الأول (دائماً موجود)
             student_cards_html += f"""
 <div class="student-card">
-                    <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الأول</h4>
-                    <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s1_name']}</p>
-                    <p style="font-size: 0.9rem; color: #94A3B8;">رقم التسجيل: {student_info['s1_reg'] or '--'}</p>
-                    <div style="margin-top: 15px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10B981; font-size: 0.9rem;">
-                        📧 {student_info['s1_email'] or 'غير متوفر'}
-                    </div>
-                </div>
-            """
+    <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الأول</h4>
+    <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s1_name']}</p>
+    <p style="font-size: 0.9rem; color: #94A3B8;">رقم التسجيل: {student_info['s1_reg'] or '--'}</p>
+    <div style="margin-top: 15px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10B981; font-size: 0.9rem;">
+        📧 {student_info['s1_email'] or 'غير متوفر'}
+    </div>
+</div>
+"""
 
             # الطالب الثاني (فقط إذا وجد)
             if student_info['s2_name']:
                 student_cards_html += f"""
-                <div class="student-card">
-                    <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الثاني</h4>
-                    <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s2_name']}</p>
-                    <p style="font-size: 0.9rem; color: #94A3B8;">رقم التسجيل: {student_info['s2_reg'] or '--'}</p>
-                    <div style="margin-top: 15px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10B981; font-size: 0.9rem;">
-                        📧 {student_info['s2_email'] or 'غير متوفر'}
-                    </div>
-                </div>
-                """
-
+<div class="student-card">
+    <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الثاني</h4>
+    <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s2_name']}</p>
+    <p style="font-size: 0.9rem; color: #94A3B8;">رقم التسجيل: {student_info['s2_reg'] or '--'}</p>
+    <div style="margin-top: 15px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10B981; font-size: 0.9rem;">
+        📧 {student_info['s2_email'] or 'غير متوفر'}
+    </div>
+</div>
+"""
+            
             # إغلاق شبكة الطلبة
-            student_cards_html += "</div> <!-- نهاية شبكة الطلبة -->"
+            student_cards_html += """
+</div> <!-- نهاية شبكة الطلبة -->
+"""
 
-            # عرض HTML الكامل في متغير واحد (المهم جداً)
+            # عرض HTML الكامل في متغير واحد
             full_memo_html = f"""
-            <div class="full-view-container">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap;">
-                    <div>
-                        <p class="memo-badge">{current_memo['التخصص']}</p>
-                        <h1 class="memo-id">{current_memo['رقم المذكرة']}</h1>
-                    </div>
-                </div>
-                <div style="text-align: center; border-bottom: 2px solid #2F6F7E; padding-bottom: 20px; margin-bottom: 30px;">
-                    <h2 style="color: #F8FAFC; font-size: 1.8rem; margin: 0; line-height: 1.6;">{current_memo['عنوان المذكرة']}</h2>
-                </div>
-                <div class="students-grid">
-                    {student_cards_html}
-                </div> <!-- نهاية شبكة الطلبة -->
-                <div style="margin-bottom: 40px; text-align: center;">
-                    <h3 style="color: #F8FAFC; margin-bottom: 15px;">نسبة الإنجاز الحالية</h3>
-                    <div class="progress-container" style="height: 40px; border-radius: 20px;">
-                        <div class="progress-bar" style="width: """ + str(prog_int) + """%; font-size: 1.2rem; font-weight: bold; line-height: 28px;">""" + str(prog_int) + """%</div>
-                    </div>
-                </div>
-            </div> <!-- نهاية الحاوية الرئيسية -->
-            """
+<div class="full-view-container">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap;">
+    <div>
+        <p class="memo-badge">{current_memo['التخصص']}</p>
+        <h1 class="memo-id">{current_memo['رقم المذكرة']}</h1>
+    </div>
+<div style="text-align: center; border-bottom: 2px solid #2F6F7E; padding-bottom: 20px; margin-bottom: 30px;">
+    <h2 style="color: #F8FAFC; font-size: 1.8rem; margin: 0; line-height: 1.6;">{current_memo['عنوان المذكرة']}</h2>
+</div>
+<div class="students-grid">
+    {student_cards_html}
+</div> <!-- نهاية شبكة الطلبة -->
+<div style="margin-bottom: 40px; text-align: center;">
+    <h3 style="color: #F8FAFC; margin-bottom: 15px;">نسبة الإنجاز الحالية</h3>
+    <div class="progress-container" style="height: 40px; border-radius: 20px;">
+        <div class="progress-bar" style="width: """ + str(prog_int) + """%; font-size: 1.2rem; font-weight: bold; line-height: 28px;">""" + str(prog_int) + """%</div>
+    </div>
+</div> <!-- نهاية الحاوية الرئيسية -->
+</div>
+"""
 
-            # استخدام textwrap.dedent لإزالة أي مسافات بادئة في HTML
+            # استخدام textwrap.dedent لتنسيق الكود
             st.markdown(textwrap.dedent(full_memo_html), unsafe_allow_html=True)
 
             st.markdown("<div class='divider' style='border-top: 1px solid #334155; margin: 30px 0;'></div>", unsafe_allow_html=True)
             
+            # منطق الإدارة (عناصر Streamlit تتبع الحاوية)
             st.markdown("<h3 style='text-align: center; margin-bottom: 20px;'>إدارة المذكرة</h3>", unsafe_allow_html=True)
             col1, col2 = st.columns(2)
+            
             with col1:
                 st.markdown("<div style='background: rgba(30, 41, 59, 0.5); padding: 20px; border-radius: 10px;'>", unsafe_allow_html=True)
                 st.subheader("📊 تحديث نسبة التقدم")
@@ -768,6 +811,7 @@ elif st.session_state.user_type == "professor":
                     s, m = update_progress(memo_id, mapping[new_prog])
                     st.success(m) if s else st.error(m); time.sleep(1); st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
+            
             with col2:
                 st.markdown("<div style='background: rgba(30, 41, 59, 0.5); padding: 20px; border-radius: 10px;'>", unsafe_allow_html=True)
                 st.subheader("📨 إرسال طلب للإدارة")
@@ -783,7 +827,7 @@ elif st.session_state.user_type == "professor":
                 elif req_op == "حذف طالب (ثنائية)":
                     if not student_info['s2_name']: st.warning("هذه مذكرة فردية!")
                     else:
-                        st.write("الطالبان:")
+                        st.write("الطلبان:")
                         st.write(f"1. {student_info['s1_name']}")
                         st.write(f"2. {student_info['s2_name']}")
                         to_del = st.selectbox("اختر الطالب للحذف:", ["", "الطالب الأول", "الطالب الثاني"], key=f"del_full_{memo_id}")
@@ -815,6 +859,7 @@ elif st.session_state.user_type == "professor":
                     if suc: st.success(msg); time.sleep(1); st.rerun()
                     else: st.error(msg)
                 st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
         # --- لوحة التحكم ---
         else:
@@ -831,20 +876,11 @@ elif st.session_state.user_type == "professor":
 
             st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
             st.markdown(f'''
-                <div class="kpi-card">
-                    <div class="kpi-value">{total}</div>
-                    <div class="kpi-label">إجمالي المذكرات</div>
-                </div><div class="kpi-card">
-                    <div class="kpi-value" style="color: #10B981;">{registered}</div>
-                    <div class="kpi-label">المذكرات المسجلة</div>
-                </div><div class="kpi-card">
-                    <div class="kpi-value" style="color: #F59E0B;">{available}</div>
-                    <div class="kpi-label">المذكرات المتاحة</div>
-                </div>
-            ''', unsafe_allow_html=True)
+                <div class="kpi-card"><div class="kpi-value">{total}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{registered}</div><div class="kpi-label">المذكرات المسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{available}</div><div class="kpi-label">المذكرات المتاحة</div></div></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
-            if is_exhausted: st.markdown('<div class="alert-card">لقد استنفذت العناوين الأربعة المخصصة لك.</div>', unsafe_allow_html=True)
+            if is_exhausted:
+                st.markdown('<div class="alert-card">لقد استنفذت العناوين الأربعة المخصصة لك.</div>', unsafe_allow_html=True)
             
             tab1, tab2, tab3 = st.tabs(["المذكرات المسجلة", "كلمات السر", "المذكرات المتاحة/المقترحة"])
             
@@ -859,22 +895,17 @@ elif st.session_state.user_type == "professor":
                             progress_val = str(memo.get('نسبة التقدم', '0')).strip()
                             try: prog_int = int(progress_val) if progress_val else 0
                             except: prog_int = 0
+                            
                             s_info = get_student_info_from_memo(memo, df_students)
                             
-                            st.markdown(f'''
-                            <div class="card" style="border-right: 5px solid #10B981; padding-bottom: 10px;">
+                            st.markdown(f'''<div class="card" style="border-right: 5px solid #10B981; padding-bottom: 10px;">
                                 <h4>{memo['رقم المذكرة']} - {memo['عنوان المذكرة']}</h4>
                                 <p style="color:#94A3B8; font-size:0.9em;">تخصص: {memo['التخصص']}</p>
                                 <p style="font-size:0.95em; margin-bottom: 5px;">{s_info['s1_name']}</p>
                                 {f"<p style='font-size:0.95em; margin-bottom: 15px;'>{s_info['s2_name']}</p>" if s_info['s2_name'] else ""}
-                                <div class="progress-container" style="margin: 10px 0;">
-                                    <div class="progress-bar" style="width: {prog_int}%;"></div>
-                                </div>
-                                <p style="text-align:left; font-size:0.8em;">نسبة الإنجاز: {prog_int}%</p>
-                            </div>
-                            ''', unsafe_allow_html=True)
+                                <div class="progress-container" style="margin: 10px 0;"><div class="progress-bar" style="width: {prog_int}%;"></div></div><p style="text-align:left; font-size:0.8em;">نسبة الإنجاز: {prog_int}%</p></div>''', unsafe_allow_html=True)
                             
-                            if st.button(f"👉 عرض المذكرة {memo['رقم المذكرة']}", key=f"open_{memo['رقم_Mذكرة']}", use_container_width=True):
+                            if st.button(f"👉 عرض المذكرة {memo['رقم المذكرة']}", key=f"open_{memo['رقم المذكرة']}", use_container_width=True):
                                 st.session_state.selected_memo_id = memo['رقم المذكرة']; st.rerun()
                 else:
                     st.info("لا توجد مذكرات مسجلة حتى الآن.")
@@ -889,18 +920,16 @@ elif st.session_state.user_type == "professor":
                         if pwd:
                             color = "#10B981" if stat == "نعم" else "#F59E0B"
                             status_txt = "مستخدمة" if stat == "نعم" else "متاحة"
-                            st.markdown(f'''<div class="card" style="border-right: 5px solid {color}; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3><p style="margin:5px 0 0 0; 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p></div></div>''', unsafe_allow_html=True)
+                            st.markdown(f'''<div class="card" style="border-right: 5px solid {color}; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3><p style="margin:5px 0 0 0 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p></div>''', unsafe_allow_html=True)
                 else: st.info("لا توجد كلمات سر مسندة إليك.")
-
             with tab3:
                 if is_exhausted: st.subheader("💡 المذكرات المقترحة")
                 else: st.subheader("⏳ المذكرات المتاحة للتسجيل")
-                avail = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
                 
+                avail = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
                 if not avail.empty:
                     for _, m in avail.iterrows():
-                        st.markdown(f'''
-                        <div class="card" style="border-left: 4px solid #64748B;"><h4>{m['رقم المذكرة']}</h4><p>{m['عنوان المذكرة']}</p><p style="color:#94A3B8;">تخصص: {m['التخصص']}</p></div>''', unsafe_allow_html=True)
+                        st.markdown(f'''<div class="card" style="border-left: 4px solid #64748B;"><h4>{m['رقم المذكرة']}</h4><p>{m['عنوان المذكرة']}</p><p style="color:#94A3B8;">تخصص: {m['التخصص']}</p></div>''', unsafe_allow_html=True)
                 else: st.success("✅ جميع المذكرات مسجلة أو مقترحة!")
 
 # ============================================================
@@ -910,10 +939,11 @@ elif st.session_state.user_type == "admin":
     if not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
         with col2:
-            if st.button("رجوع", key="back_admin"): st.session_state.user_type = None; st.rerun()
+            if st.button("رجوع", key="back_admin"):
+                st.session_state.user_type = None
+                st.rerun()
         
         st.markdown("<h2>⚙️ فضاء الإدارة</h2>", unsafe_allow_html=True)
-        
         with st.form("admin_login"):
             u = st.text_input("اسم المستخدم")
             p = st.text_input("كلمة المرور", type="password")
@@ -932,8 +962,7 @@ elif st.session_state.user_type == "admin":
         unreg_st = st_s - reg_st
         
         st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
-        st.markdown(f'''
-            <div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{a_m}</div><div class="kpi-label">مذكرات متاحة</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{reg_st}</div><div class="kpi-label">طلاب مسجلين</div></div><div class="kpi-card" style="border-color: #59E0B;"><div class="kpi-value" style="color: #10B981;">{reg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #59E0B;">{unreg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div>''', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{a_m}</div><div class="kpi-label">مذكرات متاحة</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{reg_st}</div><div class="kpi-label">طلاب مسجلين</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{unreg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div></div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["المذكرات", "الطلاب", "الأساتذة", "تقارير", "تحديث", "إدارة الطلبات"])
@@ -959,10 +988,11 @@ elif st.session_state.user_type == "admin":
             sel_p = st.selectbox("اختر أستاذ:", ["الكل"] + profs_list)
             if sel_p != "الكل":
                 if sel_p not in df_memos["الأستاذ"].values: st.error("بيانات الأساتذة غير متاحة")
-                else:
-                    s_df = df_memos.groupby("الأستاذ").agg({"رقم المذكرة":"count", "تم التسجيل": lambda x: (x.astype(str).str.strip() == "نعم").sum()}).rename(columns={"رقم المذكرة":"الإجمالي", "تم التسجيل":"المسجلة"})
-                    s_df["المتاحة"] = s_df["إجمالي"] - s_df["المسجلة"]
-                    st.dataframe(s_df, use_container_width=True)
+                else: st.dataframe(df_memos[df_memos["الأستاذ"].astype(str).str.strip() == sel_p.strip()], use_container_width=True, height=400)
+            else:
+                s_df = df_memos.groupby("الأستاذ").agg({"رقم المذكرة":"count", "تم التسجيل": lambda x: (x.astype(str).str.strip() == "نعم").sum()}).rename(columns={"رقم المذكرة":"الإجمالي", "تم التسجيل":"المسجلة"})
+                s_df["المتاحة"] = s_df["إجمالي"] - s_df["المسجلة"]
+                st.dataframe(s_df, use_container_width=True)
         with tab4:
             st.subheader("التحليل الإحصائي")
             col1, col2 = st.columns(2)
@@ -982,6 +1012,7 @@ elif st.session_state.user_type == "admin":
                 avg_prog = p_df["نسبة التقدم"].mean()
                 st.metric("متوسط نسبة الإنجاز", f"{avg_prog:.1f}%", delta_color="normal")
                 st.markdown(f'<div class="progress-container"><div class="progress-bar" style="width: {avg_prog}%;">{avg_prog:.1f}%</div></div>', unsafe_allow_html=True)
+                
                 st.markdown("##### آخر التسجيلات")
                 recent = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"].tail(5)[["رقم المذكرة", "عنوان المذكرة", "الأستاذ", "تاريخ التسجيل"]]
                 st.dataframe(recent, use_container_width=True, hide_index=True)
@@ -1004,4 +1035,4 @@ elif st.session_state.user_type == "admin":
             st.dataframe(df_requests, use_container_width=True, height=500)
 
 st.markdown("---")
-st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق
