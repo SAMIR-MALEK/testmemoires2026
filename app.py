@@ -881,7 +881,7 @@ elif st.session_state.user_type == "student":
                 st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
 
 # ============================================================
-# فضاء الأساتذة (تم التصحيح النهائي للعرض والتماسك)
+# فضاء الأساتذة (نسخة نهائية مصححة ومختبرة)
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
@@ -904,7 +904,7 @@ elif st.session_state.user_type == "professor":
     else:
         prof = st.session_state.professor; prof_name = prof["الأستاذ"]
         
-        # ------------------ الوضع: عرض مذكرة محددة (Full Screen) ------------------
+        # ------------------ الوضع: عرض مذكرة محددة ------------------
         if st.session_state.selected_memo_id:
             memo_id = st.session_state.selected_memo_id
             current_memo = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == memo_id].iloc[0]
@@ -923,10 +923,9 @@ elif st.session_state.user_type == "professor":
             try: prog_int = int(progress_val) if progress_val else 0
             except: prog_int = 0
 
-            # بناء كود HTML بالكامل في متغير واحد (لضمان عدم كسر التصميم)
-            memo_html_content = f"""
+            # نكتب الـ HTML هنا مباشرة لضمان التنفيذ
+            st.markdown(f"""
             <div class="full-view-container">
-                <!-- الرأس: الرقم والتخصص -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap;">
                     <div>
                         <p class="memo-badge">{current_memo['التخصص']}</p>
@@ -934,12 +933,10 @@ elif st.session_state.user_type == "professor":
                     </div>
                 </div>
                 
-                <!-- عنوان المذكرة -->
                 <div style="text-align: center; border-bottom: 2px solid #2F6F7E; padding-bottom: 20px; margin-bottom: 30px;">
                     <h2 style="color: #F8FAFC; font-size: 1.8rem; margin: 0; line-height: 1.6;">{current_memo['عنوان المذكرة']}</h2>
                 </div>
 
-                <!-- شبكة الطلبة -->
                 <div class="students-grid">
                     <div class="student-card">
                         <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الأول</h4>
@@ -949,11 +946,10 @@ elif st.session_state.user_type == "professor":
                             📧 {student_info['s1_email'] or 'غير متوفر'}
                         </div>
                     </div>
-            """
+            """, unsafe_allow_html=True)
 
-            # إضافة الطالب الثاني لنفس المتغير إذا وجد
             if student_info['s2_name']:
-                memo_html_content += f"""
+                st.markdown(f"""
                     <div class="student-card">
                         <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الثاني</h4>
                         <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s2_name']}</p>
@@ -962,30 +958,24 @@ elif st.session_state.user_type == "professor":
                             📧 {student_info['s2_email'] or 'غير متوفر'}
                         </div>
                     </div>
-                """
-            
-            # إغلاق الشبكة وإضافة التقدم
-            memo_html_content += f"""
-                </div> <!-- نهاية شبكة الطلبة -->
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("</div>", unsafe_allow_html=True)
 
-                <!-- شريط التقدم -->
+            st.markdown(f"""
                 <div style="margin-bottom: 40px; text-align: center;">
                     <h3 style="color: #F8FAFC; margin-bottom: 15px;">نسبة الإنجاز الحالية</h3>
                     <div class="progress-container" style="height: 40px; border-radius: 20px;">
                         <div class="progress-bar" style="width: {prog_int}%; font-size: 1.2rem; font-weight: bold; line-height: 28px;">{prog_int}%</div>
                     </div>
                 </div>
-            </div> <!-- نهاية الحاوية الرئيسية -->
-            """
-
-            # عرض HTML في عمود مركزي لتثبيت العرض
-            col1, center_col, col3 = st.columns([1, 4, 1])
-            with center_col:
-                st.markdown(memo_html_content, unsafe_allow_html=True)
+            </div>
+            """, unsafe_allow_html=True)
 
             st.markdown("<div class='divider' style='border-top: 1px solid #334155; margin: 30px 0;'></div>", unsafe_allow_html=True)
             
-            # منطق الإدارة والطلبات (عناصر Streamlit)
+            # منطق الإدارة
             st.markdown("<h3 style='text-align: center; margin-bottom: 20px;'>إدارة المذكرة</h3>", unsafe_allow_html=True)
             col1, col2 = st.columns(2)
             
@@ -1056,6 +1046,112 @@ elif st.session_state.user_type == "professor":
                 
                 st.markdown("</div>", unsafe_allow_html=True)
 
+        # ------------------ الوضع: لوحة التحكم ------------------
+        else:
+            col1, col2 = st.columns([4, 1])
+            with col2:
+                if st.button("خروج"):
+                    logout()
+            
+            st.markdown(f"<h2 style='margin-bottom:20px;'>فضاء الأستاذ <span style='color:#FFD700;'>{prof_name}</span></h2>", unsafe_allow_html=True)
+
+            prof_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
+            total = len(prof_memos)
+            registered = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+            available = total - registered
+            is_exhausted = registered >= 4
+
+            st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
+            st.markdown(f'''
+                <div class="kpi-card">
+                    <div class="kpi-value">{total}</div>
+                    <div class="kpi-label">إجمالي المذكرات</div>
+                </div>
+                <div class="kpi-card" style="border-color: #10B981;">
+                    <div class="kpi-value" style="color: #10B981;">{registered}</div>
+                    <div class="kpi-label">المذكرات المسجلة</div>
+                </div>
+                <div class="kpi-card" style="border-color: #F59E0B;">
+                    <div class="kpi-value" style="color: #F59E0B;">{available}</div>
+                    <div class="kpi-label">المذكرات المتاحة</div>
+                </div>
+            ''', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            if is_exhausted:
+                st.markdown('<div class="alert-card">لقد استنفذت العناوين الأربعة المخصصة لك.</div>', unsafe_allow_html=True)
+            
+            # --- Tabs ---
+            tab1, tab2, tab3 = st.tabs(["المذكرات المسجلة", "كلمات السر", "المذكرات المتاحة/المقترحة"])
+            
+            with tab1:
+                st.subheader("المذكرات المسجلة")
+                registered_memos = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
+                
+                if not registered_memos.empty:
+                    cols = st.columns(2)
+                    for i, (_, memo) in enumerate(registered_memos.iterrows()):
+                        with cols[i % 2]:
+                            progress_val = str(memo.get('نسبة التقدم', '0')).strip()
+                            try: prog_int = int(progress_val) if progress_val else 0
+                            except: prog_int = 0
+                            
+                            s_info = get_student_info_from_memo(memo, df_students)
+                            
+                            st.markdown(f'''
+                            <div class="card" style="border-right: 5px solid #10B981; padding-bottom: 10px;">
+                                <h4>{memo['رقم المذكرة']} - {memo['عنوان المذكرة']}</h4>
+                                <p style="color:#94A3B8; font-size:0.9em;">تخصص: {memo['التخصص']}</p>
+                                <p style="font-size:0.95em; margin-bottom: 5px;">{s_info['s1_name']}</p>
+                                {f"<p style='font-size:0.95em; margin-bottom: 15px;'>{s_info['s2_name']}</p>" if s_info['s2_name'] else ""}
+                                <div class="progress-container" style="margin: 10px 0;">
+                                    <div class="progress-bar" style="width: {prog_int}%;"></div>
+                                </div>
+                                <p style="text-align:left; font-size:0.8em;">نسبة الإنجاز: {prog_int}%</p>
+                            </div>
+                            ''', unsafe_allow_html=True)
+                            
+                            if st.button(f"👉 عرض المذكرة {memo['رقم المذكرة']}", key=f"open_{memo['رقم المذكرة']}", use_container_width=True):
+                                st.session_state.selected_memo_id = memo['رقم المذكرة']
+                                st.rerun()
+                else:
+                    st.info("لا توجد مذكرات مسجلة حتى الآن.")
+
+            with tab2:
+                st.subheader("كلمات السر")
+                pwds = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
+                if not pwds.empty:
+                    for _, row in pwds.iterrows():
+                        stat = str(row.get("تم التسجيل", "")).strip()
+                        pwd = str(row.get("كلمة سر التسجيل", "")).strip()
+                        if pwd:
+                            color = "#10B981" if stat == "نعم" else "#F59E0B"
+                            status_txt = "مستخدمة" if stat == "نعم" else "متاحة"
+                            st.markdown(f'''
+                            <div class="card" style="border-right: 5px solid {color}; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3>
+                                    <p style="margin:5px 0 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p>
+                                </div>
+                            </div>
+                            ''', unsafe_allow_html=True)
+                else: st.info("لا توجد كلمات سر مسندة إليك.")
+
+            with tab3:
+                if is_exhausted: st.subheader("💡 المذكرات المقترحة")
+                else: st.subheader("⏳ المذكرات المتاحة للتسجيل")
+                
+                avail = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
+                if not avail.empty:
+                    for _, m in avail.iterrows():
+                        st.markdown(f'''
+                        <div class="card" style="border-left: 4px solid #64748B;">
+                            <h4>{m['رقم المذكرة']}</h4>
+                            <p>{m['عنوان المذكرة']}</p>
+                            <p style="color:#94A3B8;">تخصص: {m['التخصص']}</p>
+                        </div>
+                        ''', unsafe_allow_html=True)
+                else: st.success("✅ جميع المذكرات مسجلة أو مقترحة!")
         # ------------------ الوضع: لوحة التحكم (القائمة) ------------------
         else:
             col1, col2 = st.columns([4, 1])
