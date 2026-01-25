@@ -129,7 +129,7 @@ div[data-testid="stFormSubmitButton"] button:hover {
     background: rgba(47, 111, 126, 0.2); color: #FFD700; border: 1px solid #2F6F7E; font-weight: bold; box-shadow: 0 0 15px rgba(47, 111, 126, 0.2);
 }
 
-/* تعديلات إضافية للزر الصغير داخل البطاقة */
+/* تعديلات إضافية */
 .btn-select {
     margin-top: 10px;
     background-color: transparent !important;
@@ -142,12 +142,64 @@ div[data-testid="stFormSubmitButton"] button:hover {
     background-color: #2F6F7E !important;
     color: white !important;
 }
+
+/* ======================= 
+   تصميم العرض الكامل للمذكرة (لحل مشكلة الفوضى) 
+   ======================= */
+.full-view-container {
+    max-width: 950px; /* تحديد عرض أقصى لمنع التمطيط */
+    margin: 0 auto;   /* توسيط المحتوى */
+    padding: 40px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+}
+
+.students-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* يضمن بقاء البطاقات بجانب بعضها بشكل متناسق */
+    gap: 25px;
+    margin: 30px 0;
+}
+
+.student-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+.student-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: #2F6F7E;
+}
+
+.memo-badge {
+    display: inline-block;
+    background: rgba(47, 111, 126, 0.2);
+    color: #FFD700;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 1rem;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.memo-id {
+    font-size: 3rem;
+    font-weight: 900;
+    color: #2F6F7E;
+    margin: 0;
+    line-height: 1;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------- Google Sheets ----------------
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-# تأكد من إعداد المفاتيح في إعدادات Streamlit Secrets
 try:
     info = st.secrets["service_account"]
     credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
@@ -220,7 +272,6 @@ def get_student_info_from_memo(memo_row, df_students):
             s1_email = s_data.iloc[0].get("البريد الإلكتروني", "")
             s1_reg_display = reg1
     if not s1_email and student1_name != '--':
-        # البحث بالاسم
         parts = student1_name.strip().split(' ', 1)
         if len(parts) == 2:
             col_l = "لقب" if "لقب" in df_students.columns else ("اللقب" if "اللقب" in df_students.columns else None)
@@ -310,7 +361,7 @@ def clear_cache_and_reload():
     st.cache_data.clear()
     logger.info("تم مسح السجلات")
 
-# ---------------- عملية الربط الآلي لـ S و T ----------------
+# ---------------- عملية الربط الآدي لـ S و T ----------------
 def sync_student_registration_numbers():
     try:
         st.info("⏳ جاري بدء عملية الربط...")
@@ -595,7 +646,6 @@ if 'user_type' not in st.session_state:
     st.session_state.student1 = None; st.session_state.student2 = None; st.session_state.professor = None
     st.session_state.admin_user = None; st.session_state.memo_type = "فردية"; st.session_state.mode = "register"
     st.session_state.note_number = ""; st.session_state.prof_password = ""; st.session_state.show_confirmation = False
-    # إضافة حالة جديدة لتتبع المذكرة المختارة
     st.session_state.selected_memo_id = None
 
 def logout():
@@ -827,7 +877,7 @@ elif st.session_state.user_type == "student":
                 st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
 
 # ============================================================
-# فضاء الأساتذة (تم التعديل بناءً على طلبك)
+# فضاء الأساتذة (تم التعديل لحل مشكلة الفوضى)
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
@@ -850,7 +900,7 @@ elif st.session_state.user_type == "professor":
     else:
         prof = st.session_state.professor; prof_name = prof["الأستاذ"]
         
-        # ------------------ الوضع: عرض مذكرة محددة (Full Screen) ------------------
+        # ------------------ الوضع: عرض مذكرة محددة (Full Screen Fixed) ------------------
         if st.session_state.selected_memo_id:
             memo_id = st.session_state.selected_memo_id
             # جلب بيانات المذكرة الحالية
@@ -864,61 +914,74 @@ elif st.session_state.user_type == "professor":
                     st.session_state.selected_memo_id = None
                     st.rerun()
 
-            # عرض المذكرة في وضع الشاشة الكاملة
+            # عرض المذكرة في وضع الشاشة الكاملة (مع تثبيت العرض)
             st.markdown("<br>", unsafe_allow_html=True)
             
             progress_val = str(current_memo.get('نسبة التقدم', '0')).strip()
             try: prog_int = int(progress_val) if progress_val else 0
             except: prog_int = 0
 
-            # تصميم البطاقة الكبيرة
+            # تصميم الحاوية المنظمة (Full View Wrapper)
             st.markdown(f"""
-            <div class="card" style="border-right: 5px solid #FFD700; min-height: 60vh;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div class="full-view-container">
+                <!-- الرأس: الرقم والتخصص -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap;">
                     <div>
-                        <h1 style="color: #2F6F7E; font-size: 3rem; margin: 0;">{current_memo['رقم المذكرة']}</h1>
-                        <p style="color: #94A3B8; font-size: 1.2rem;">تخصص: {current_memo['التخصص']}</p>
+                        <p class="memo-badge">{current_memo['التخصص']}</p>
+                        <h1 class="memo-id">{current_memo['رقم المذكرة']}</h1>
                     </div>
                 </div>
                 
-                <h2 style="border-bottom: 2px solid #2F6F7E; padding-bottom: 10px; margin-bottom: 20px;">{current_memo['عنوان المذكرة']}</h2>
+                <!-- عنوان المذكرة -->
+                <div style="text-align: center; border-bottom: 2px solid #2F6F7E; padding-bottom: 20px; margin-bottom: 30px;">
+                    <h2 style="color: #F8FAFC; font-size: 1.8rem; margin: 0; line-height: 1.6;">{current_memo['عنوان المذكرة']}</h2>
+                </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-                    <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px;">
-                        <h4 style="color: #FFD700; margin-top: 0;">الطالب الأول</h4>
-                        <p style="font-size: 1.2rem; font-weight: bold; margin-bottom: 5px;">{student_info['s1_name']}</p>
+                <!-- شبكة الطلبة -->
+                <div class="students-grid">
+                    <div class="student-card">
+                        <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الأول</h4>
+                        <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s1_name']}</p>
                         <p style="font-size: 0.9rem; color: #94A3B8;">رقم التسجيل: {student_info['s1_reg'] or '--'}</p>
-                        <p style="font-size: 0.9rem; color: #10B981; margin-top: 10px;">📧 {student_info['s1_email'] or 'غير متوفر'}</p>
+                        <div style="margin-top: 15px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10B981; font-size: 0.9rem;">
+                            📧 {student_info['s1_email'] or 'غير متوفر'}
+                        </div>
                     </div>
             """, unsafe_allow_html=True)
 
             if student_info['s2_name']:
                 st.markdown(f"""
-                    <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 10px;">
-                        <h4 style="color: #FFD700; margin-top: 0;">الطالب الثاني</h4>
-                        <p style="font-size: 1.2rem; font-weight: bold; margin-bottom: 5px;">{student_info['s2_name']}</p>
+                    <div class="student-card">
+                        <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الثاني</h4>
+                        <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s2_name']}</p>
                         <p style="font-size: 0.9rem; color: #94A3B8;">رقم التسجيل: {student_info['s2_reg'] or '--'}</p>
-                        <p style="font-size: 0.9rem; color: #10B981; margin-top: 10px;">📧 {student_info['s2_email'] or 'غير متوفر'}</p>
+                        <div style="margin-top: 15px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10B981; font-size: 0.9rem;">
+                            📧 {student_info['s2_email'] or 'غير متوفر'}
+                        </div>
                     </div>
-                </div>
+                </div> <!-- نهاية شبكة الطلبة -->
                 """, unsafe_allow_html=True)
             else:
                  st.markdown("</div>", unsafe_allow_html=True)
 
-            # شريط التقدم الكبير
+            # شريط التقدم
             st.markdown(f"""
-                <h3 style="text-align: center; color: #F8FAFC;">نسبة الإنجاز الحالية: {prog_int}%</h3>
-                <div class="progress-container" style="height: 35px; margin-top: 10px;">
-                    <div class="progress-bar" style="width: {prog_int}%; font-size: 1.2rem; line-height: 35px;">{prog_int}%</div>
+                <div style="margin-bottom: 40px; text-align: center;">
+                    <h3 style="color: #F8FAFC; margin-bottom: 15px;">نسبة الإنجاز الحالية</h3>
+                    <div class="progress-container" style="height: 40px; border-radius: 20px;">
+                        <div class="progress-bar" style="width: {prog_int}%; font-size: 1.2rem; font-weight: bold; line-height: 28px;">{prog_int}%</div>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
 
-            st.markdown("---")
+            st.markdown("<div class='divider' style='border-top: 1px solid #334155; margin: 30px 0;'></div>", unsafe_allow_html=True)
             
-            # منطق الإدارة والطلبات (نسخ من الكود الأصلي ولكن داخل العرض الكامل)
+            # منطق الإدارة والطلبات
+            st.markdown("<h3 style='text-align: center; margin-bottom: 20px;'>إدارة المذكرة</h3>", unsafe_allow_html=True)
             col1, col2 = st.columns(2)
             
             with col1:
+                st.markdown("<div style='background: rgba(30, 41, 59, 0.5); padding: 20px; border-radius: 10px;'>", unsafe_allow_html=True)
                 st.subheader("📊 تحديث نسبة التقدم")
                 new_prog = st.selectbox("اختر المرحلة:", [
                     "0%", "10% - ضبط المقدمة", "30% - الفصل الأول", 
@@ -928,8 +991,10 @@ elif st.session_state.user_type == "professor":
                     mapping = {"0%":0, "10% - ضبط المقدمة":10, "30% - الفصل الأول":30, "60% - الفصل الثاني":60, "80% - الخاتمة":80, "100% - مكتملة":100}
                     s, m = update_progress(memo_id, mapping[new_prog])
                     st.success(m) if s else st.error(m); time.sleep(1); st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 
             with col2:
+                st.markdown("<div style='background: rgba(30, 41, 59, 0.5); padding: 20px; border-radius: 10px;'>", unsafe_allow_html=True)
                 st.subheader("📨 إرسال طلب للإدارة")
                 req_op = st.selectbox("نوع الطلب:", ["", "تغيير عنوان المذكرة", "حذف طالب (ثنائية)", "إضافة طالب (فردية)", "تنازل عن الإشراف"], key=f"req_full_{memo_id}")
                 
@@ -979,6 +1044,11 @@ elif st.session_state.user_type == "professor":
                     suc, msg = save_and_send_request(prof_name, memo_id, current_memo['عنوان المذكرة'], req_op, details_to_save)
                     if suc: st.success(msg); time.sleep(1); st.rerun()
                     else: st.error(msg)
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+            
+            # إغلاق الحاوية الرئيسية
+            st.markdown("</div>", unsafe_allow_html=True)
 
         # ------------------ الوضع: لوحة التحكم (القائمة) ------------------
         else:
@@ -1032,7 +1102,6 @@ elif st.session_state.user_type == "professor":
                             
                             s_info = get_student_info_from_memo(memo, df_students)
                             
-                            # عرض البطاقة مع الزر التفاعلي
                             st.markdown(f'''
                             <div class="card" style="border-right: 5px solid #10B981; padding-bottom: 10px;">
                                 <h4>{memo['رقم المذكرة']} - {memo['عنوان المذكرة']}</h4>
@@ -1046,7 +1115,6 @@ elif st.session_state.user_type == "professor":
                             </div>
                             ''', unsafe_allow_html=True)
                             
-                            # زر الوصول للتفاصيل (يؤدي إلى الشاشة الكاملة)
                             if st.button(f"👉 عرض المذكرة {memo['رقم المذكرة']}", key=f"open_{memo['رقم المذكرة']}", use_container_width=True):
                                 st.session_state.selected_memo_id = memo['رقم المذكرة']
                                 st.rerun()
