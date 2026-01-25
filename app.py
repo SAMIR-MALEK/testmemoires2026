@@ -881,7 +881,7 @@ elif st.session_state.user_type == "student":
                 st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
 
 # ============================================================
-# فضاء الأساتذة (تم التعديل نهائياً)
+# فضاء الأساتذة (تم التصحيح النهائي للعرض والتماسك)
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
@@ -904,10 +904,9 @@ elif st.session_state.user_type == "professor":
     else:
         prof = st.session_state.professor; prof_name = prof["الأستاذ"]
         
-        # ------------------ الوضع: عرض مذكرة محددة (Full Screen Fixed) ------------------
+        # ------------------ الوضع: عرض مذكرة محددة (Full Screen) ------------------
         if st.session_state.selected_memo_id:
             memo_id = st.session_state.selected_memo_id
-            # جلب بيانات المذكرة الحالية
             current_memo = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == memo_id].iloc[0]
             student_info = get_student_info_from_memo(current_memo, df_students)
             
@@ -924,8 +923,8 @@ elif st.session_state.user_type == "professor":
             try: prog_int = int(progress_val) if progress_val else 0
             except: prog_int = 0
 
-            # تصميم الحاوية المنظمة
-            st.markdown(f"""
+            # بناء كود HTML بالكامل في متغير واحد (لضمان عدم كسر التصميم)
+            memo_html_content = f"""
             <div class="full-view-container">
                 <!-- الرأس: الرقم والتخصص -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap;">
@@ -940,7 +939,7 @@ elif st.session_state.user_type == "professor":
                     <h2 style="color: #F8FAFC; font-size: 1.8rem; margin: 0; line-height: 1.6;">{current_memo['عنوان المذكرة']}</h2>
                 </div>
 
-                <!-- شبكة الطلبة (Flexbox) -->
+                <!-- شبكة الطلبة -->
                 <div class="students-grid">
                     <div class="student-card">
                         <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الأول</h4>
@@ -950,10 +949,11 @@ elif st.session_state.user_type == "professor":
                             📧 {student_info['s1_email'] or 'غير متوفر'}
                         </div>
                     </div>
-            """, unsafe_allow_html=True)
+            """
 
+            # إضافة الطالب الثاني لنفس المتغير إذا وجد
             if student_info['s2_name']:
-                st.markdown(f"""
+                memo_html_content += f"""
                     <div class="student-card">
                         <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الثاني</h4>
                         <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s2_name']}</p>
@@ -962,24 +962,30 @@ elif st.session_state.user_type == "professor":
                             📧 {student_info['s2_email'] or 'غير متوفر'}
                         </div>
                     </div>
+                """
+            
+            # إغلاق الشبكة وإضافة التقدم
+            memo_html_content += f"""
                 </div> <!-- نهاية شبكة الطلبة -->
-                """, unsafe_allow_html=True)
-            else:
-                 st.markdown("</div>", unsafe_allow_html=True)
 
-            # شريط التقدم
-            st.markdown(f"""
+                <!-- شريط التقدم -->
                 <div style="margin-bottom: 40px; text-align: center;">
                     <h3 style="color: #F8FAFC; margin-bottom: 15px;">نسبة الإنجاز الحالية</h3>
                     <div class="progress-container" style="height: 40px; border-radius: 20px;">
                         <div class="progress-bar" style="width: {prog_int}%; font-size: 1.2rem; font-weight: bold; line-height: 28px;">{prog_int}%</div>
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
+            </div> <!-- نهاية الحاوية الرئيسية -->
+            """
+
+            # عرض HTML في عمود مركزي لتثبيت العرض
+            col1, center_col, col3 = st.columns([1, 4, 1])
+            with center_col:
+                st.markdown(memo_html_content, unsafe_allow_html=True)
 
             st.markdown("<div class='divider' style='border-top: 1px solid #334155; margin: 30px 0;'></div>", unsafe_allow_html=True)
             
-            # منطق الإدارة والطلبات
+            # منطق الإدارة والطلبات (عناصر Streamlit)
             st.markdown("<h3 style='text-align: center; margin-bottom: 20px;'>إدارة المذكرة</h3>", unsafe_allow_html=True)
             col1, col2 = st.columns(2)
             
@@ -1049,9 +1055,6 @@ elif st.session_state.user_type == "professor":
                     else: st.error(msg)
                 
                 st.markdown("</div>", unsafe_allow_html=True)
-            
-            # إغلاق الحاوية الرئيسية
-            st.markdown("</div>", unsafe_allow_html=True)
 
         # ------------------ الوضع: لوحة التحكم (القائمة) ------------------
         else:
