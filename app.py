@@ -206,13 +206,37 @@ def validate_note_number(note_number):
 def get_student_info_from_memo(memo_row, df_students):
     student1_name = str(memo_row.get("الطالب الأول", "")).strip()
     student2_name = str(memo_row.get("الطالب الثاني", "")).strip()
+    
+    # محاولة جلب رقم التسجيل من أعمدة محتملة في شيت المذكرات
     reg1 = str(memo_row.get('رقم تسجيل الطالب 1', '')).strip()
+    if not reg1: reg1 = str(memo_row.get('رقم التسجيل 1', '')).strip()
+    
     reg2 = str(memo_row.get('رقم تسجيل الطالب 2', '')).strip()
+    if not reg2: reg2 = str(memo_row.get('رقم التسجيل 2', '')).strip()
+    
     s1_email = s2_email = s1_reg_display = s2_reg_display = ""
    
+    # دالة مساعدة لجلب الإيميل بذكاء (لتجنب مشكلة اسم العمود)
+    def get_email_smart(row):
+        # 1. المحاولة بالاسم العربي الكامل
+        if "البريد الإلكتروني" in row.index:
+            val = str(row["البريد الإلكتروني"]).strip()
+            if val and val != "nan": return val
+        
+        # 2. البحث عن أي عمود يحتوي على كلمة بريد أو mail
+        for col in row.index:
+            if 'mail' in col.lower() or 'بريد' in col or 'email' in col.lower():
+                val = str(row[col]).strip()
+                if val and val != "nan": return val
+        return ""
+
+    # منطق الطالب الأول
     if reg1:
         s_data = df_students[df_students["رقم التسجيل"].astype(str).str.strip() == reg1]
-        if not s_data.empty: s1_email = s_data.iloc[0].get("البريد الإلكتروني", "")
+        if not s_data.empty: 
+            s1_email = get_email_smart(s_data.iloc[0])
+    
+    # إذا لم نجد الإيميل ولم نجد رقم التسجيل (بحث بالاسم كاحتياط)
     if not s1_email and student1_name != '--':
         parts = student1_name.strip().split(' ', 1)
         if len(parts) == 2:
@@ -221,12 +245,15 @@ def get_student_info_from_memo(memo_row, df_students):
             if col_l and col_f:
                 s_data = df_students[(df_students[col_l].astype(str).str.strip() == parts[0]) & (df_students[col_f].astype(str).str.strip() == parts[1])]
                 if not s_data.empty:
-                    s1_email = s_data.iloc[0].get("البريد الإلكتروني", "")
-                    s1_reg_display = s_data.iloc[0].get("رقم التسجيل", "")
+                    s1_email = get_email_smart(s_data.iloc[0])
+                    s1_reg_display = str(s_data.iloc[0].get("رقم التسجيل", "")).strip()
 
+    # منطق الطالب الثاني
     if student2_name and reg2:
         s_data = df_students[df_students["رقم التسجيل"].astype(str).str.strip() == reg2]
-        if not s_data.empty: s2_email = s_data.iloc[0].get("البريد الإلكتروني", "")
+        if not s_data.empty: 
+            s2_email = get_email_smart(s_data.iloc[0])
+    
     if student2_name and not s2_email:
         parts = student2_name.strip().split(' ', 1)
         if len(parts) == 2:
@@ -235,13 +262,14 @@ def get_student_info_from_memo(memo_row, df_students):
             if col_l and col_f:
                 s_data = df_students[(df_students[col_l].astype(str).str.strip() == parts[0]) & (df_students[col_f].astype(str).str.strip() == parts[1])]
                 if not s_data.empty:
-                    s2_email = s_data.iloc[0].get("البريد الإلكتروني", "")
-                    s2_reg_display = s_data.iloc[0].get("رقم التسجيل", "")
+                    s2_email = get_email_smart(s_data.iloc[0])
+                    s2_reg_display = str(s_data.iloc[0].get("رقم التسجيل", "")).strip()
 
     return {
         "s1_name": student1_name, "s1_email": s1_email, "s1_reg": s1_reg_display or reg1,
         "s2_name": student2_name, "s2_email": s2_email, "s2_reg": s2_reg_display or reg2
     }
+
 
 @st.cache_data(ttl=60)
 def load_students():
