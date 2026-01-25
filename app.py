@@ -41,13 +41,13 @@ label, p, span { color: #E2E8F0; }
 .stButton>button,
 button[kind="primary"],
 div[data-testid="stFormSubmitButton"] button {
-    background-color: #2F6F7E !important;   /* خلفية زرقاء للجميع */
-    color: #ffffff !important;              /* كتابة بيضاء للجميع */
+    background-color: #2F6F7E !important;   
+    color: #ffffff !important;              
     font-size: 16px;
     font-weight: 600;
     padding: 14px 32px;
-    border: none !important;                /* بدون حدود */
-    border-radius: 12px !important;        /* تدوير الزوايا */
+    border: none !important;                
+    border-radius: 12px !important;        
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
@@ -60,13 +60,13 @@ div[data-testid="stFormSubmitButton"] button {
 .stButton>button:hover,
 button[kind="primary"]:hover,
 div[data-testid="stFormSubmitButton"] button:hover {
-    background-color: #285E6B !important;   /* لون أغمق عند المرور */
+    background-color: #285E6B !important;   
     transform: translateY(-2px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
     font-weight: 700;
 }
 
-/* البطاقات الاحترافية (Glassmorphism) */
+/* البطاقات الاحترافية */
 .card { 
     background: rgba(30, 41, 59, 0.95);
     border: 1px solid rgba(255,255,  white, 0.08);
@@ -129,7 +129,6 @@ div[data-testid="stFormSubmitButton"] button:hover {
     background: rgba(47, 111, 126, 0.2); color: #FFD700; border: 1px solid #2F6F7E; font-weight: bold; box-shadow: 0 0 15px rgba(47, 111, 126, 0.2);
 }
 
-/* تعديلات إضافية */
 .btn-select {
     margin-top: 10px;
     background-color: transparent !important;
@@ -144,11 +143,11 @@ div[data-testid="stFormSubmitButton"] button:hover {
 }
 
 /* ======================= 
-   تصميم العرض الكامل للمذكرة (لحل مشكلة الفوضى) 
+   حل نهائي للفوضى (Flexbox + Max Width)
    ======================= */
 .full-view-container {
-    max-width: 950px; /* تحديد عرض أقصى لمنع التمطيط */
-    margin: 0 auto;   /* توسيط المحتوى */
+    max-width: 1000px; 
+    margin: 0 auto;   
     padding: 40px;
     background: rgba(15, 23, 42, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -157,13 +156,18 @@ div[data-testid="stFormSubmitButton"] button:hover {
 }
 
 .students-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* يضمن بقاء البطاقات بجانب بعضها بشكل متناسق */
-    gap: 25px;
-    margin: 30px 0;
+    display: flex;
+    justify-content: center; /* توسيط البطاقات */
+    gap: 40px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    margin-bottom: 30px;
 }
 
 .student-card {
+    flex: 1; /* توزيع المساحة بالتساوي */
+    max-width: 450px; /* أقصى عرض لمنع التمطيط */
+    min-width: 300px; /* أقل عرض */
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
@@ -877,7 +881,7 @@ elif st.session_state.user_type == "student":
                 st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
 
 # ============================================================
-# فضاء الأساتذة (تم التعديل لحل مشكلة الفوضى)
+# فضاء الأساتذة (تم التعديل نهائياً)
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
@@ -914,14 +918,13 @@ elif st.session_state.user_type == "professor":
                     st.session_state.selected_memo_id = None
                     st.rerun()
 
-            # عرض المذكرة في وضع الشاشة الكاملة (مع تثبيت العرض)
             st.markdown("<br>", unsafe_allow_html=True)
             
             progress_val = str(current_memo.get('نسبة التقدم', '0')).strip()
             try: prog_int = int(progress_val) if progress_val else 0
             except: prog_int = 0
 
-            # تصميم الحاوية المنظمة (Full View Wrapper)
+            # تصميم الحاوية المنظمة
             st.markdown(f"""
             <div class="full-view-container">
                 <!-- الرأس: الرقم والتخصص -->
@@ -937,7 +940,7 @@ elif st.session_state.user_type == "professor":
                     <h2 style="color: #F8FAFC; font-size: 1.8rem; margin: 0; line-height: 1.6;">{current_memo['عنوان المذكرة']}</h2>
                 </div>
 
-                <!-- شبكة الطلبة -->
+                <!-- شبكة الطلبة (Flexbox) -->
                 <div class="students-grid">
                     <div class="student-card">
                         <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الأول</h4>
