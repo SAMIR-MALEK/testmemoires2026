@@ -1,4 +1,3 @@
-
 import streamlit as st
 from datetime import datetime
 import pandas as pd
@@ -592,10 +591,15 @@ elif st.session_state.user_type == "student":
                     reg_count = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
                     if reg_count >= 4: st.error(f'❌ الأستاذ {selected_prof} استنفذ كل العناوين')
                     else:
+                        # --- التصحيح هنا ---
                         avail_memos = df_memos[(df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()) & (df_memos["التخصص"].astype(str).str.strip() == student_specialty.strip()) & (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")][["رقم المذكرة", "عنوان المذكرة"]]
-                        if not avail_memos.empty: st.success(f'✅ المذكرات المتاحة في تخصصك ({student_specialty}):')
-                        for _, row in avail_memos.iterrows(): st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
-                        else: st.error('لا توجد مذكرات متاحة ❌')
+                        
+                        if not avail_memos.empty:
+                            st.success(f'✅ المذكرات المتاحة في تخصصك ({student_specialty}):')
+                            for _, row in avail_memos.iterrows(): st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
+                        else:
+                            st.error('لا توجد مذكرات متاحة لهذا الأستاذ في تخصصك حالياً ❌')
+                        # --------------------
                 st.markdown("---")
                 c1, c2 = st.columns(2)
                 with c1: st.session_state.note_number = st.text_input("رقم المذكرة", value=st.session_state.note_number)
@@ -634,7 +638,7 @@ elif st.session_state.user_type == "student":
             else: st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
 
 # ============================================================
-# فضاء الأساتذة (تم التصحيح النهائي باستخدام textwrap.dedent)
+# فضاء الأساتذة
 # ============================================================
 elif st.session_state.user_type == "professor":
     if not st.session_state.logged_in:
@@ -673,7 +677,6 @@ elif st.session_state.user_type == "professor":
             except: prog_int = 0
 
             # بناء كود HTML للطلبة
-            # الطالب الأول
             student_cards_html = f"""
 <div class="student-card">
     <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الأول</h4>
@@ -684,8 +687,6 @@ elif st.session_state.user_type == "professor":
     </div>
 </div>
 """
-
-            # إضافة الطالب الثاني إذا وجد
             if student_info['s2_name']:
                 student_cards_html += f"""
 <div class="student-card">
@@ -698,13 +699,8 @@ elif st.session_state.user_type == "professor":
 </div>
 """
            
-            # إغلاق شبكة الطلبة
-            student_cards_html += """
-</div> <!-- نهاية شبكة الطلبة -->
-"""
+            student_cards_html += "</div>"
 
-            # بناء الكود الكامل في متغير واحد للعرض (مهم جداً: لا مسافات بادئة)
-            # السطر الأول يبدأ مباشرة بالوسم <div> لضمان عدم ظهور الكود كنص
             full_memo_html = f"""<div class="full-view-container">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap;">
     <div>
@@ -717,17 +713,16 @@ elif st.session_state.user_type == "professor":
 </div>
 <div class="students-grid">
     {student_cards_html}
-</div> <!-- نهاية شبكة الطلبة -->
+</div>
 <div style="margin-bottom: 40px; text-align: center;">
     <h3 style="color: #F8FAFC; margin-bottom: 15px;">نسبة الإنجاز الحالية</h3>
     <div class="progress-container" style="height: 40px; border-radius: 20px;">
         <div class="progress-bar" style="width: """ + str(prog_int) + """%; font-size: 1.2rem; font-weight: bold; line-height: 28px;">""" + str(prog_int) + """%</div>
     </div>
 </div>
-</div> <!-- نهاية الحاوية الرئيسية -->
+</div>
 """
            
-            # استخدام textwrap.dedent لتنظيف الكود وضمان عدم وجود مسافات بادئة (هذا هو الحل لمشكلة ظهور الكود كنص)
             st.markdown(textwrap.dedent(full_memo_html), unsafe_allow_html=True)
 
             st.markdown("<div class='divider' style='border-top: 1px solid #334155; margin: 30px 0;'></div>", unsafe_allow_html=True)
@@ -790,9 +785,11 @@ elif st.session_state.user_type == "professor":
                 if validation_error:
                     st.error(validation_error)
                 elif details_to_save:
-                    suc, msg = save_and_send_request(prof_name, memo_id, current_memo['عنوان المذكرة'], req_op, details_to_save)
+                    # --- التصحيح هنا ---
+                    suc, msg = save_and_send_request(req_op, prof_name, memo_id, current_memo['عنوان المذكرة'], details_to_save)
                     if suc: st.success(msg); time.sleep(1); st.rerun()
                     else: st.error(msg)
+                    # --------------------
                 st.markdown("</div>", unsafe_allow_html=True)
 
         # --- لوحة التحكم ---
