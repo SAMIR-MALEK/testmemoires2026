@@ -353,21 +353,21 @@ def sync_student_registration_numbers():
 
 def save_and_send_request(req_type, prof_name, memo_id, memo_title, details_text, status="قيد المراجعة"):
     """
-    حفظ الطلب في جدول الطلبات وإرسال إيميل للإدارة (إذا لزم الأمر)
-    status يمكن أن تكون: 'قيد المراجعة' (افتراضي) أو 'منجز' (للطلبات التلقائية)
+    حفظ الطلب في جدول الطلبات
+    الأعمدة حسب الشيت: رقم الطلب, الوقت, النوع, الحالة, الأستاذ, رقم المذكرة, ...
     """
     try:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        # الأعمدة: فارغ, وقت, نوع, حالة, أستاذ, رقم مذكرة, فارغ, فارغ, تفاصيل, فارغ, فارغ
+        # ترك "رقم الطلب" فارغاً ليتم توليده تلقائياً أو يدوياً
         new_row = ["", timestamp, req_type, status, prof_name, memo_id, "", "", details_text, "", ""]
+        
         body_append = {"values": [new_row]}
         sheets_service.spreadsheets().values().append(
             spreadsheetId=REQUESTS_SHEET_ID, range="Feuille 1!A2",
             valueInputOption="USER_ENTERED", body=body_append, insertDataOption="INSERT_ROWS"
         ).execute()
         
-        # إرسال إيميل للإدارة فقط إذا لم يكن الطلب تلقائياً (أو إذا أردت إعلامهم دائماً)
-        # في حالتنا، سنرسل دائماً للإدارة ليكونوا على علم
+        # إرسال إيميل للإدارة
         request_titles = {
             "تغيير عنوان المذكرة": "طلب تغيير عنوان مذكرة",
             "حذف طالب": "طلب حذف طالب من مذكرة ثنائية",
@@ -377,7 +377,7 @@ def save_and_send_request(req_type, prof_name, memo_id, memo_title, details_text
         }
         subject = f"{request_titles.get(req_type, 'طلب جديد')} - {prof_name}"
         
-        email_body = f"<html dir='rtl'><body style='font-family:sans-serif; padding:20px;'><div style='background:#f4f4f4; padding:30px; border-radius:10px; max-width:600px; margin:auto; color:#333;'><h2 style='background:#8B4513; color:white; padding:20px; border-radius:8px; text-align:center;'>{subject}</h2><p><strong>من:</strong> {prof_name}</p><p><strong>رقم/نوع:</strong> {memo_id}</p><div style='background:#fff8dc; padding:15px; border-right:4px solid #8B4513; margin:15px 0; border-radius: 8px;'><h3>التفاصيل/المبررات:</h3><p>{details_text}</p></div></div></body></html>"
+        email_body = f"<html dir='rtl'><body style='font-family:sans-serif; padding:20px;'><div style='background:#f4f4f4; padding:30px; border-radius:10px; max-width:600px; margin:auto; color:#333;'><h2 style='background:#8B4513; color:white; padding:20px; border-radius:8px; text-align:center;'>{subject}</h2><p><strong>من:</strong> {prof_name}</p><p><strong>رقم/نوع:</strong> {memo_id}</p><div style='background:#fff8dc; padding:15px; border-right:4px solid #8B4513; margin:15px 0; border-radius: 8px;'><h3>التفاصيل:</h3><p>{details_text}</p></div></div></body></html>"
         
         msg = MIMEMultipart('alternative')
         msg['From'], msg['To'], msg['Subject'] = EMAIL_SENDER, ADMIN_EMAIL, subject
@@ -574,15 +574,7 @@ def send_session_emails(students_data, session_info, prof_name):
         logger.error(f"Error sending session emails: {e}")
         return False, str(e)
 
-def process_request_automatically(req_type, prof_name, details):
-    """
-    دالة لأتمتة بعض الطلبات البسيطة (مثل تغيير العنوان)
-    """
-    # في هذا الكود سنقوم بتنفيذ تغيير العنوان إذا لزم الأمر
-    # حالياً سنكتفي بحفظه كطلب منجز
-    return True, "تمت معالجة الطلب تلقائياً"
-
-# ---------------- دالة الإرسال المحدثة (تعثر على الإيميل وتظهر الأخطاء) ----------------
+# ---------------- دالة الإرسال للأستاذ ----------------
 def send_email_to_professor(prof_name, memo_info, student1, student2=None):
     """إرسال بريد إلكتروني للأستاذ (نسخة ذكية للتعامل مع اختلافات البيانات)"""
     try:
@@ -614,11 +606,9 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
             logger.error(f"Email Error: Invalid email for Prof {prof_name}: {prof_email}")
             return False, error_msg
 
-        # إحصائيات
         total_memos = len(prof_row)
         registered_memos = len(prof_row[prof_row["تم التسجيل"].astype(str).str.strip() == "نعم"])
         
-        # بيانات الطلاب
         s1_lname = student1.get('لقب', student1.get('اللقب', ''))
         s1_fname = student1.get('إسم', student1.get('إسم', ''))
         student2_info = ""
@@ -628,7 +618,6 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
             s2_fname = student2.get('إسم', student2.get('إسم', ''))
             student2_info = f"\n👤 **الطالب الثاني:** {s2_lname} {s2_fname}"
         
-        # بناء الإيميل
         email_body = f"""
 <html dir="rtl">
 <head>
@@ -639,7 +628,11 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
         .header h2 {{ margin: 0; }}
         .content {{ line-height: 1.8; color: #333; }}
         .info-box {{ background-color: #f8f9fa; padding: 15px; border-right: 4px solid #256D85; margin: 15px 0; }}
+        .stats-box {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; }}
         .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
+        .highlight {{ color: #256D85; font-weight: bold; }}
+        ul {{ list-style: none; padding: 0; }}
+        li {{ padding: 5px 0; }}
     </style>
 </head>
 <body>
@@ -648,7 +641,7 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
             <h2>✅ تسجيل مذكرة جديدة</h2>
         </div>
         <div class="content">
-            <p>تحية طيبة، الأستاذ(ة) <span style="color:#256D85; font-weight:bold;">{prof_name}</span>،</p>
+            <p>تحية طيبة، الأستاذ(ة) <span class="highlight">{prof_name}</span>،</p>
             <p>نحيطكم علماً بأنه تم تسجيل مذكرة جديدة تحت إشرافكم:</p>
             <div class="info-box">
                 <p>📄 <strong>رقم المذكرة:</strong> {memo_info['رقم المذكرة']}</p>
@@ -657,6 +650,16 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
                 <p>👤 <strong>الطالب الأول:</strong> {s1_lname} {s1_fname}{student2_info}</p>
                 <p>🕒 <strong>تاريخ التسجيل:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
             </div>
+            
+            <div class="stats-box">
+                <h3 style="color: #256D85; margin-top: 0;">📊 إحصائيات مذكراتك:</h3>
+                <ul>
+                    <li>📝 <strong>إجمالي المذكرات:</strong> {total_memos}</li>
+                    <li>✅ <strong>المذكرات المسجلة:</strong> {registered_memos}</li>
+                    <li>⏳ <strong>المذكرات المتبقية:</strong> {total_memos - registered_memos}</li>
+                </ul>
+            </div>
+            
             <p style="margin-top: 20px; color: #666;">للاستفسار، يرجى التواصل مع الإدارة.</p>
         </div>
         <div class="footer">
@@ -962,38 +965,51 @@ elif st.session_state.user_type == "student":
                                 else: st.error(msg); st.session_state.show_confirmation = False
                     with col2:
                         if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
+        
+        # === هذا الجزء تم تعديله للتوافق مع أسماء الأعمدة الصحيحة ===
         with tab_notify:
             st.subheader("تنبيهات خاصة بك")
             my_memo_id = str(s1.get('رقم المذكرة', '')).strip()
+            
             if my_memo_id:
-                # عرض الطلبات المرتبطة بالمذكرة
-                my_reqs = df_requests[df_requests["رقم المذكرة"].astype(str).str.strip() == my_memo_id]
-                
-                # عرض جلسات الإشراف المرتبطة بالمشرف
+                # 1. عرض جلسات الإشراف
                 df_memos_fresh = load_memos()
                 my_memo_row = df_memos_fresh[df_memos_fresh["رقم المذكرة"] == my_memo_id]
+                
                 if not my_memo_row.empty:
-                    my_prof = my_memo_row.iloc[0]["الأستاذ"]
-                    prof_sessions = df_requests[(df_requests["نوع الطلب"] == "جلسة إشراف") & (df_requests["الأستاذ"] == my_prof)]
+                    my_prof = str(my_memo_row.iloc[0]["الأستاذ"]).strip()
+                    
+                    # تصحيح: استخدام "النوع" بدلاً من "نوع الطلب"
+                    base_filter = df_requests["النوع"] == "جلسة إشراف"
+                    prof_filter = df_requests["الأستاذ"].astype(str).str.strip() == my_prof
+                    prof_sessions = df_requests[base_filter & prof_filter]
+
                     if not prof_sessions.empty:
                         last_session = prof_sessions.iloc[-1]
+                        # عرض التفاصيل من عمود المبررات
                         st.markdown(f"""
                         <div class='card' style='border-right: 4px solid #3B82F6; background: rgba(59, 130, 246, 0.1);'>
                             <h4>🔔 جلسة إشراف</h4>
-                            <p>{last_session['التفاصيل']}</p>
+                            <p>{last_session['المبررات']}</p>
                             <small style='color: #666;'>{last_session['الوقت']}</small>
                         </div>
                         """, unsafe_allow_html=True)
-                
+
+                # 2. عرض الطلبات العادية
+                my_reqs = df_requests[df_requests["رقم المذكرة"].astype(str).str.strip() == my_memo_id]
+
                 if not my_reqs.empty:
                     for _, r in my_reqs.iterrows():
-                        req_type = r['نوع الطلب']
+                        req_type = r['النوع']
                         details = str(r.get('العنوان الجديد', r.get('المبررات', ''))).strip()
                         show_details = True
                         if req_type in ["حذف طالب", "تنازل"]: show_details = False
-                        st.markdown(f"""<div class='card' style='border-right: 4px solid #F59E0B; padding: 20px;'><h4>{req_type}</h4><p>التاريخ: {r['الوقت']}</p><p>الحالة: <b>{r['الحالة']}</b></p>{'<p>التفاصيل: ' + details + '</p>' if show_details else '<p><i>التفاصيل مخفية</i></p>'}</div>""", unsafe_allow_html=True)
-                else: st.info("لا توجد إشعارات جديدة.")
-            else: st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
+                        st.markdown(f"""<div class='card' style='border-right: 4px solid #F59E0B; padding: 20px;'><h4>{req_type}</h4><p>التاريخ: {r['الوقت']}</p><p>الحالة: <b>{r.get('الحالة', 'غير محدد')}</b></p>{'<p>التفاصيل: ' + details + '</p>' if show_details else '<p><i>التفاصيل مخفية</i></p>'}</div>""", unsafe_allow_html=True)
+                
+                if prof_sessions.empty and my_reqs.empty:
+                    st.info("لا توجد إشعارات جديدة.")
+            else: 
+                st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
 
 # ============================================================
 # فضاء الأساتذة
@@ -1018,7 +1034,6 @@ elif st.session_state.user_type == "professor":
         prof = st.session_state.professor; prof_name = prof["الأستاذ"]
        
         if st.session_state.selected_memo_id:
-            # عرض تفاصيل المذكرة (لم يتغير)
             memo_id = st.session_state.selected_memo_id
             current_memo = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == memo_id].iloc[0]
             student_info = get_student_info_from_memo(current_memo, df_students)
@@ -1143,7 +1158,6 @@ elif st.session_state.user_type == "professor":
                 st.markdown("</div>", unsafe_allow_html=True)
 
         else:
-            # القائمة الرئيسية للأستاذ - تم إضافة تبويب جلسة الإشراف
             col1, col2 = st.columns([4, 1])
             with col2:
                 if st.button("خروج"): logout()
@@ -1209,7 +1223,6 @@ elif st.session_state.user_type == "professor":
                             if not target_students:
                                 st.warning("⚠️ لا يوجد طلاب مسجلون لديك حالياً لإرسال الإشعار.")
                             else:
-                                # حفظ كطلب منجز
                                 save_success, save_msg = save_and_send_request(
                                     "جلسة إشراف", 
                                     prof_name, 
