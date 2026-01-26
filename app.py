@@ -878,7 +878,8 @@ elif st.session_state.user_type == "professor":
 
 # ============================================================
 # فضاء الإدارة
-# ============================================================
+# ===========================================================
+
 elif st.session_state.user_type == "admin":
     if not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
@@ -916,14 +917,22 @@ elif st.session_state.user_type == "admin":
             elif f_status == "مسجلة": d_memos = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
             else: d_memos = df_memos[df_memos["تم التسجيل"].astype(str).str.strip() != "نعم"]
             st.dataframe(d_memos, use_container_width=True, height=400)
+            
         with tab2:
             st.subheader("قائمة الطلاب")
             q = st.text_input("بحث (لقب/الاسم):")
             if q:
-                f_st = df_students[df_students["لقب"].astype(str).str.contains(q, case=False, na=False) | df_students["الإسم"].astype(str).str.contains(q, case=False, na=False)]
-                if "لقب" in df_students.columns: f_st = df_students[df_students["لقب"].astype(str).str.contains(q, case=False, na=False) | df_students["الإسم"].astype(str).str.contains(q, case=False, na=False)]
+                # البحث المرن في الأعمدة
+                name_cols = [c for c in df_students.columns if 'اسم' in c.lower() or 'لقب' in c.lower() or 'إسم' in c.lower()]
+                if name_cols:
+                    mask = df_students[name_cols].astype(str).apply(lambda x: x.str.contains(q, case=False, na=False)).any(axis=1)
+                    f_st = df_students[mask]
+                else:
+                    f_st = df_students # إذا لم توجد أعمدة اسم، يعرض الكل
                 st.dataframe(f_st, use_container_width=True, height=400)
-            else: st.dataframe(df_students, use_container_width=True, height=400)
+            else: 
+                st.dataframe(df_students, use_container_width=True, height=400)
+                
         with tab3:
             st.subheader("توزيع الأساتذة")
             profs_list = sorted(df_memos["الأستاذ"].dropna().unique())
@@ -932,9 +941,21 @@ elif st.session_state.user_type == "admin":
                 if sel_p not in df_memos["الأستاذ"].values: st.error("بيانات الأساتذة غير متاحة")
                 else: st.dataframe(df_memos[df_memos["الأستاذ"].astype(str).str.strip() == sel_p.strip()], use_container_width=True, height=400)
             else:
-                s_df = df_memos.groupby("الأستاذ").agg({"رقم المذكرة":"count", "تم التسجيل": lambda x: (x.astype(str).str.strip() == "نعم").sum()}).rename(columns={"رقم المذكرة":"الإجمالي", "تم التسجيل":"المسجلة"})
-                s_df["المتاحة"] = s_df["إجمالي"] - s_df["المسجلة"]
-                st.dataframe(s_df, use_container_width=True)
+                # --- إصلاح المشكلة باستخدام Named Aggregation ---
+                if "الأستاذ" in df_memos.columns and "رقم المذكرة" in df_memos.columns and "تم التسجيل" in df_memos.columns:
+                    s_df = df_memos.groupby("الأستاذ").agg(
+                        إجمالي=("رقم المذكرة", "count"),
+                        مسجلة=("تم التسجيل", lambda x: (x.astype(str).str.strip() == "نعم").sum())
+                    ).reset_index()
+                    
+                    s_df["المتاحة"] = s_df["إجمالي"] - s_df["مسجلة"]
+                    # إعادة تسمية الأعمدة لعرضها بالشكل العربي الصحيح
+                    s_df = s_df.rename(columns={"إجمالي": "الإجمالي", "مسجلة": "المسجلة"})
+                    st.dataframe(s_df, use_container_width=True)
+                else:
+                    st.error("بعض الأعمدة المطلوبة مفقودة في شيت المذكرات")
+                # ---------------------------------------------------
+                    
         with tab4:
             st.subheader("التحليل الإحصائي")
             col1, col2 = st.columns(2)
@@ -977,3 +998,6 @@ elif st.session_state.user_type == "admin":
 
 st.markdown("---")
 st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
+
+
+
