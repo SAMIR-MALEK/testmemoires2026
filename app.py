@@ -387,8 +387,6 @@ def update_progress(memo_number, progress_value):
         logger.error(f"خطأ في تحديث نسبة التقدم: {str(e)}")
         return False, f"❌ خطأ: {str(e)}"
 
-# ---------------- دالة الإرسال المطورة (مأخوذة من الكود الأول) ----------------
-
 # ---------------- دالة الإرسال المحدثة (تعثر على الإيميل وتظهر الأخطاء) ----------------
 def send_email_to_professor(prof_name, memo_info, student1, student2=None):
     """إرسال بريد إلكتروني للأستاذ عند تسجيل مذكرة (نسخة مصححة ومتفقدة)"""
@@ -523,7 +521,6 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
         logger.error(f"❌ خطأ في إرسال البريد الإلكتروني: {str(e)}")
         return False, f"خطأ تقني أثناء الإرسال: {str(e)}"
 
-
 def verify_student(username, password, df_students):
     valid, result = validate_username(username)
     if not valid: return False, result
@@ -573,7 +570,85 @@ def verify_professor_password(note_number, prof_password, df_memos, df_prof_memo
     return True, prof_row.iloc[0].to_dict(), None
 
 def update_registration(note_number, student1, student2=None):
-
+    try:
+        df_memos = load_memos(); df_prof_memos = load_prof_memos(); df_students = load_students()
+        prof_name = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()]["الأستاذ"].iloc[0].strip()
+        used_prof_password = st.session_state.prof_password.strip()
+        
+        # --- تحديث البيانات في الجداول ---
+        prof_row_idx = df_prof_memos[(df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name) & (df_prof_memos["كلمة سر التسجيل"].astype(str).str.strip() == used_prof_password)].index[0] + 2
+        col_names = df_prof_memos.columns.tolist()
+        s1_lname = student1.get('لقب', student1.get('اللقب', '')); s1_fname = student1.get('إسم', student1.get('إسم', ''))
+        
+        updates = [
+            {"range": f"Feuille 1!{col_letter(col_names.index('الطالب الأول')+1)}{prof_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
+            {"range": f"Feuille 1!{col_letter(col_names.index('تم التسجيل')+1)}{prof_row_idx}", "values": [["نعم"]]},
+            {"range": f"Feuille 1!{col_letter(col_names.index('تاريخ التسجيل')+1)}{prof_row_idx}", "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]},
+            {"range": f"Feuille 1!{col_letter(col_names.index('رقم المذكرة')+1)}{prof_row_idx}", "values": [[note_number]]}
+        ]
+        
+        if student2 is not None:
+            s2_lname = student2.get('لقب', student2.get('اللقب', '')); s2_fname = student2.get('إسم', student2.get('إسم', ''))
+            updates.append({"range": f"Feuille 1!{col_letter(col_names.index('الطالب الثاني')+1)}{prof_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
+        
+        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=PROF_MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates}).execute()
+        
+        memo_row_idx = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()].index[0] + 2
+        memo_cols = df_memos.columns.tolist()
+        reg1 = str(student1.get('رقم التسجيل', '')); reg2 = str(student2.get('رقم التسجيل', '')) if student2 else ""
+        
+        updates2 = [
+            {"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الأول')+1)}{memo_row_idx}", "values": [[s1_lname + ' ' + s1_fname]]},
+            {"range": f"Feuille 1!{col_letter(memo_cols.index('تم التسجيل')+1)}{memo_row_idx}", "values": [["نعم"]]},
+            {"range": f"Feuille 1!{col_letter(memo_cols.index('تاريخ التسجيل')+1)}{memo_row_idx}", "values": [[datetime.now().strftime('%Y-%m-%d %H:%M')]]},
+            {"range": f"Feuille 1!S{memo_row_idx}", "values": [[reg1]]}
+        ]
+        
+        if 'كلمة سر التسجيل' in memo_cols: updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('كلمة سر التسجيل')+1)}{memo_row_idx}", "values": [[used_prof_password]]})
+        
+        if student2 is not None:
+            updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الثاني')+1)}{memo_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
+            updates2.append({"range": f"Feuille 1!T{memo_row_idx}", "values": [[reg2]]})
+        
+        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates2}).execute()
+        
+        students_cols = df_students.columns.tolist()
+        student1_row_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student1['اسم المستخدم'].strip()].index[0] + 2
+        sheets_service.spreadsheets().values().update(spreadsheetId=STUDENTS_SHEET_ID, range=f"Feuille 1!{col_letter(students_cols.index('رقم المذكرة')+1)}{student1_row_idx}", valueInputOption="USER_ENTERED", body={"values": [[note_number]]}).execute()
+        
+        if student2 is not None:
+            student2_row_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student2['اسم المستخدم'].strip()].index[0] + 2
+            sheets_service.spreadsheets().values().update(spreadsheetId=STUDENTS_SHEET_ID, range=f"Feuille 1!{col_letter(students_cols.index('رقم المذكرة')+1)}{student2_row_idx}", valueInputOption="USER_ENTERED", body={"values": [[note_number]]}).execute()
+        
+        time.sleep(2); clear_cache_and_reload(); time.sleep(1)
+        df_students_updated = load_students()
+        st.session_state.student1 = df_students_updated[df_students_updated["اسم المستخدم"].astype(str).str.strip() == student1['اسم المستخدم'].strip()].iloc[0].to_dict()
+        if student2 is not None: st.session_state.student2 = df_students_updated[df_students_updated["اسم المستخدم"].astype(str).str.strip() == student2['اسم المستخدم'].strip()].iloc[0].to_dict()
+        
+        # --- إرسال الإيميل (مع عرض الأخطاء) ---
+        memo_data = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()].iloc[0]
+        
+        # استدعاء الدالة الجديدة (بدل تمرير prof_email، نمرر prof_name لتبحث عنه الدالة بنفسها)
+        email_sent, email_msg = send_email_to_professor(
+            prof_name, 
+            memo_data, 
+            st.session_state.student1, 
+            st.session_state.student2 if student2 else None
+        )
+        
+        if not email_sent:
+            # هنا سنظهر رسالة تحذيرية للمستخدم فوراً إذا فشل الإرسال
+            st.error(f"⚠️ {email_msg}")
+            st.warning("تم تسجيل المذكرة في النظام، ولكن لم يتم إرسال الإيميل للأستاذ.")
+            # يمكن إيقاف التنفيذ هنا إذا كان الإيميل إجبارياً، لكننا سنكمل ونعلم المستخدم
+        else:
+            st.success("📧 تم إرسال إشعار بالبريد الإلكتروني للأستاذ.")
+            
+        return True, "✅ تم تسجيل المذكرة بنجاح!"
+        
+    except Exception as e:
+        logger.error(f"خطأ في تحديث التسجيل: {str(e)}")
+        return False, f"❌ حدث خطأ أثناء التسجيل: {str(e)}"
 
 # ---------------- Session State ----------------
 if 'user_type' not in st.session_state:
