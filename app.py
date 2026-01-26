@@ -902,8 +902,11 @@ elif st.session_state.user_type == "admin":
         st.header("📊 لوحة تحكم الإدارة")
         st_s = len(df_students); t_m = len(df_memos); r_m = len(df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
         a_m = t_m - r_m; t_p = len(df_prof_memos["الأستاذ"].unique())
-        reg_st = df_students["رقم المذكرة"].notna().sum()
-        unreg_st = st_s - reg_st
+            # معالجة القيم الفارغة (Empty Strings) والفراغات
+        memo_col = df_students["رقم المذكرة"].astype(str).str.strip()
+        reg_st = (memo_col != "").sum()
+        unreg_st = (memo_col == "").sum()
+
        
         st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
         st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{a_m}</div><div class="kpi-label">مذكرات متاحة</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{reg_st}</div><div class="kpi-label">طلاب مسجلين</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{unreg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div></div>', unsafe_allow_html=True)
