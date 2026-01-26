@@ -388,26 +388,46 @@ def update_progress(memo_number, progress_value):
         return False, f"❌ خطأ: {str(e)}"
 
 # ---------------- دالة الإرسال المحدثة (تعثر على الإيميل وتظهر الأخطاء) ----------------
+# ---------------- دالة الإرسال الذكية (تحل مشاكل التسجيل) ----------------
 def send_email_to_professor(prof_name, memo_info, student1, student2=None):
-    """إرسال بريد إلكتروني للأستاذ عند تسجيل مذكرة (نسخة مصححة ومتفقدة)"""
+    """إرسال بريد إلكتروني للأستاذ (نسخة ذكية للتعامل مع اختلافات البيانات)"""
     try:
-        # 1. تحميل بيانات الأساتذة للبحث عن الإيميل والإحصائيات
+        # 1. تحميل البيانات
         df_prof_memos = load_prof_memos()
         
-        # 2. البحث عن صف الأستاذ (نتعامل مع اختلاف المسافات)
+        # 2. البحث المرن عن الأستاذ
+        # محاولة البحث بالاسم المطابق تماماً
         prof_row = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
         
+        # إذا لم نجد، نبحث عن الأسم التي تحتوي على جزء من الاسم (للتعامل مع اختلاف الألقاب)
         if prof_row.empty:
-            logger.error(f"لم يتم العثور على بيانات الأستاذ {prof_name} في جدول الأساتذة لإرسال الإيميل")
-            return False, f"خطأ: لم يتم العثور على بيانات البريد للأستاذ {prof_name}"
-            
-        prof_data = prof_row.iloc[0]
-        prof_email = str(prof_data.get("البريد الإلكتروني", "")).strip()
+            # نحذف الألقاب الشائعة "الأستاذ"، "د."، "أ.د" للمحاولة
+            clean_name = prof_name.strip().replace("الأستاذ", "").replace("د.", "").replace("أ.د", "").strip()
+            if clean_name:
+                prof_row = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.contains(clean_name, case=False, na=False)]
         
-        # 3. التحقق من صحة الإيميل
+        if prof_row.empty:
+            error_msg = f"فشل الإرسال: لم يتم العثور على البريد للأستاذ <b>{prof_name}</b>.<br>يرجى التأكد من تطابق اسمه في جدول مذكرات الأساتذة."
+            logger.error(f"Email Error: Professor {prof_name} not found in Prof Memos sheet.")
+            return False, error_msg
+
+        # أخذ الصف الأول (إذا وجدنا تطابق جزئي)
+        prof_data = prof_row.iloc[0]
+        
+        # 3. البحث الذكي عن عمود الإيميل
+        prof_email = ""
+        possible_email_cols = ["البريد الإلكتروني", "الإيميل", "email", "Email"]
+        for col in possible_email_cols:
+            if col in prof_data.index:
+                val = str(prof_data[col]).strip()
+                if val and val != "nan":
+                    prof_email = val
+                    break
+        
         if "@" not in prof_email:
-            logger.error(f"البريد الإلكتروني للأستاذ {prof_name} فارغ أو غير صحيح: {prof_email}")
-            return False, f"البريد الإلكتروني للأستاذ {prof_name} غير مسجل في النظام أو غير صحيح"
+            error_msg = f"فشل الإرسال: الأستاذ <b>{prof_name}</b> موجود، ولكن عمود البريد الإلكتروني فارغ أو غير صحيح.<br>عمود البريد الموجود: {prof_data.get('البريد الإلكتروني', prof_data.get('الإيميل', 'غير موجود'))}"
+            logger.error(f"Email Error: Invalid email for Prof {prof_name}: {prof_email}")
+            return False, error_msg
 
         # 4. حساب الإحصائيات
         total_memos = len(prof_row)
@@ -437,7 +457,7 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
         
         passwords_list = "\n".join(used_passwords + available_passwords) if (used_passwords or available_passwords) else "لا توجد كلمات سر مسجلة"
         
-        # 6. بناء تصميم الإيميل
+        # 6. بناء الإيميل
         email_body = f"""
 <html dir="rtl">
 <head>
@@ -520,6 +540,15 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
     except Exception as e:
         logger.error(f"❌ خطأ في إرسال البريد الإلكتروني: {str(e)}")
         return False, f"خطأ تقني أثناء الإرسال: {str(e)}"
+
+
+
+
+
+
+
+
+
 
 def verify_student(username, password, df_students):
     valid, result = validate_username(username)
