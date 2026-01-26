@@ -701,17 +701,21 @@ if df_students.empty or df_memos.empty or df_prof_memos.empty: st.error("❌ خ�
 # الصفحة الرئيسية
 # ============================================================
 if st.session_state.user_type is None:
-    st.markdown("<h1 style='text-align: center; margin-bottom: 1rem;'>نظام تسجيل المذكرات</h1>", unsafe_allow_html=True)
+    
     st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 1.2rem;'>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>", unsafe_allow_html=True)
+
+
+    st.markdown("<h1 style='text-align: center; margin-bottom: 1rem;'>منصة تسجيل المذكرات</h1>", unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("<div class='card' style='text-align: center;'>", unsafe_allow_html=True)
-        st.markdown("<h3>👨‍🎓 فضاء الطلبة</h3>", unsafe_allow_html=True)
+        st.markdown("<h3>🎓 فضاء الطلبة</h3>", unsafe_allow_html=True)
         if st.button("دخول الطلبة", key="btn_student", use_container_width=True): st.session_state.user_type = "student"; st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     with col2:
         st.markdown("<div class='card' style='text-align: center;'>", unsafe_allow_html=True)
-        st.markdown("<h3>👨‍🏫 فضاء الأساتذة</h3>", unsafe_allow_html=True)
+        st.markdown("<h3>📚 فضاء الأساتذة</h3>", unsafe_allow_html=True)
         if st.button("دخول الأساتذة", key="btn_prof", use_container_width=True): st.session_state.user_type = "professor"; st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     with col3:
@@ -1162,4 +1166,4 @@ elif st.session_state.user_type == "admin":
             st.dataframe(df_requests, use_container_width=True, height=500)
 
 st.markdown("---")
-st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">© 2026 جامعة محمد البشير الإبراهيمي - كلية الحقوق</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">  إشراف مسؤول الميدان الدكتور لخضر رفاف © </div>', unsafe_allow_html=True)
