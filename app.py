@@ -17,6 +17,12 @@ logger = logging.getLogger(__name__)
 # ---------------- إعداد الصفحة ----------------
 st.set_page_config(page_title="تسجيل مذكرات الماستر", page_icon="📘", layout="wide")
 
+# ========================
+# إعداد الموعد النهائي
+# ========================
+# يرجى تعديل السنة (2025) إذا كان الموعد في سنة أخرى
+REGISTRATION_DEADLINE = datetime(2025, 1, 28, 23, 59)
+
 # ---------------- CSS (تصميم زرقاء بلا حدود ومثبت) ----------------
 st.markdown("""
 <!-- استدعاء خط احترافي -->
@@ -927,46 +933,62 @@ elif st.session_state.user_type == "student":
                     
                     st.markdown(f'''<div class="card" style="border-left: 5px solid #FFD700;"><h3>✅ أنت مسجل في المذكرة التالية:</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {memo_info['الأستاذ']}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p><p><b>التاريخ:</b> {memo_info.get('تاريخ التسجيل','')}</p>{session_html}</div>''', unsafe_allow_html=True)
             elif st.session_state.mode == "register":
-                st.markdown('<div class="card"><h3>تسجيل مذكرة جديدة</h3></div>', unsafe_allow_html=True)
-                all_profs = sorted(df_memos["الأستاذ"].dropna().unique())
-                selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + all_profs)
-                if selected_prof:
-                    student_specialty = s1.get("التخصص")
-                    prof_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()]
-                    reg_count = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
-                    if reg_count >= 4: st.error(f'❌ الأستاذ {selected_prof} استنفذ كل العناوين')
-                    else:
-                        avail_memos = df_memos[(df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()) & (df_memos["التخصص"].astype(str).str.strip() == student_specialty.strip()) & (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")][["رقم المذكرة", "عنوان المذكرة"]]
-                       
-                        if not avail_memos.empty:
-                            st.success(f'✅ المذكرات المتاحة في تخصصك ({student_specialty}):')
-                            for _, row in avail_memos.iterrows(): st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
-                        else:
-                            st.error('لا توجد مذكرات متاحة لهذا الأستاذ في تخصصك حالياً ❌')
-                st.markdown("---")
-                c1, c2 = st.columns(2)
-                with c1: st.session_state.note_number = st.text_input("رقم المذكرة", value=st.session_state.note_number)
-                with c2: st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
-                if not st.session_state.show_confirmation:
-                    if st.button("المتابعة للتأكيد"):
-                        if not st.session_state.note_number or not st.session_state.prof_password: st.error("⚠️ يرجى إدخال البيانات")
-                        else: st.session_state.show_confirmation = True; st.rerun()
+                # --- التحقق من الموعد النهائي ---
+                if datetime.now() > REGISTRATION_DEADLINE:
+                    st.markdown("""
+                    <div class='alert-card' style='text-align:center; padding:40px; border: 2px solid #EF4444; background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);'>
+                        <h2 style='font-size:2.5rem; margin-bottom:20px;'>⛔ انتهت مهلة التسجيل</h2>
+                        <p style='font-size:1.3rem; margin:20px 0; line-height:1.6;'>
+                            تم إيقاف خاصية التسجيل الإلكتروني في تمام <b>23:59</b> من يوم <b>28 جانفي</b>.
+                        </p>
+                        <div style='background: rgba(255,255,255,0.1); padding:15px; border-radius:10px; margin-top:20px;'>
+                            <p style='font-size:1.2rem; color:#FFD700; margin:0; font-weight:bold;'>
+                                ⚠️ يرجى الاتصال بمكتب فريق التكوين في الكلية للتسجيل اليدوي.
+                            </p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
-                    st.warning(f"⚠️ تأكيد التسجيل - المذكرة رقم: {st.session_state.note_number}")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("تأكيد نهائي", type="primary"):
-                            valid, prof_row, err = verify_professor_password(st.session_state.note_number, st.session_state.prof_password, df_memos, df_prof_memos)
-                            if not valid: st.error(err); st.session_state.show_confirmation = False
+                    # --- نموذج التسجيل الأصلي ---
+                    st.markdown('<div class="card"><h3>تسجيل مذكرة جديدة</h3></div>', unsafe_allow_html=True)
+                    all_profs = sorted(df_memos["الأستاذ"].dropna().unique())
+                    selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + all_profs)
+                    if selected_prof:
+                        student_specialty = s1.get("التخصص")
+                        prof_memos = df_memos[df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()]
+                        reg_count = len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+                        if reg_count >= 4: st.error(f'❌ الأستاذ {selected_prof} استنفذ كل العناوين')
+                        else:
+                            avail_memos = df_memos[(df_memos["الأستاذ"].astype(str).str.strip() == selected_prof.strip()) & (df_memos["التخصص"].astype(str).str.strip() == student_specialty.strip()) & (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم")][["رقم المذكرة", "عنوان المذكرة"]]
+                           
+                            if not avail_memos.empty:
+                                st.success(f'✅ المذكرات المتاحة في تخصصك ({student_specialty}):')
+                                for _, row in avail_memos.iterrows(): st.markdown(f"**{row['رقم المذكرة']}.** {row['عنوان المذكرة']}")
                             else:
-                                with st.spinner('⏳ جاري تسجيل...'):
-                                    success, msg = update_registration(st.session_state.note_number, s1, s2)
-                                if success: st.success(msg); st.balloons(); clear_cache_and_reload(); st.session_state.mode = "view"; st.session_state.show_confirmation = False; time.sleep(2); st.rerun()
-                                else: st.error(msg); st.session_state.show_confirmation = False
-                    with col2:
-                        if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
+                                st.error('لا توجد مذكرات متاحة لهذا الأستاذ في تخصصك حالياً ❌')
+                    st.markdown("---")
+                    c1, c2 = st.columns(2)
+                    with c1: st.session_state.note_number = st.text_input("رقم المذكرة", value=st.session_state.note_number)
+                    with c2: st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
+                    if not st.session_state.show_confirmation:
+                        if st.button("المتابعة للتأكيد"):
+                            if not st.session_state.note_number or not st.session_state.prof_password: st.error("⚠️ يرجى إدخال البيانات")
+                            else: st.session_state.show_confirmation = True; st.rerun()
+                    else:
+                        st.warning(f"⚠️ تأكيد التسجيل - المذكرة رقم: {st.session_state.note_number}")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("تأكيد نهائي", type="primary"):
+                                valid, prof_row, err = verify_professor_password(st.session_state.note_number, st.session_state.prof_password, df_memos, df_prof_memos)
+                                if not valid: st.error(err); st.session_state.show_confirmation = False
+                                else:
+                                    with st.spinner('⏳ جاري تسجيل...'):
+                                        success, msg = update_registration(st.session_state.note_number, s1, s2)
+                                    if success: st.success(msg); st.balloons(); clear_cache_and_reload(); st.session_state.mode = "view"; st.session_state.show_confirmation = False; time.sleep(2); st.rerun()
+                                    else: st.error(msg); st.session_state.show_confirmation = False
+                        with col2:
+                            if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
         
-        # === هذا الجزء تم تعديله للتوافق مع أسماء الأعمدة الصحيحة ===
         with tab_notify:
             st.subheader("تنبيهات خاصة بك")
             my_memo_id = str(s1.get('رقم المذكرة', '')).strip()
