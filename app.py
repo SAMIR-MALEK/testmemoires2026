@@ -21,7 +21,7 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 # إعداد الموعد النهائي
 # ========================
 # يرجى تعديل السنة (2025) إذا كان الموعد في سنة أخرى
-REGISTRATION_DEADLINE = datetime(2025, 1, 28, 20, 40)
+REGISTRATION_DEADLINE = datetime(2025, 1, 28, 20, 59)
 
 # ---------------- CSS (تصميم زرقاء بلا حدود ومثبت) ----------------
 st.markdown("""
@@ -939,11 +939,11 @@ elif st.session_state.user_type == "student":
                     <div class='alert-card' style='text-align:center; padding:40px; border: 2px solid #EF4444; background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);'>
                         <h2 style='font-size:2.5rem; margin-bottom:20px;'>⛔ انتهت مهلة التسجيل</h2>
                         <p style='font-size:1.3rem; margin:20px 0; line-height:1.6;'>
-                            تم إيقاف خاصية التسجيل الإلكتروني في تمام <b>23:59</b> من يوم <b>28 جانفي</b>.
+                            تم إيقاف خاصية التسجيل
                         </p>
                         <div style='background: rgba(255,255,255,0.1); padding:15px; border-radius:10px; margin-top:20px;'>
                             <p style='font-size:1.2rem; color:#FFD700; margin:0; font-weight:bold;'>
-                                ⚠️ يرجى الاتصال بمكتب فريق التكوين في الكلية للتسجيل اليدوي.
+                                ⚠️ يرجى الاتصال بمكتب فريق التكوين في الكلية يوم الأحد 01 فيفري  2025 
                             </p>
                         </div>
                     </div>
