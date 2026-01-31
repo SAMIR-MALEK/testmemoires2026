@@ -9,6 +9,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
 import textwrap
+import base64
 
 # ---------------- إعداد Logging ----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -608,8 +609,17 @@ df_students = load_students(); df_memos = load_memos(); df_prof_memos = load_pro
 if df_students.empty or df_memos.empty or df_prof_memos.empty: st.error("❌ خطأ في تحميل البيانات. يرجى المحاولة لاحقاً."); st.stop()
 
 # ============================================================
-# دوال استعادة الجلسة (Persistence Logic)
+# دوال استعادة الجلسة (Persistence Logic) - مع Base64
 # ============================================================
+
+# دوال التشفير وفك التشفير
+def encode_str(s): 
+    return base64.urlsafe_b64encode(s.encode()).decode()
+
+def decode_str(s): 
+    try: return base64.urlsafe_b64decode(s.encode()).decode()
+    except: return ""
+
 def lookup_student(username):
     if df_students.empty: return None
     s = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == username]
@@ -629,8 +639,16 @@ def restore_session_from_url():
 
     qp = st.query_params
     if 'ut' in qp and 'un' in qp:
-        user_type = qp['ut']
-        username = qp['un']
+        # معالجة القيم من الرابط (قد تكون قائمة في بعض إصدارات Streamlit)
+        user_type_raw = qp['ut']
+        username_raw = qp['un']
+        
+        user_type = user_type_raw if isinstance(user_type_raw, str) else (user_type_raw[0] if isinstance(user_type_raw, list) and user_type_raw else "")
+        username_enc = username_raw if isinstance(username_raw, str) else (username_raw[0] if isinstance(username_raw, list) and username_raw else "")
+        
+        username = decode_str(username_enc)
+
+        if not username: return
 
         if user_type == 'student':
             s_data = lookup_student(username)
@@ -638,7 +656,6 @@ def restore_session_from_url():
                 st.session_state.user_type = 'student'
                 st.session_state.logged_in = True
                 st.session_state.student1 = s_data
-                # تعيين الطالب الثاني لا شيء لأن لا يمكن استرداده من الرابط بسهولة
                 st.session_state.student2 = None
                 note_num = str(s_data.get('رقم المذكرة', '')).strip()
                 st.session_state.mode = "view" if note_num else "register"
@@ -659,14 +676,28 @@ def restore_session_from_url():
 # استدعاء دالة الاستعادة
 restore_session_from_url()
 
-# ---------------- Session State ----------------
-if 'user_type' not in st.session_state:
-    st.session_state.user_type = None
-    st.session_state.logged_in = False
-    st.session_state.student1 = None; st.session_state.student2 = None; st.session_state.professor = None
-    st.session_state.admin_user = None; st.session_state.memo_type = "فردية"; st.session_state.mode = "register"
-    st.session_state.note_number = ""; st.session_state.prof_password = ""; st.session_state.show_confirmation = False
-    st.session_state.selected_memo_id = None
+# ============================================================
+# تهيئة Session State (Robust Initialization)
+# ============================================================
+# نستخدم هذه الطريقة لضمان وجود جميع المتغيرات دائماً، بغض النظر عن حالة الجلسة السابقة
+required_state = {
+    'user_type': None,
+    'logged_in': False,
+    'student1': None,
+    'student2': None,
+    'professor': None,
+    'admin_user': None,
+    'memo_type': "فردية",
+    'mode': "register",
+    'note_number': "",
+    'prof_password': "",
+    'show_confirmation': False,
+    'selected_memo_id': None  # <--- هذا هو المتغير الذي كان يسبب الخطأ
+}
+
+for key, value in required_state.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 def logout():
     st.query_params.clear() # مسح الرابط
@@ -749,9 +780,9 @@ elif st.session_state.user_type == "student":
                     st.session_state.mode = "view" if note_num else "register"
                     st.session_state.logged_in = True
                     
-                    # --- حفظ الجلسة في الرابط ---
+                    # --- حفظ الجلسة في الرابط (مع التشفير) ---
                     st.query_params['ut'] = 'student'
-                    st.query_params['un'] = st.session_state.student1['اسم المستخدم']
+                    st.query_params['un'] = encode_str(st.session_state.student1['اسم المستخدم'])
                     
                     st.rerun()
     else:
@@ -847,7 +878,7 @@ elif st.session_state.user_type == "student":
                         details = str(r.get('العنوان الجديد', r.get('المبررات', ''))).strip()
                         show_details = True
                         if req_type in ["حذف طالب", "تنازل"]: show_details = False
-                        st.markdown(f"""<div class='card' style='border-right: 4px solid #F59E0B; padding: 20px;'><h4>{req_type}</h4><p>التاريخ: {r['الوقت']}</p><p>الحالة: <b>{r.get('الحالة', 'غير محدد')}</b></p>{'<p>التفاصيل: ' + details + '</p>' if show_details else '<p><i>التفاصيل مخفية</i></p>'}</div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div class="card" style="border-right: 4px solid #F59E0B; padding: 20px;"><h4>{req_type}</h4><p>التاريخ: {r['الوقت']}</p><p>الحالة: <b>{r.get('الحالة', 'غير محدد')}</b></p>{'<p>التفاصيل: ' + details + '</p>' if show_details else '<p><i>التفاصيل مخفية</i></p>'}</div>""", unsafe_allow_html=True)
                 if prof_sessions.empty and my_reqs.empty: st.info("لا توجد إشعارات جديدة.")
             else: st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
 
@@ -871,13 +902,14 @@ elif st.session_state.user_type == "professor":
                 if not v: st.error(r)
                 else: 
                     st.session_state.professor = r; st.session_state.logged_in = True
-                    # --- حفظ الجلسة في الرابط ---
+                    # --- حفظ الجلسة في الرابط (مع التشفير) ---
                     st.query_params['ut'] = 'professor'
-                    st.query_params['un'] = st.session_state.professor['إسم المستخدم']
+                    st.query_params['un'] = encode_str(st.session_state.professor['إسم المستخدم'])
                     st.rerun()
     else:
         prof = st.session_state.professor; prof_name = prof["الأستاذ"]
-        if st.session_state.selected_memo_id:
+        # استخدام st.session_state.get لتجنب الأخطاء، رغم أن الكود التالي يضمن وجوده
+        if st.session_state.get('selected_memo_id'):
             memo_id = st.session_state.selected_memo_id
             current_memo = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == memo_id].iloc[0]
             student_info = get_student_info_from_memo(current_memo, df_students)
@@ -1094,9 +1126,9 @@ elif st.session_state.user_type == "admin":
                 if not v: st.error(r)
                 else: 
                     st.session_state.admin_user = r; st.session_state.logged_in = True
-                    # --- حفظ الجلسة في الرابط ---
+                    # --- حفظ الجلسة في الرابط (مع التشفير) ---
                     st.query_params['ut'] = 'admin'
-                    st.query_params['un'] = st.session_state.admin_user
+                    st.query_params['un'] = encode_str(st.session_state.admin_user)
                     st.rerun()
     else:
         col1, col2 = st.columns([4, 1])
