@@ -855,6 +855,9 @@ elif st.session_state.user_type == "student":
                             success, msg = update_student_phone(s1['اسم المستخدم'], new_s1_phone)
                             if success:
                                 st.success(msg)
+                                # --- الإصلاح الأساسي: تحديث البيانات في الذاكرة فوراً ---
+                                st.session_state.student1['الهاتف'] = new_s1_phone
+                                # ---------------------------------------------
                                 time.sleep(1)
                                 st.rerun()
                             else:
@@ -879,6 +882,9 @@ elif st.session_state.user_type == "student":
                             success, msg = update_student_phone(s2['اسم المستخدم'], new_s2_phone)
                             if success:
                                 st.success(msg)
+                                # --- الإصلاح الأساسي: تحديث البيانات في الذاكرة فوراً ---
+                                st.session_state.student2['الهاتف'] = new_s2_phone
+                                # ---------------------------------------------
                                 time.sleep(1)
                                 st.rerun()
                             else:
