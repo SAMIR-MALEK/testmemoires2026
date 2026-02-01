@@ -1472,9 +1472,15 @@ elif st.session_state.user_type == "admin":
                 else: st.dataframe(df_memos[df_memos["الأستاذ"].astype(str).str.strip() == sel_p.strip()], use_container_width=True, height=400)
             else:
                 if "الأستاذ" in df_memos.columns and "رقم المذكرة" in df_memos.columns and "تم التسجيل" in df_memos.columns:
-                    s_df = df_memos.groupby("الأستاذ").agg(إجمالي=("رقم المذكرة", "count"), مسجلة=("تم التسجيل", lambda x: (x.astype(str).str.strip() == "نعم").sum())).reset_index()
-                    s_df["المتاحة"] = s_df["إجمالي"] - s_df["المسجلة"]
-                    s_df = s_df.rename(columns={"إجمالي": "الإجمالي", "مسجلة": "المسجلة"})
+                    # --- تم التصحيح هنا ---
+                    s_df = df_memos.groupby("الأستاذ").agg(
+                        total=("رقم المذكرة", "count"), 
+                        registered=("تم التسجيل", lambda x: (x.astype(str).str.strip() == "نعم").sum())
+                    ).reset_index()
+                    s_df["المتاحة"] = s_df["total"] - s_df["registered"]
+                    # إعادة التسمية للعرض فقط
+                    s_df = s_df.rename(columns={"total": "الإجمالي", "registered": "المسجلة"})
+                    # -----------------------
                     st.dataframe(s_df, use_container_width=True)
                 else: st.error("بعض الأعمدة المطلوبة مفقودة في شيت المذكرات")
         with tab4:
