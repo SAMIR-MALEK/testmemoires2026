@@ -484,8 +484,8 @@ def _send_email_to_professor_row(row):
             <div class="info-box">
                 <p>الدخول إلى حسابكم يكون عبر الرابط:</p>
                 <a href="https://memoires2026.streamlit.app" class="link">https://memoires2026.streamlit.app</a>
-                <p style="margin-top: 15px;">إسم المستخدم: <span class="ltr-text">{username}</span></p>
-                <p>كلمة المرور: <span class="ltr-text">{password}</span></p>
+                <p style="margin-top: 15px;">إسم المستخدم: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px;">{username}</span></p>
+                <p>كلمة المرور: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px;">{password}</span></p>
             </div>
 
             <p style="margin-top: 30px; font-weight: bold; color: #256D85;">🔑 تذكير بكلمات السر الخاصة بك (للطلاب):</p>
