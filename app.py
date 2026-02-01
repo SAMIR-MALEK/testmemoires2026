@@ -23,7 +23,7 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 # ========================
 REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
-# ---------------- CSS (تصميم زرقاء بلا حدود ومثبت) ----------------
+# ---------------- CSS (تصميم زرقاء بلا حدود ومثبت + تحسين حقول الإدخال) ----------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -35,7 +35,39 @@ font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right;
 .block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 16px; margin:auto; }
 h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #F8FAFC; }
 label, p, span { color: #E2E8F0; }
-.stTextInput label, .stSelectbox label { color: #F8FAFC !important; font-weight: 600; }
+
+/* تحسين حقول الإدخال لتبدو مثل Edit Boxes */
+.stTextInput > div > div > input,
+.stSelectbox > div > div > select,
+.stTextArea > div > div > textarea {
+    background-color: #F8FAFC !important; /* خلفية فاتحة جداً */
+    color: #1E293B !important; /* لون النص داكن */
+    border: 2px solid #CBD5E1 !important; /* حدود رمادية واضحة */
+    border-radius: 8px !important;
+    padding: 12px !important;
+    font-size: 16px !important;
+    transition: all 0.3s ease;
+}
+
+/* تأثير عند التركيز (Focus) */
+.stTextInput > div > div > input:focus,
+.stSelectbox > div > div > select:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: #2F6F7E !important; /* لون الحدود عند التركيز */
+    box-shadow: 0 0 0 3px rgba(47, 111, 126, 0.2) !important;
+    outline: none !important;
+}
+
+/* تعديل التسميات فوق الحقول */
+.stTextInput > label, .stSelectbox > label {
+    color: #94A3B8 !important;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* تنسيق الأزرار */
 .stButton>button, button[kind="primary"], div[data-testid="stFormSubmitButton"] button {
 background-color: #2F6F7E !important; color: #ffffff !important;
 font-size: 16px; font-weight: 600; padding: 14px 32px;
@@ -45,6 +77,7 @@ transition: all 0.3s ease; width: 100%;
 text-align: center; display: flex; justify-content: center; align-items: center; gap: 10px;
 }
 .stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
+
 .card {
 background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255,255,255, 0.08);
 border-radius: 20px; padding: 30px; margin-bottom: 20px;
