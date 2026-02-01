@@ -359,7 +359,7 @@ def save_and_send_request(req_type, prof_name, memo_id, memo_title, details_text
             "جلسة إشراف": "تنبيه: جلسة إشراف مجدولة"
         }
         subject = f"{request_titles.get(req_type, 'طلب جديد')} - {prof_name}"
-        email_body = f"<html dir='rtl'><head><meta http-equiv='Content-Type' content='text/html; charset=utf-8'><style>body {{ font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; }}</style></head><body style='font-family:sans-serif; padding:20px;'><div style='background:#f4f4f4; padding:30px; border-radius:10px; max-width:600px; margin:auto; color:#333;'><h2 style='background:#8B4513; color:white; padding:20px; border-radius:8px; text-align:center;'>{subject}</h2><p><strong>من:</strong> {prof_name}</p><p><strong>رقم/نوع:</strong> {memo_id}</p><div style='background:#fff8dc; padding:15px; border-right:4px solid #8B4513; margin:15px 0; border-radius: 8px;'><h3>التفاصيل:</h3><p>{details_text}</p></div></div></body></html>"
+        email_body = f"<html dir='rtl'><head><style>body {{ font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; }}</style></head><body style='font-family:sans-serif; padding:20px;'><div style='background:#f4f4f4; padding:30px; border-radius:10px; max-width:600px; margin:auto; color:#333;'><h2 style='background:#8B4513; color:white; padding:20px; border-radius:8px; text-align:center;'>{subject}</h2><p><strong>من:</strong> {prof_name}</p><p><strong>رقم/نوع:</strong> {memo_id}</p><div style='background:#fff8dc; padding:15px; border-right:4px solid #8B4513; margin:15px 0; border-radius: 8px;'><h3>التفاصيل:</h3><p>{details_text}</p></div></div></body></html>"
         msg = MIMEMultipart('alternative')
         msg['From'], msg['To'], msg['Subject'] = EMAIL_SENDER, ADMIN_EMAIL, subject
         msg.attach(MIMEText(email_body, 'html', 'utf-8'))
@@ -441,8 +441,8 @@ def _send_email_to_professor_row(row):
     
     codes_list_html = ""
     if not my_codes_rows.empty:
-        codes_list_html = "<table style='width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #ddd;'>"
-        codes_list_html += "<tr style='background-color: #f2f2f2; text-align: right;'><th style='padding: 8px;'>كلمة السر</th><th style='padding: 8px;'>الحالة</th></tr>"
+        codes_list_html = "<table style='width: 100%; border-collapse: collapse; margin-top:20px; border: 1px solid #ddd;'>"
+        codes_list_html += "<tr style='background-color: #f8f9fa; text-align: right;'><th style='padding: 8px;'>كلمة السر</th><th style='padding: 8px;'>الحالة</th></tr>"
         
         for _, code_row in my_codes_rows.iterrows():
             code = str(code_row.get("كلمة سر التسجيل", "")).strip()
@@ -461,41 +461,35 @@ def _send_email_to_professor_row(row):
     else:
         codes_list_html = "<p>لا توجد كلمات سر مسندة في ملف البيانات.</p>"
 
-    # محتوى الإيميل
+    # محتوى الإيميل (تصميم مطابق لإيميل التسجيل)
     email_body = f"""
     <!DOCTYPE html>
-    <html dir="rtl" lang="ar" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+    <html dir="rtl" lang="ar">
     <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تفعيل حساب فضاء الأساتذة</title>
-    <!--[if !mso]><!-->
-    <link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap' rel='stylesheet'>
-    <!--<![endif]-->
-    <style>
-        html, body {{ margin: 0; padding: 0; background-color: #f4f4f4; }}
-        body {{ font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; unicode-bidi: embed; line-height: 1.6; color: #333; }}
-        .container {{ max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 30px; border: 1px solid #dddddd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
-        .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0056b3; padding-bottom: 20px; }}
-        .header h2 {{ color: #003366; margin: 0; font-size: 24px; }}
-        .header h3 {{ color: #005580; margin: 5px 0 0 0; font-size: 20px; }}
-        .content {{ margin-bottom: 30px; }}
-        .content ul {{ padding-right: 20px; }}
-        .info-box {{ background-color: #eef7fb; border-right: 5px solid #005580; padding: 20px; margin: 20px 0; border-radius: 4px; }}
-        .info-box p {{ margin: 10px 0; font-weight: bold; font-size: 1.1em; }}
-        .footer {{ text-align: center; margin-top: 40px; font-size: 14px; color: #666; border-top: 1px solid #eee; padding-top: 20px; }}
-        .link {{ color: #005580; text-decoration: none; font-weight: bold; }}
-        .link:hover {{ text-decoration: underline; }}
-        table {{ unicode-bidi: embed; }}
-        td {{ unicode-bidi: embed; }}
-    </style>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>تفعيل حساب فضاء الأساتذة</title>
+        <style>
+            body {{ margin: 0; padding: 0; background-color: #f4f4f4; direction: rtl; text-align: right; unicode-bidi: embed; }}
+            .container {{ max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-family: 'Cairo', Arial, sans-serif; }}
+            .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
+            .header h2 {{ margin: 0; }}
+            .content {{ line-height: 1.8; color: #333; }}
+            .info-box {{ background-color: #f8f9fa; padding: 15px; border-right: 4px solid #256D85; margin: 15px 0; }}
+            .highlight {{ color: #256D85; font-weight: bold; }}
+            .footer {{ text-align: center; margin-top: 40px; font-size: 14px; color: #888; border-top: 1px solid #eee; padding-top: 20px; }}
+            .link {{ color: #256D85; text-decoration: none; font-weight: bold; }}
+            .link:hover {{ text-decoration: underline; }}
+            /* فرض عرض النص الإنجليزي من اليسار لليمين داخل الصفحة العربية */
+            .ltr-text {{ direction: ltr; unicode-bidi: embed; display: inline-block; padding: 2px 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }}
+            table {{ unicode-bidi: embed; }}
+            td {{ unicode-bidi: embed; }}
+        </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h2>جامعة محمد البشير الإبراهيمي – برج بوعريريج</h2>
-                <h3>كلية الحقوق والعلوم السياسية</h3>
-                <h4 style="color:#666; margin-top:5px;">فضاء الأساتذة</h4>
+                <h2>تفعيل حساب فضاء الأساتذة</h2>
             </div>
             
             <div class="content">
@@ -522,14 +516,12 @@ def _send_email_to_professor_row(row):
                 <div class="info-box">
                     <p>الدخول إلى حسابكم يكون عبر الرابط:</p>
                     <a href="https://memoires2026.streamlit.app" class="link">https://memoires2026.streamlit.app</a>
-                    <p style="margin-top: 15px;">إسم المستخدم: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px; direction: ltr; display: inline-block;">{username}</span></p>
-                    <p>كلمة المرور: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px; direction: ltr; display: inline-block;">{password}</span></p>
+                    <p style="margin-top: 15px;">إسم المستخدم: <span class="ltr-text">{username}</span></p>
+                    <p>كلمة المرور: <span class="ltr-text">{password}</span></p>
                 </div>
-
-                <div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 5px; margin-top: 30px;">
-                    <p style="margin: 0 0 10px 0; font-weight: bold; color: #856404;">📋 تذكير بكلمات السر الخاصة بك (للطلبة):</p>
-                    {codes_list_html}
-                </div>
+                
+                <p style="margin-top: 30px; font-weight: bold; color: #256D85;">📋 تذكير بكلمات السر الخاصة بك (للطلاب):</p>
+                {codes_list_html}
             </div>
 
             <div class="footer">
@@ -684,13 +676,13 @@ def send_session_emails(students_data, session_info, prof_name):
         email_body = f"""
         <!DOCTYPE html>
         <html dir="rtl" lang="ar">
-        <head><meta charset="UTF-8"><style>body {{ font-family: 'Cairo', Arial, sans-serif; background-color: #f4f4f4; padding: 20px; direction: rtl; unicode-bidi: embed; }} .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; border-top: 5px solid #256D85; }} .header {{ text-align: center; margin-bottom: 20px; }} .highlight {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 1.1em; }} .footer {{ text-align: center; color: #777; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px; }}</style></head>
+        <head><meta charset="UTF-8"><style>body {{ font-family: 'Cairo', Arial, sans-serif; background-color: #f4f4f4; padding: 20px; direction: rtl; unicode-bidi: embed; }} .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; border-top: 5px solid #256D85; }} .header {{ text-align: center; margin-bottom: 20px; }} .highlight {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 1.1em; }} .footer {{ text-align: center; color: #777; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px; }} .ltr-text {{ direction: ltr; unicode-bidi: embed; }}</style></head>
         <body>
             <div class="container">
                 <div class="header"><h2 style="color: #256D85; margin: 0;">📅 جدولة جلسة إشراف</h2></div>
                 <p>السلام عليكم ورحمة الله،</p>
                 <p>يُعلن الأستاذ(ة) <b>{prof_name}</b> عن تنظيم جلسة إشراف للمذكرات.</p>
-                <div class="highlight"><strong>📆 الموعد:</strong> {session_info}</div>
+                <div class="highlight"><strong>📆 الموعد:</strong> <span class="ltr-text">{session_info}</span></div>
                 <p>تم توجيه هذا الإشعار إلى الطلبة المسجلين تحت إشراف الأستاذ:</p>{students_list_html}
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
                 <p style="font-size: 0.9em; color: #555;"><strong>للإدارة:</strong> يرجى نشر هذا الموعد في الفيسبوك وإعلام الطلبة غير الحاصلين على بريد إلكتروني.</p>
@@ -710,7 +702,7 @@ def send_session_emails(students_data, session_info, prof_name):
         logger.error(f"Error sending session emails: {e}")
         return False, str(e)
 
-# ---------------- دالة الإرسال للأستاذ (عند التسجيل الجديد) ----------------
+# ---------------- دالة الإرسال للأستاذ (عند التسجيل) ----------------
 def send_email_to_professor(prof_name, memo_info, student1, student2=None):
     try:
         df_prof_memos = load_prof_memos()
@@ -741,15 +733,15 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
             s2_lname = student2.get('لقب', student2.get('اللقب', '')); s2_fname = student2.get('إسم', student2.get('إسم', ''))
             student2_info = f"\n👤 **الطالب الثاني:** {s2_lname} {s2_fname}"
         
-        # تحسين الـ CSS لضمان RTL في إيميل التسجيل أيضاً
+        # تصميم مطابق للتسجيل الجديد (أزرق فاتح #256D85)
         email_body = f"""
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="UTF-8">
 <style>
-    body {{ font-family: 'Cairo', Arial, sans-serif; background-color: #f4f4f4; padding: 20px; direction: rtl; unicode-bidi: embed; }}
-    .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
+    body {{ margin: 0; padding: 0; background-color: #f4f4f4; direction: rtl; text-align: right; unicode-bidi: embed; }}
+    .container {{ max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-family: 'Cairo', Arial, sans-serif; }}
     .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
     .header h2 {{ margin: 0; }}
     .content {{ line-height: 1.8; color: #333; }}
@@ -759,6 +751,7 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
     .highlight {{ color: #256D85; font-weight: bold; }}
     ul {{ list-style: none; padding: 0; }}
     li {{ padding: 5px 0; }}
+    .ltr-text {{ direction: ltr; unicode-bidi: embed; display: inline-block; font-weight: bold; }}
 </style>
 </head>
 <body>
@@ -768,11 +761,11 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
         <p>تحية طيبة، الأستاذ(ة) <span class="highlight">{prof_name}</span>،</p>
         <p>نحيطكم علماً بأنه تم تسجيل مذكرة جديدة تحت إشرافكم:</p>
         <div class="info-box">
-            <p>📄 <strong>رقم المذكرة:</strong> {memo_info['رقم المذكرة']}</p>
+            <p>📄 <strong>رقم المذكرة:</strong> <span class="ltr-text">{memo_info['رقم المذكرة']}</span></p>
             <p>📑 <strong>عنوان المذكرة:</strong> {memo_info['عنوان المذكرة']}</p>
             <p>🎓 <strong>التخصص:</strong> {memo_info['التخصص']}</p>
             <p>👤 <strong>الطالب الأول:</strong> {s1_lname} {s1_fname}{student2_info}</p>
-            <p>🕒 <strong>تاريخ التسجيل:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+            <p>🕒 <strong>تاريخ التسجيل:</strong> <span class="ltr-text">{datetime.now().strftime('%Y-%m-%d %H:%M')}</span></p>
         </div>
         <div class="stats-box">
             <h3 style="color: #256D85; margin-top: 0;">📊 إحصائيات مذكراتك:</h3>
@@ -1186,7 +1179,7 @@ elif st.session_state.user_type == "student":
                     <div class='alert-card' style='text-align:center; padding:40px; border: 2px solid #EF4444; background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);'>
                         <h2 style='font-size:2.5rem; margin-bottom:20px;'>⛔ انتهت مهلة التسجيل</h2>
                         <p style='font-size:1.3rem; margin:20px 0; line-height:1.6;'>تم إيقاف خاصية التسجيل</p>
-                        <div style='background: rgba(255,255,255,0.1); padding:15px; border-radius:10px; margin-top:20px;'><p style='font-size:1.2rem; color:#FFD700; margin:0; font-weight:bold;'>⚠️ يرجى الاتصال بمكتب فريق التكوين في الكلية يوم الأحد 01 فيفري  2025 </p></div>
+                        <div style='background: rgba(255,255,255,0.1); padding:15px; border-radius:10px; margin-top:20px;'><p style='font-size:1.2rem; color:#FFD700; margin:0; font-weight:bold;'>⚠️ يرجى الاتصال بمكتب فريق التكوين في الكلية يوم الأحد 01 فيفري 2025 </p></div>
                     </div>
                     """, unsafe_allow_html=True)
                 else:
@@ -1444,7 +1437,7 @@ elif st.session_state.user_type == "professor":
                     with c1: selected_date = st.date_input("تاريخ الجلسة", min_value=datetime.now().date())
                     with c2:
                         time_slots = []
-                        for h in range(8, 16):
+                        for h in range(8,16):
                             for m in [0, 30]:
                                 if h == 15 and m == 30: continue
                                 time_slots.append(f"{h:02d}:{m:02d}")
@@ -1482,7 +1475,7 @@ elif st.session_state.user_type == "professor":
                         if pwd:
                             color = "#10B981" if stat == "نعم" else "#F59E0B"
                             status_txt = "مستخدمة" if stat == "نعم" else "متاحة"
-                            st.markdown(f'''<div class="card" style="border-right: 5px solid {color}; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3><p style="margin:5px 0 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p></div></div>''', unsafe_allow_html=True)
+                            st.markdown(f'''<div class="card" style="border-right: 5px solid {color}; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3><p style="margin:5px 0 0 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p></div></div>''', unsafe_allow_html=True)
                 else: st.info("لا توجد كلمات سر مسندة إليك.")
             
             with tab4:
@@ -1652,7 +1645,7 @@ elif st.session_state.user_type == "admin":
 
             # ======================= الجزء الثاني: إرسال للجميع =======================
             elif send_mode == "🚀 إرسال لجميع الأساتذة":
-                st.info("تقوم هذه الأداة بإرسال إيميل يحتوي على بيانات الدخول لجميع الأساتذة المسجلين في ملف 'PROF_MEMOS'، بالإضافة إلى جدول تذكير لكلمات السر الخاصة بالطلبة.")
+                st.info("تقوم هذه الأداة بإرسال إيميل يحتوي على بيانات الدخول لجميع الأساتذة المسجلين في ملف 'PROF_MEMOS'.")
                 st.write("عدد الأساتذة المستهدفين:", len(df_prof_memos))
                 
                 # عرض المعاينة
