@@ -387,6 +387,140 @@ def update_progress(memo_number, progress_value):
         logger.error(f"خطأ في تحديث نسبة التقدم: {str(e)}")
         return False, f"❌ خطأ: {str(e)}"
 
+# ---------------- دالة إرسال إيميلات الترحيب للأساتذة (جديدة) ----------------
+def send_welcome_emails_to_all_profs():
+    """
+    ترسل إيميل ترحيب يحتوي على بيانات الدخول لجميع الأساتذة الموجودين في القائمة
+    """
+    try:
+        df_profs = load_prof_memos()
+        sent_count = 0
+        failed_count = 0
+        results_log = []
+
+        # استخدام progress_bar لعرض حالة الإرسال
+        progress_bar = st.progress(0)
+        total_profs = len(df_profs)
+
+        with st.spinner("⏳ جاري إرسال الإيميلات للأساتذة... يرجى الانتظار"):
+            for index, row in df_profs.iterrows():
+                prof_name = row.get("الأستاذ", "غير محدد")
+                
+                # البحث عن الإيميل (نبحث في عدة أعمدة محتملة)
+                email = ""
+                possible_email_cols = ["البريد الإلكتروني", "الإيميل", "email", "Email"]
+                for col in possible_email_cols:
+                    if col in row.index:
+                        val = str(row[col]).strip()
+                        if "@" in val and val != "nan":
+                            email = val
+                            break
+                
+                username = row.get("إسم المستخدم", "")
+                password = row.get("كلمة المرور", "") 
+
+                # التحقق من وجود البيانات الأساسية
+                if not email or not username or not password:
+                    failed_count += 1
+                    results_log.append(f"⚠️ تم التخطي ({prof_name}): بيانات ناقصة.")
+                    progress_bar.progress((index + 1) / total_profs)
+                    continue
+
+                # تنسيق رسالة الإيميل
+                email_body = f"""
+                <html dir="rtl">
+                <head>
+                <meta charset="UTF-8">
+                <style>
+                    body {{ font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; line-height: 1.6; background-color: #f4f4f4; margin: 0; padding: 0; }}
+                    .container {{ max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 30px; border: 1px solid #dddddd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
+                    .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0056b3; padding-bottom: 20px; }}
+                    .header h2 {{ color: #003366; margin: 0; font-size: 24px; }}
+                    .header h3 {{ color: #005580; margin: 5px 0 0 0; font-size: 20px; }}
+                    .content {{ margin-bottom: 30px; color: #333; }}
+                    .content ul {{ padding-right: 20px; }}
+                    .info-box {{ background-color: #eef7fb; border-right: 5px solid #005580; padding: 20px; margin: 20px 0; border-radius: 4px; }}
+                    .info-box p {{ margin: 10px 0; font-weight: bold; font-size: 1.1em; }}
+                    .footer {{ text-align: center; margin-top: 40px; font-size: 14px; color: #666; border-top: 1px solid #eee; padding-top: 20px; }}
+                    .link {{ color: #005580; text-decoration: none; font-weight: bold; }}
+                    .link:hover {{ text-decoration: underline; }}
+                </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h2>جامعة محمد البشير الإبراهيمي – برج بوعريريج</h2>
+                            <h3>كلية الحقوق والعلوم السياسية</h3>
+                            <h4 style="color:#666; margin-top:5px;">فضاء الأساتذة</h4>
+                        </div>
+                        
+                        <div class="content">
+                            <p>تحية طيبة وبعد،</p>
+                            <p>الأستاذ (ة) الفاضل (ة) : <strong>{prof_name}</strong></p>
+                            <br>
+                            <p>في إطار رقمنة متابعة مذكّرات الماستر، يشرفنا إعلامكم بأنه تم تفعيل فضاء الأساتذة على منصة متابعة مذكرات الماستر الخاصة بكلية الحقوق والعلوم السياسية، وذلك قصد تسهيل عملية المتابعة البيداغوجية وتنظيم الإشراف.</p>
+                            
+                            <p>يُمكِّنكم فضاء الأستاذ من القيام بالمهام التالية:</p>
+                            <ul>
+                                <li>متابعة حالة تسجيل كل مذكرة (مسجلة / غير مسجلة).</li>
+                                <li>الاطلاع على أسماء الطلبة المسجلين وأرقام هواتفهم وبريدهم المهني.</li>
+                                <li>تحديث نسبة التقدم في إنجاز المذكرات.</li>
+                                <li>تحديد موعد جلسة إشراف واحدة يتم تعميمها آليًا على جميع الطلبة المعنيين.</li>
+                                <li>إرسال طلبات إدارية رقمية للإدارة، من بينها:
+                                    <ul>
+                                        <li>طلب تغيير عنوان المذكرة.</li>
+                                        <li>طلب إضافة أو حذف طالب.</li>
+                                        <li>طلب التنازل عن الإشراف.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                            <div class="info-box">
+                                <p>الدخول إلى حسابكم يكون عبر الرابط:</p>
+                                <a href="https://memoires2026.streamlit.app" class="link">https://memoires2026.streamlit.app</a>
+                                <p style="margin-top: 15px;">إسم المستخدم: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px;">{username}</span></p>
+                                <p>كلمة المرور: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px;">{password}</span></p>
+                            </div>
+                        </div>
+
+                        <div class="footer">
+                            <p>تقبلوا تحياتنا الطيبة.</p>
+                            <p>مسؤول الميدان: الدكتور لخضر رفاف</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """
+
+                try:
+                    msg = MIMEMultipart('alternative')
+                    msg['From'] = EMAIL_SENDER
+                    msg['To'] = email
+                    msg['Subject'] = "تفعيل حساب فضاء الأساتذة - منصة المذكرات"
+                    msg.attach(MIMEText(email_body, 'html', 'utf-8'))
+                    
+                    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                        server.starttls()
+                        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+                        server.send_message(msg)
+                    
+                    sent_count += 1
+                    results_log.append(f"✅ نجح: {prof_name}")
+                    time.sleep(1) # تأخير لمدة ثانية لتجنب الحظر من Gmail
+                    
+                except Exception as e:
+                    failed_count += 1
+                    results_log.append(f"❌ فشل ({prof_name}): {str(e)}")
+
+                progress_bar.progress((index + 1) / total_profs)
+
+        return sent_count, failed_count, results_log
+
+    except Exception as e:
+        logger.error(f"Error in bulk email process: {e}")
+        return 0, 0, [f"خطأ عام في النظام: {e}"]
+
+
 # ---------------- دوال الجلسات والطلبات الجديدة ----------------
 def format_datetime_ar(date_obj, time_str):
     days_ar = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
@@ -1261,7 +1395,10 @@ elif st.session_state.user_type == "admin":
         st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
         st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{a_m}</div><div class="kpi-label">مذكرات متاحة</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{reg_st}</div><div class="kpi-label">طلاب مسجلين</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{unreg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["المذكرات", "الطلاب", "الأساتذة", "تقارير", "تحديث", "إدارة الطلبات"])
+        
+        # تعديل عدد التبويبات ليشمل تبويب الإيميلات
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["المذكرات", "الطلاب", "الأساتذة", "تقارير", "تحديث", "إدارة الطلبات", "📧 إرسال إيميلات"])
+        
         with tab1:
             st.subheader("جدول المذكرات")
             f_status = st.selectbox("تصفية:", ["الكل", "مسجلة", "متاحة"])
@@ -1333,6 +1470,31 @@ elif st.session_state.user_type == "admin":
         with tab6:
             st.subheader("سجل الطلبات الواردة")
             st.dataframe(df_requests, use_container_width=True, height=500)
+        
+        # التبويب الجديد لإرسال إيميلات الأساتذة
+        with tab7:
+            st.subheader("إرسال رسالة ترحيب للأساتذة")
+            st.info("تقوم هذه الأداة بإرسال إيميل يحتوي على بيانات الدخول (اسم المستخدم وكلمة المرور) لجميع الأساتذة المسجلين في ملف 'PROF_MEMOS'.")
+            
+            # عرض معاينة للأسماء قبل الإرسال
+            st.write("عدد الأساتذة المستهدفين:", len(df_prof_memos))
+            with st.expander("عرض قائمة الأساتذة المستهدفين"):
+                st.dataframe(df_prof_memos[["الأستاذ", "إسم المستخدم", "البريد الإلكتروني"]].head(20))
+            
+            col_send, col_space = st.columns([1, 3])
+            with col_send:
+                if st.button("🚀 بدء عملية الإرسال", type="primary"):
+                    sent, failed, logs = send_welcome_emails_to_all_profs()
+                    
+                    st.markdown("---")
+                    st.success(f"تم الانتهاء! تم الإرسال بنجاح لـ {sent} أستاذ.")
+                    if failed > 0:
+                        st.error(f"فشل الإرسال لـ {failed} أستاذ.")
+                    
+                    with st.expander("سجل العمليات (Logs)", expanded=True):
+                        for log in logs:
+                            st.text(log)
+
 
 st.markdown("---")
 st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">  إشراف مسؤول الميدان الدكتور لخضر رفاف © </div>', unsafe_allow_html=True)
