@@ -424,9 +424,9 @@ def _send_email_to_professor_row(row):
             status = str(code_row.get("تم التسجيل", "")).strip()
 
             if code:
-                icon = " ⏳ (مستعملة)"  # Default waiting icon
+                icon = " ⏳ (مستعملة) :"  # Default waiting icon
                 if status == "نعم":
-                    icon = "✅ (متاحة)"
+                    icon = "✅ (متاحة) :"
                 
                 # إضافة كل كلمة سر في سطر جديد
                 codes_list_html += f"<div style='margin-bottom: 8px;'>{icon} {code}</div>"
