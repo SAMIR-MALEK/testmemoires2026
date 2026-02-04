@@ -25,7 +25,6 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
 # ---------------- CSS (تصميم زرقاء بلا حدود ومثبت) ----------------
-# ملاحظة: هذا الجزء مخفي ولا يظهر كنص للمستخدم
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -241,7 +240,7 @@ def get_email_smart(row):
             if "@" in val and val != "nan": return val
     return ""
 
-# دالة محدثة لتشمل رقم الهاتف
+# دالة محدثة تعيد الهاتف والإيميل
 def get_student_info_from_memo(memo_row, df_students):
     student1_name = str(memo_row.get("الطالب الأول", "")).strip()
     student2_name = str(memo_row.get("الطالب الثاني", "")).strip()
@@ -261,8 +260,7 @@ def get_student_info_from_memo(memo_row, df_students):
         memo_list = memo_row.tolist()
         raw_reg1 = str(memo_list[18]).strip() if len(memo_list) > 18 else ""
         raw_reg2 = str(memo_list[19]).strip() if len(memo_list) > 19 else ""
-        reg1 = raw_reg1.replace('.0', '')
-        reg2 = raw_reg2.replace('.0', '')
+        reg1 = raw_reg1.replace('.0', ''); reg2 = raw_reg2.replace('.0', '')
     except:
         reg1 = str(memo_row.get("رقم تسجيل الطالب 1", "")).replace('.0', '').strip()
         reg2 = str(memo_row.get("رقم تسجيل الطالب 2", "")).replace('.0', '').strip()
@@ -537,14 +535,11 @@ def send_session_emails(students_data, session_info, prof_name):
         </html>
         """
         msg = MIMEMultipart('alternative')
-        msg['From'] = EMAIL_SENDER
-        msg['To'] = ADMIN_EMAIL
-        # إضافة الأستاذ في CC
+        msg['From'] = EMAIL_SENDER; msg['To'] = ADMIN_EMAIL
         prof_email_row = df_prof_memos[df_prof_memos["الأستاذ"] == prof_name]
         if not prof_email_row.empty:
              prof_email = prof_email_row.iloc[0].get("البريد الإلكتروني", "")
              if prof_email: msg['Cc'] = prof_email
-        # إضافة الطلاب في BCC
         if student_emails: msg['Bcc'] = ", ".join(student_emails)
         msg['Subject'] = subject
         msg.attach(MIMEText(email_body, 'html', 'utf-8'))
@@ -1281,7 +1276,7 @@ elif st.session_state.user_type == "professor":
                     else: st.error(msg)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-        # ==================== القائمة الرئيسية مع Sidebar Tabs ====================
+        # ==================== القائمة الرئيسية مع Sidebar ====================
         else:
             col1, col2 = st.columns([4, 1])
             with col2:
@@ -1312,7 +1307,7 @@ elif st.session_state.user_type == "professor":
                 selected_page = st.radio("تنقل:", options, label_visibility="collapsed")
 
             # عرض المحتوى
-            if selected_page == options[0]: # المذكرات المسجلة
+            if selected_page == options[0]:
                 st.subheader("المذكرات المسجلة")
                 registered_memos = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
                 if not registered_memos.empty:
@@ -1328,7 +1323,7 @@ elif st.session_state.user_type == "professor":
                                 st.session_state.selected_memo_id = memo['رقم المذكرة']; st.rerun()
                 else: st.info("لا توجد مذكرات مسجلة حتى الآن.")
 
-            elif selected_page == options[1]: # جدولة جلسة
+            elif selected_page == options[1]:
                 st.subheader("📅 جدولة جلسة إشراف")
                 st.info("سيتم إرسال الإشعار لكل الطلبة المسجلين لديك في المذكرات.")
                 with st.form("supervision_session_form"):
@@ -1364,7 +1359,7 @@ elif st.session_state.user_type == "professor":
                                     else: st.error(f"تم حفظ الطلب ولكن حدث خطأ في تحديث المذكرات: {update_msg}")
                                 else: st.error(save_msg)
 
-            elif selected_page == options[2]: # كلمات السر
+            elif selected_page == options[2]:
                 st.subheader("🔑 كلمات السر")
                 pwds = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
                 if not pwds.empty:
@@ -1377,7 +1372,7 @@ elif st.session_state.user_type == "professor":
                             st.markdown(f'''<div class="card" style="border-right:5px solid {color}; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3><p style="margin:5px 0 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p></div></div>''', unsafe_allow_html=True)
                 else: st.info("لا توجد كلمات سر مسندة إليك.")
             
-            elif selected_page == options[3]: # المذكرات المتاحة
+            elif selected_page == options[3]:
                 st.subheader("⏳ المذكرات المتاحة للتسجيل")
                 if is_exhausted: st.info("💡 لقد استنفذت العناوين الأربعة المخصصة لك.")
                 else:
