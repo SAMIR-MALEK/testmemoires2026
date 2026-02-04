@@ -25,6 +25,7 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
 # ---------------- CSS (تصميم زرقاء بلا حدود ومثبت) ----------------
+# ملاحظة: هذا الجزء مخفي ولا يظهر كنص للمستخدم
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
