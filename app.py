@@ -25,6 +25,7 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
 # ---------------- CSS (تصميم زرقاء بلا حدود ومثبت) ----------------
+# ملاحظة: لقد استخدمت """ ثلاث علامات تنصيص لضمان أن يقرأ بايثون الكود كنص واحد متعدد الأسطر
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -1307,7 +1308,7 @@ elif st.session_state.user_type == "professor":
                 selected_page = st.radio("تنقل:", options, label_visibility="collapsed")
 
             # عرض المحتوى
-            if selected_page == options[0]:
+            if selected_page == options[0]: # المذكرات المسجلة
                 st.subheader("المذكرات المسجلة")
                 registered_memos = prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip() == "نعم"]
                 if not registered_memos.empty:
@@ -1323,7 +1324,7 @@ elif st.session_state.user_type == "professor":
                                 st.session_state.selected_memo_id = memo['رقم المذكرة']; st.rerun()
                 else: st.info("لا توجد مذكرات مسجلة حتى الآن.")
 
-            elif selected_page == options[1]:
+            elif selected_page == options[1]: # جدولة جلسة
                 st.subheader("📅 جدولة جلسة إشراف")
                 st.info("سيتم إرسال الإشعار لكل الطلبة المسجلين لديك في المذكرات.")
                 with st.form("supervision_session_form"):
@@ -1359,7 +1360,7 @@ elif st.session_state.user_type == "professor":
                                     else: st.error(f"تم حفظ الطلب ولكن حدث خطأ في تحديث المذكرات: {update_msg}")
                                 else: st.error(save_msg)
 
-            elif selected_page == options[2]:
+            elif selected_page == options[2]: # كلمات السر
                 st.subheader("🔑 كلمات السر")
                 pwds = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
                 if not pwds.empty:
@@ -1372,7 +1373,7 @@ elif st.session_state.user_type == "professor":
                             st.markdown(f'''<div class="card" style="border-right:5px solid {color}; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3><p style="margin:5px 0 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p></div></div>''', unsafe_allow_html=True)
                 else: st.info("لا توجد كلمات سر مسندة إليك.")
             
-            elif selected_page == options[3]:
+            elif selected_page == options[3]: # المذكرات المتاحة
                 st.subheader("⏳ المذكرات المتاحة للتسجيل")
                 if is_exhausted: st.info("💡 لقد استنفذت العناوين الأربعة المخصصة لك.")
                 else:
