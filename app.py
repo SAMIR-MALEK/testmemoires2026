@@ -1378,15 +1378,14 @@ elif st.session_state.user_type == "professor":
             progress_val = str(current_memo.get('نسبة التقدم', '0')).strip()
             try: prog_int = int(progress_val) if progress_val else 0
             except: prog_int = 0
+            # إضافة معلومات الاتصال (إيميل + هاتف)
+            contact1 = get_student_contact_info(student_info['s1_reg'], df_students)
+            
             student_cards_html = f"""
 <div class="student-card">
     <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الأول</h4>
     <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s1_name']}</p>
     <p style="font-size: 0.9rem; color: #94A3B8;">رقم التسجيل: {student_info['s1_reg'] or '--'}</p>
-"""
-            # إضافة معلومات الاتصال (إيميل + هاتف)
-            contact1 = get_student_contact_info(student_info['s1_reg'], df_students)
-            student_cards_html += f"""
     <div style="margin-top: 15px; padding: 15px; background: rgba(47,111,126,0.15); border-radius: 10px; border-right: 3px solid #2F6F7E;">
         <div style="margin-bottom: 12px;">
             <div style="display: flex; align-items: center; margin-bottom: 5px;">
@@ -1394,7 +1393,7 @@ elif st.session_state.user_type == "professor":
                 <strong style="color: #E2E8F0;">البريد الإلكتروني</strong>
             </div>
             <p style="margin: 0; padding-right: 28px; color: #10B981; font-size: 0.9rem; word-break: break-all;">
-                {contact1['email'] if contact1['email'] else '<span style="color: #888;">غير متوفر</span>'}
+                {contact1['email'] if contact1['email'] else 'غير متوفر'}
             </p>
         </div>
         <div>
@@ -1404,7 +1403,7 @@ elif st.session_state.user_type == "professor":
             </div>
             <p style="margin: 0; padding-right: 28px;">
                 <span style="font-size: 1.3em; color: #FFD700; font-weight: bold; direction: ltr; display: inline-block;">
-                    {contact1['phone'] if contact1['phone'] else '<span style="color: #888; font-size: 0.9rem;">غير متوفر</span>'}
+                    {contact1['phone'] if contact1['phone'] else 'غير متوفر'}
                 </span>
             </p>
         </div>
@@ -1425,7 +1424,7 @@ elif st.session_state.user_type == "professor":
                 <strong style="color: #E2E8F0;">البريد الإلكتروني</strong>
             </div>
             <p style="margin: 0; padding-right: 28px; color: #10B981; font-size: 0.9rem; word-break: break-all;">
-                {contact2['email'] if contact2['email'] else '<span style="color: #888;">غير متوفر</span>'}
+                {contact2['email'] if contact2['email'] else 'غير متوفر'}
             </p>
         </div>
         <div>
@@ -1435,14 +1434,13 @@ elif st.session_state.user_type == "professor":
             </div>
             <p style="margin: 0; padding-right: 28px;">
                 <span style="font-size: 1.3em; color: #FFD700; font-weight: bold; direction: ltr; display: inline-block;">
-                    {contact2['phone'] if contact2['phone'] else '<span style="color: #888; font-size: 0.9rem;">غير متوفر</span>'}
+                    {contact2['phone'] if contact2['phone'] else 'غير متوفر'}
                 </span>
             </p>
         </div>
     </div>
 </div>
 """
-            student_cards_html += "</div>"
             full_memo_html = f"""<div class="full-view-container">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap;">
     <div>
