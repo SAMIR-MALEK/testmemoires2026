@@ -25,194 +25,135 @@ REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
 # ---------------- CSS (تصميم زرقاء بلا حدود ومثبت) ----------------
 st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
-/* 🌟 LEGENDARY DESIGN - Academic Nexus Platform */
-:root {
-    --space-dark: #0A0E27; --space-deep: #1A1F3A; --space-medium: #2A3052;
-    --amber-bright: #FDB813; --amber-deep: #FF6B35;
-    --teal-quantum: #00D9FF; --teal-deep: #00A8CC;
-    --purple-neon: #A855F7; --green-success: #10B981;
-    --platinum: #F8F9FB; --silver: #E2E8F0; --graphite: #64748B;
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.15);
-    --glass-strong: rgba(255, 255, 255, 0.1);
-    --shadow-glow: 0 0 30px rgba(253, 184, 19, 0.3);
-    --shadow-neon: 0 0 40px rgba(0, 217, 255, 0.4);
-    --shadow-deep: 0 20px 60px rgba(0, 0, 0, 0.5);
-    --shadow-float: 0 10px 40px rgba(0, 0, 0, 0.3);
-    --font-display: 'Outfit', sans-serif;
-    --font-body: 'Cairo', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+* { box-sizing: border-box; }
+html, body, [class*="css"] {
+    font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right;
 }
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-html, body, [class*="css"] { font-family: var(--font-body) !important; direction: rtl; text-align: right; scroll-behavior: smooth; }
-body { background: var(--space-dark); color: var(--platinum); overflow-x: hidden; }
-.main {
-    position: relative;
-    background: linear-gradient(135deg, var(--space-dark) 0%, var(--space-deep) 50%, var(--space-medium) 100%);
-    color: var(--platinum); min-height: 100vh; overflow: hidden;
+.main { background-color: #0A1B2C; color: #ffffff; }
+.block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 16px; margin:auto; }
+h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #F8FAFC; }
+label, p, span { color: #E2E8F0; }
+.stTextInput label, .stSelectbox label { color: #F8FAFC !important; font-weight: 600; }
+.stButton>button, button[kind="primary"], div[data-testid="stFormSubmitButton"] button {
+    background-color: #2F6F7E !important; color: #ffffff !important;
+    font-size: 16px; font-weight: 600; padding: 14px 32px;
+    border: none !important; border-radius: 12px !important;
+    cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease; width: 100%;
+    text-align: center; display: flex; justify-content: center; align-items: center; gap: 10px;
 }
-.main::before {
-    content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-image: radial-gradient(2px 2px at 20% 30%, white, transparent), radial-gradient(2px 2px at 60% 70%, rgba(253, 184, 19, 0.8), transparent), radial-gradient(1px 1px at 50% 50%, rgba(0, 217, 255, 0.8), transparent);
-    background-size: 200% 200%; animation: stars-drift 120s ease-in-out infinite;
-    pointer-events: none; opacity: 0.6; z-index: 0;
-}
-@keyframes stars-drift { 0%, 100% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } }
-.main::after {
-    content: ''; position: fixed; top: -50%; right: -50%; width: 200%; height: 200%;
-    background: radial-gradient(ellipse at 30% 30%, rgba(253, 184, 19, 0.1) 0%, transparent 50%), radial-gradient(ellipse at 70% 70%, rgba(0, 217, 255, 0.08) 0%, transparent 50%);
-    animation: nebula-rotate 60s linear infinite; pointer-events: none; z-index: 0;
-}
-@keyframes nebula-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-.block-container { position: relative; z-index: 1; padding: 3rem 2rem !important; max-width: 1400px; margin: 0 auto; }
+.stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
 .card {
-    background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border); border-radius: 24px; padding: 2rem; margin-bottom: 2rem;
-    box-shadow: var(--shadow-float); position: relative; overflow: hidden; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255,255,255, 0.08);
+    border-radius: 20px; padding: 30px; margin-bottom: 20px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    border-top: 3px solid #2F6F7E; transition: transform 0.2s ease;
 }
-.card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, var(--amber-bright), var(--teal-quantum), var(--purple-neon));
-    background-size: 200% 100%; animation: gradient-shift 3s ease infinite;
-}
-@keyframes gradient-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-.card:hover { transform: translateY(-8px) scale(1.02); box-shadow: var(--shadow-deep), var(--shadow-glow); border-color: rgba(253, 184, 19, 0.4); }
-h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; margin-bottom: 1.5rem; color: var(--platinum); line-height: 1.3; letter-spacing: -0.02em; }
-h1 {
-    font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900;
-    background: linear-gradient(135deg, var(--amber-bright), var(--teal-quantum));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    animation: title-glow 3s ease-in-out infinite;
-}
-@keyframes title-glow { 0%, 100% { filter: drop-shadow(0 0 10px rgba(253, 184, 19, 0.5)); } 50% { filter: drop-shadow(0 0 20px rgba(0, 217, 255, 0.7)); } }
-h2 { font-size: clamp(1.8rem, 4vw, 2.8rem); color: var(--amber-bright); }
-h3 { font-size: clamp(1.5rem, 3vw, 2.2rem); color: var(--teal-quantum); }
-p, span, label { font-family: var(--font-body); color: var(--silver); line-height: 1.8; font-size: 1.05rem; }
-.stButton > button, button[kind="primary"], div[data-testid="stFormSubmitButton"] button {
-    position: relative; background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep));
-    color: var(--space-dark); font-family: var(--font-display); font-size: 1.1rem; font-weight: 700;
-    padding: 1rem 3rem; border: none !important; border-radius: 16px; cursor: pointer;
-    box-shadow: 0 8px 24px rgba(253, 184, 19, 0.4); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden; width: 100%; text-transform: uppercase; letter-spacing: 0.05em;
-}
-.stButton > button::before {
-    content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0;
-    border-radius: 50%; background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%); transition: width 0.6s, height 0.6s;
-}
-.stButton > button:hover::before { width: 300px; height: 300px; }
-.stButton > button:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 12px 32px rgba(253, 184, 19, 0.6), var(--shadow-glow); }
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-bottom: 3rem; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
 .kpi-card {
-    background: var(--glass-strong); backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border); border-radius: 20px; padding: 2.5rem 1.5rem;
-    text-align: center; box-shadow: var(--shadow-float); position: relative; overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(145deg, #1E293B, #0F172A); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 2.5rem 1rem;
+    text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); position: relative; overflow: hidden;
 }
-.kpi-card::before {
-    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-    background: conic-gradient(from 0deg at 50% 50%, transparent 0deg, var(--amber-bright) 90deg, transparent 180deg);
-    opacity: 0; transition: opacity 0.4s; animation: kpi-rotate 4s linear infinite;
-}
-@keyframes kpi-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-.kpi-card:hover::before { opacity: 0.1; }
-.kpi-card:hover { transform: translateY(-10px) scale(1.05); box-shadow: var(--shadow-deep), 0 0 40px rgba(253, 184, 19, 0.3); }
-.kpi-value {
-    font-family: var(--font-mono); font-size: 3.5rem; font-weight: 900;
-    background: linear-gradient(135deg, var(--amber-bright), var(--teal-quantum));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    margin: 1rem 0; line-height: 1; animation: number-pulse 2s ease-in-out infinite;
-}
-@keyframes number-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-.kpi-label { font-family: var(--font-display); font-size: 1.1rem; color: var(--silver); font-weight: 600; margin-top: 1rem; text-transform: uppercase; letter-spacing: 0.1em; }
-.progress-container {
-    background: var(--space-deep); border-radius: 50px; padding: 8px; margin: 1.5rem 0;
-    overflow: hidden; box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.4); position: relative;
-}
-.progress-bar {
-    height: 32px; border-radius: 50px;
-    background: linear-gradient(90deg, var(--amber-bright) 0%, var(--teal-quantum) 50%, var(--purple-neon) 100%);
-    box-shadow: 0 0 20px rgba(253, 184, 19, 0.6); transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-mono); font-weight: 700; font-size: 1rem; color: var(--space-dark);
-}
+.kpi-value { font-size: 2.5rem; font-weight: 900; color: #FFD700; margin: 15px 0; }
+.kpi-label { font-size: 1.2rem; color: #94A3B8; font-weight: 600; margin-top: 10px; }
 .alert-card {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(251, 146, 60, 0.2) 100%);
-    backdrop-filter: blur(20px); border: 2px solid rgba(239, 68, 68, 0.5); color: white;
-    padding: 2rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
-    text-align: center; font-weight: 700; font-size: 1.2rem; margin: 2rem 0;
+    background: linear-gradient(90deg, #8B4513 0%, #A0522D 100%);
+    border: 1px solid #CD853F; color: white; padding: 25px; border-radius: 12px;
+    box-shadow: 0 10px 20px -5px rgba(139, 69, 19, 0.4); text-align: center; font-weight: bold;
 }
-.stTabs { overflow-x: auto !important; padding-bottom: 1rem; }
-.stTabs [data-baseweb="tab-list"] {
-    gap: 1.5rem !important; padding: 1.5rem !important; display: flex !important; flex-wrap: wrap !important;
-    justify-content: center !important; background: var(--glass-bg); backdrop-filter: blur(10px);
-    border-radius: 20px; border: 1px solid var(--glass-border);
+.progress-container { background-color: #0F172A; border-radius: 99px; padding: 6px; margin: 20px 0; overflow: hidden; box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.3); }
+.progress-bar {
+    height: 24px; border-radius: 99px;
+    background: linear-gradient(90deg, #2F6F7E 0%, #285E6B 50%, #FFD700 100%);
+    box-shadow: 0 0 15px rgba(47, 111, 126, 0.5); transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.stDataFrame { border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,white, 0.1); background: #1E293B; }
+.stDataFrame th { background-color: #0F172A; color: #FFD700; font-weight: bold; }
+.stTabs [data-baseweb="tab-list"] { gap: 2rem; padding-bottom: 15px; }
 .stTabs [data-baseweb="tab"] {
-    background: var(--glass-bg) !important; backdrop-filter: blur(10px); color: var(--silver) !important;
-    font-family: var(--font-display) !important; font-weight: 600 !important; padding: 1rem 2rem !important;
-    border-radius: 12px !important; border: 1px solid var(--glass-border) !important;
-    transition: all 0.3s !important; position: relative !important; overflow: hidden !important;
+    background: transparent; color: #94A3B8; font-weight: 600; padding: 12px 24px; border-radius: 12px; border: 1px solid transparent;
 }
-.stTabs [data-baseweb="tab"]:hover {
-    background: var(--glass-strong) !important; color: var(--amber-bright) !important;
-    border-color: var(--amber-bright) !important; transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 8px 20px rgba(253, 184, 19, 0.3);
-}
+.stTabs [data-baseweb="tab"]:hover { background: rgba(255, 255, 255, 0.1); color: white; }
 .stTabs [aria-selected="true"] {
-    background: linear-gradient(135deg, var(--amber-bright), var(--amber-deep)) !important;
-    color: var(--space-dark) !important; border: 2px solid var(--amber-bright) !important;
-    font-weight: 800 !important; box-shadow: 0 8px 24px rgba(253, 184, 19, 0.5) !important;
+    background: rgba(47, 111, 126, 0.2); color: #FFD700; border: 1px solid #2F6F7E; font-weight: bold; box-shadow: 0 0 15px rgba(47, 111, 126, 0.2);
 }
-.stTextInput > div > div > input, .stSelectbox > div > div > select, .stTextArea > div > div > textarea {
-    background: var(--glass-bg) !important; backdrop-filter: blur(20px);
-    border: 2px solid var(--glass-border) !important; border-radius: 12px !important;
-    color: var(--platinum) !important; padding: 1rem 1.5rem !important;
-    transition: all 0.3s; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-.stTextInput > div > div > input:focus, .stSelectbox > div > div > select:focus, .stTextArea > div > div > textarea:focus {
-    border-color: var(--amber-bright) !important;
-    box-shadow: 0 0 0 3px rgba(253, 184, 19, 0.2), 0 0 20px rgba(253, 184, 19, 0.4) !important;
-    outline: none !important; transform: translateY(-2px);
-}
-.students-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; margin: 2rem 0; }
-.student-card {
-    background: var(--glass-strong); backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border); border-radius: 20px; padding: 2rem;
-    text-align: center; transition: all 0.4s; box-shadow: var(--shadow-float);
-}
-.student-card:hover { transform: translateY(-8px) scale(1.03); border-color: var(--teal-quantum); box-shadow: var(--shadow-deep), var(--shadow-neon); }
-.memo-badge {
-    display: inline-block; background: linear-gradient(135deg, var(--teal-quantum), var(--teal-deep));
-    color: var(--space-dark); padding: 0.5rem 1.5rem; border-radius: 50px;
-    font-family: var(--font-display); font-size: 0.9rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.1em; box-shadow: 0 4px 12px rgba(0, 217, 255, 0.4);
-}
-.memo-id {
-    font-family: var(--font-mono); font-size: 5rem; font-weight: 900;
-    background: linear-gradient(135deg, var(--amber-bright), var(--teal-quantum));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    margin: 0; line-height: 1; animation: memo-id-glow 2s ease-in-out infinite;
-}
-@keyframes memo-id-glow { 0%, 100% { filter: drop-shadow(0 0 10px rgba(253, 184, 19, 0.6)); } 50% { filter: drop-shadow(0 0 20px rgba(0, 217, 255, 0.8)); } }
-.stDataFrame { border-radius: 16px !important; border: 1px solid var(--glass-border) !important; background: var(--glass-bg); backdrop-filter: blur(20px); box-shadow: var(--shadow-float); }
-.stDataFrame th { background: linear-gradient(135deg, var(--space-deep), var(--space-medium)) !important; color: var(--amber-bright) !important; font-weight: 700 !important; padding: 1rem !important; }
-.stDataFrame td { background: var(--glass-bg) !important; color: var(--silver) !important; padding: 1rem !important; }
 .full-view-container {
-    max-width: 1200px; margin: 2rem auto; padding: 3rem;
-    background: var(--glass-bg); backdrop-filter: blur(30px);
-    border: 1px solid var(--glass-border); border-radius: 32px; box-shadow: var(--shadow-deep);
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px;
+    background: rgba(15,23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    overflow: hidden;
 }
-@media (max-width: 768px) {
-    .block-container { padding: 2rem 1rem !important; }
-    h1 { font-size: 2.5rem; }
-    .card { padding: 1.5rem; }
-    .kpi-value { font-size: 2.5rem; }
-    .memo-id { font-size: 3rem; }
-    .students-grid { grid-template-columns: 1fr; }
+.students-grid {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    margin-bottom: 30px;
 }
+.student-card {
+    flex: 1;
+    max-width: 450px;
+    min-width: 300px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+.student-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: #2F6F7E;
+}
+.memo-badge {
+    display: inline-block; background: rgba(47, 111, 126, 0.2);
+    color: #FFD700; padding: 6px 16px; border-radius: 20px;
+    font-size: 1rem; margin-bottom: 10px; font-weight: 600;
+}
+.memo-id { font-size: 3rem; font-weight: 900; color: #2F6F7E; margin: 0; line-height: 1; }
+
+/* New Styles for File Tracking */
+.file-track-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+.file-track-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+.file-track-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-5px);
+}
+.doc-title {
+    font-size: 1.1rem;
+    color: #94A3B8;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.doc-status {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-top: 5px;
+}
+.status-ok { color: #4ADE80; } /* Green */
+.status-err { color: #F87171; } /* Red */
+.status-warn { color: #FBBF24; } /* Yellow */
+.status-neutral { color: #60A5FA; } /* Blue */
 </style>
 """, unsafe_allow_html=True)
 
@@ -231,8 +172,9 @@ MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o"
 
-# تحديث النطاق ليشمل عمود التسجيل (N) - العمود الرابع عشر
-STUDENTS_RANGE = "Feuille 1!A1:N1000"
+# تحديث النطاق ليشمل أعمدة تتبع الملف (O, P, Q, R, S, T)
+#原来的范围是 A1:N1000 (14 columns), 现在扩展到 A1:T1000 (20 columns)
+STUDENTS_RANGE = "Feuille 1!A1:T1000"
 MEMOS_RANGE = "Feuille 1!A1:U1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
 REQUESTS_RANGE = "Feuille 1!A1:K1000"
@@ -347,32 +289,6 @@ def get_student_info_from_memo(memo_row, df_students):
         "s1_name": student1_name, "s1_email": s1_email, "s1_reg": s1_reg_display,
         "s2_name": student2_name, "s2_email": s2_email, "s2_reg": s2_reg_display
     }
-
-def get_student_contact_info(student_reg, df_students):
-    """الحصول على معلومات الاتصال الكاملة (إيميل + هاتف)"""
-    if not student_reg:
-        return {"email": "", "phone": ""}
-    s_row = df_students[df_students["رقم التسجيل"].astype(str).str.strip() == str(student_reg).strip()]
-    if s_row.empty:
-        return {"email": "", "phone": ""}
-    student_data = s_row.iloc[0]
-    email = ""
-    email_cols = ["البريد المهني", "البريد الإلكتروني", "email", "Email"]
-    for col in email_cols:
-        if col in student_data.index:
-            val = str(student_data[col]).strip()
-            if val and val != "nan" and "@" in val:
-                email = val
-                break
-    phone = ""
-    phone_cols = ["رقم الهاتف", "الهاتف", "Phone", "phone", "تلفون", "الهاتف الجوال"]
-    for col in phone_cols:
-        if col in student_data.index:
-            val = str(student_data[col]).strip()
-            if val and val != "nan" and val != "":
-                phone = val
-                break
-    return {"email": email, "phone": phone}
 
 @st.cache_data(ttl=60)
 def load_students():
@@ -549,7 +465,7 @@ def _send_email_to_professor_row(row):
             if val != "nan" and val != "": password = val; break
     if not email or not username or not password: return False, "⚠️ بيانات ناقصة"
     email_body = f"""
-    <html dir="rtl"><head><meta charset="UTF-8"><style>body {{ font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; line-height: 1.6; background-color: #f4f4f4; margin: 0; padding: 0; }} .container {{ max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 30px; border: 1px solid #dddddd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }} .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0056b3; padding-bottom: 20px; }} .header h2 {{ color: #003366; margin: 0; font-size: 24px; }} .header h3 {{ color: #005580; margin: 5px 0 0 0; font-size: 20px; }} .content {{ margin-bottom: 30px; color: #333; }} .content ul {{ padding-right: 20px; }} .info-box {{ background-color: #eef7fb; border-right: 5px solid #005580; padding: 20px; margin: 20px 0; border-radius: 4px; }} .info-box p {{ margin: 10px 0; font-weight: bold; font-size: 1.1em; }} .footer {{ text-align: center; margin-top: 40px; font-size: 14px; color: #666; border-top: 1px solid #eee; padding-top: 20px; }} .link {{ color: #005580; text-decoration: none; font-weight: bold; }} .link:hover {{ text-decoration: underline; }}</style></head><body><div class="container"><div class="header"><h2>جامعة محمد البشير الإبراهيمي – برج بوعريريج</h2><h3>كلية الحقوق والعلوم السياسية</h3><h4 style="color:#666; margin-top:5px;">فضاء الأساتذة</h4></div><div class="content"><p>تحية طيبة وبعد،</p><p>الأستاذ (ة) الفاضل (ة) : <strong>{prof_name}</strong></p><br><p>في إطار رقمنة متابعة مذكّرات الماستر، يشرفنا إعلامكم بأنه تم تفعيل فضاء الأساتذة على منصة متابعة مذكرات الماستر الخاصة بكلية الحقوق والعلوم السياسية، وذلك قصد تسهيل عملية المتابعة البيداغوجية وتنظيم الإشراف.</p><p>يُمكِّنكم فضاء الأستاذ من القيام بالمهام التالية:</p><ul><li>متابعة حالة تسجيل كل مذكرة (مسجلة / غير مسجلة).</li><li>الاطلاع على أسماء الطلبة المسجلين وأرقام هواتفهم وبريدهم المهني.</li><li>تحديث نسبة التقدم في إنجاز المذكرات.</li><li>تحديد موعد جلسة إشراف واحدة يتم تعميمها آليًا على جميع الطلبة المعنيين.</li><li>إرسال طلبات إدارية رقمية للإدارة.</li></ul><div class="info-box"><p>الدخول إلى حسابكم يكون عبر الرابط:</p><a href="https://memoires2026.streamlit.app" class="link">https://memoires2026.streamlit.app</a><p style="margin-top: 15px;">إسم المستخدم: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px;">{username}</span></p><p>كلمة المرور: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px;">{password}</span></p></div></div><div class="footer"><p>تقبلوا تحياتنا الطيبة.</p><p>مسؤول الميدان: الدكتور لخضر رفاف</p></div></div></body></html>
+    <html dir="rtl"><head><meta charset="UTF-8"><style>body {{ font-family: 'Cairo', Arial, sans-serif; direction: rtl; text-align: right; line-height: 1.6; background-color: #f4f4f4; margin: 0; padding: 0; }} .container {{ max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 30px; border: 1px solid #dddddd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }} .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0056b3; padding-bottom: 20px; }} .header h2 {{ color: #003366; margin: 0; font-size: 24px; }} .header h3 {{ color: #005580; margin: 5px 0 0 0; font-size: 20px; }} .content {{ margin-bottom: 30px; color: #333; }} .content ul {{ padding-right: 20px; }} .info-box {{ background-color: #eef7fb; border-right: 5px solid #005580; padding: 20px; margin: 20px 0; border-radius: 4px; }} .info-box p {{ margin: 10px 0; font-weight: bold; font-size: 1.1em; }} .footer {{ text-align: center; margin-top: 40px; font-size: 14px; color: #666; border-top: 1px solid #eee; padding-top: 20px; }} .link {{ color: #005580; text-decoration: none; font-weight: bold; }} .link:hover {{ text-decoration: underline; }}</style></head><body><div class="container"><div class="header"><h2>جامعة محمد البشير الإبراهيمي – برج بوعريريج</h2><h3>كلية الحقوق والعلوم السياسية</h3><h4 style="color:#666; margin-top:5px;">فضاء الأساتذة</h4></div><div class="content"><p>تحية طيبة وبعد،</p><p>الأستاذ (ة) الفاضل (ة) : <strong>{prof_name}</strong></p><br><p>في إطار رقمنة متابعة مذكّرات الماستر، يشرفنا إعلامكم بأنه تم تفعيل فضاء الأساتذة على منصة متابعة مذكرات الماستر الخاصة بكلية الحقوق والعلوم السياسية، وذلك قصد تسهيل عملية المتابعة البيداغوجية وتنظيم الإشراف.</p><p>يُمكِّنكم فضاء الأستاذ من القيام بالمهام التالية:</p><ul><li>متابعة حالة تسجيل كل مذكرة (مسجلة / غير مسجلة).</li><li>الاطلاع على أسماء الطلبة المسجلين وأرقام هواتفهم وبريدهم المهني.</li><li>تحديث نسبة التقدم في إنجاز المذكرات.</li><li>تحديد موعد جلسة إشراف واحدة يتم تعميمها آليًا على جميع الطلبة المعنيين.</li><li>إرسال طلبات إدارية رقمية للإدارة.</li></ul><div class="info-box"><p>الدخول إلى حسابكم يكون عبر الرابط:</p><a href="https://memoires2026.streamlit.app" class="link">https://memoires2026.streamlit.app</a><p style="margin-top: 15px;">إسم المستخدم: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px;">{username}</span></p><p>كلمة المرور: <span style="background:#fff; padding:2px 8px; border:1px solid #ccc; border-radius:4px;">{password}</span></p></div></div><div class="footer"><p>تقبلوا تحياتنا الطيبة.</p><p>مسؤول الميدان: البروفيسور لخضر رفاف</p></div></div></body></html>
     """
     try:
         msg = MIMEMultipart('alternative')
@@ -633,16 +549,8 @@ def update_session_date_in_sheets(prof_name, date_str):
         return False, str(e)
 
 def send_session_emails(students_data, session_info, prof_name):
-    """
-    إرسال إيميل واحد فقط عند جدولة جلسة إشراف
-    FIXED: To=الإدارة, CC=الأستاذ, BCC=الطلبة
-    """
     try:
-        df_students = load_students()
-        df_prof_memos = load_prof_memos()
-        
-        # 1. جمع إيميلات الطلبة
-        student_emails = []
+        df_students = load_students(); student_emails = []
         for s in students_data:
             s_row = df_students[df_students["رقم التسجيل"].astype(str).str.strip() == s['reg']]
             if not s_row.empty:
@@ -651,62 +559,25 @@ def send_session_emails(students_data, session_info, prof_name):
                 for col in possible_cols:
                     if col in s_row.columns:
                         val = str(s_row.iloc[0][col]).strip()
-                        if val and val != "nan" and "@" in val:
-                            email = val
-                            break
-                if email:
-                    student_emails.append(email)
-        
-        # 2. الحصول على إيميل الأستاذ
-        prof_email = ""
-        prof_row = df_prof_memos[df_prof_memos["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
-        if not prof_row.empty:
-            possible_email_cols = ["البريد الإلكتروني", "الإيميل", "email", "Email"]
-            for col in possible_email_cols:
-                if col in prof_row.columns:
-                    val = str(prof_row.iloc[0][col]).strip()
-                    if val and val != "nan" and "@" in val:
-                        prof_email = val
-                        break
-        
+                        if val and val != "nan" and "@" in val: email = val; break
+                if email: student_emails.append(email)
         subject = f"🔔 تنبيه هام: جلسة إشراف - {prof_name}"
-        students_list_html = "<ul style='list-style: none; padding: 0;'>"
+        students_list_html = "<ul>"
         for i, s in enumerate(students_data):
-            if i < 10:
-                students_list_html += f"<li style='padding: 5px 0;'>• {s['name']}</li>"
-            else:
-                students_list_html += f"<li style='padding: 5px 0;'>... و {len(students_data) - 10} طالب آخر</li>"
-                break
+            if i < 10: students_list_html += f"<li>{s['name']}</li>"
+            else: students_list_html += f"<li>... و {len(students_data) - 10} طالب آخر</li>"; break
         students_list_html += "</ul>"
-        
         email_body = f"""
-        <html dir="rtl"><head><meta charset="UTF-8"><style>body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; direction: rtl; text-align: right; }} .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; border-top: 5px solid #256D85; }} .header {{ text-align: center; margin-bottom: 20px; }} .header h2 {{ color: #256D85; margin: 0; }} .highlight {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 1.1em; border-right: 4px solid #256D85; }} .footer {{ text-align: center; color: #777; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px; }} .note {{ background-color: #fff8dc; padding: 12px; border-radius: 6px; margin: 15px 0; font-size: 0.9em; color: #555; border-right: 3px solid #ffa500; }}</style></head><body><div class="container"><div class="header"><h2>📅 جدولة جلسة إشراف</h2></div><p>السلام عليكم ورحمة الله وبركاته،</p><p>يُعلن الأستاذ(ة) <b>{prof_name}</b> عن تنظيم جلسة إشراف للمذكرات المسجلة تحت إشرافه.</p><div class="highlight"><strong>📆 الموعد:</strong> {session_info}</div><p><strong>الطلبة المعنيون ({len(students_data)}):</strong></p>{students_list_html}<div class="note"><strong>📌 للإدارة:</strong> يرجى نشر هذا الموعد على صفحة الفيسبوك وإعلام الطلبة غير الحاصلين على بريد إلكتروني.</div><p style="margin-top: 25px; color: #666;">الحضور إلزامي لجميع الطلبة المسجلين.</p></div><div class="footer"><p>جامعة محمد البشير الإبراهيمي</p><p>كلية الحقوق والعلوم السياسية</p></div></body></html>
+        <html dir="rtl"><head><style>body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }} .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; border-top: 5px solid #256D85; }} .header {{ text-align: center; margin-bottom: 20px; }} .highlight {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 1.1em; }} .footer {{ text-align: center; color: #777; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px; }}</style></head><body><div class="container"><div class="header"><h2 style="color: #256D85; margin: 0;">📅 جدولة جلسة إشراف</h2></div><p>السلام عليكم ورحمة الله،</p><p>يُعلن الأستاذ(ة) <b>{prof_name}</b> عن تنظيم جلسة إشراف للمذكرات.</p><div class="highlight"><strong>📆 الموعد:</strong> {session_info}</div><p>تم توجيه هذا الإشعار إلى الطلبة المسجلين تحت إشراف الأستاذ:</p>{students_list_html}<hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 0.9em; color: #555;"><strong>للإدارة:</strong> يرجى نشر هذا الموعد في الفيسبوك وإعلام الطلبة غير الحاصلين على بريد إلكتروني.</p></div><div class="footer">جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</div></body></html>
         """
-        
-        # إرسال إيميل واحد فقط
         msg = MIMEMultipart('alternative')
-        msg['From'] = EMAIL_SENDER
-        msg['To'] = ADMIN_EMAIL  # المستلم الرئيسي
-        msg['Subject'] = subject
-        
-        # إضافة الأستاذ في CC
-        if prof_email:
-            msg['Cc'] = prof_email
-        
-        # إضافة الطلبة في BCC
-        if student_emails:
-            msg['Bcc'] = ", ".join(student_emails)
-        
+        msg['From'] = EMAIL_SENDER; msg['To'] = ADMIN_EMAIL; msg['Subject'] = subject
+        if student_emails: msg['Bcc'] = ", ".join(student_emails)
         msg.attach(MIMEText(email_body, 'html', 'utf-8'))
-        
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-            server.send_message(msg)
-        
-        recipients_count = 1 + (1 if prof_email else 0) + len(student_emails)
-        logger.info(f"✅ إيميل واحد أرسل إلى {recipients_count} مستلم (الإدارة + الأستاذ + {len(student_emails)} طالب)")
-        return True, f"تم إرسال إيميل واحد بنجاح"
+            server.starttls(); server.login(EMAIL_SENDER, EMAIL_PASSWORD); server.send_message(msg)
+        logger.info(f"✅ Session email sent to Admin and {len(student_emails)} students.")
+        return True, "تم الإرسال"
     except Exception as e:
         logger.error(f"Error sending session emails: {e}")
         return False, str(e)
@@ -741,7 +612,7 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
             student2_info = f"\n👤 **الطالب الثاني:** {s2_lname} {s2_fname}"
         email_body = f"""
 <html dir="rtl"><head><style>body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }} .container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }} .header {{ background-color: #256D85; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }} .header h2 {{ margin: 0; }} .content {{ line-height:1.8; color: #333; }} .info-box {{ background-color: #f8f9fa; padding: 15px; border-right: 4px solid #256D85; margin: 15px 0; }} .stats-box {{ background-color: #e8f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; }} .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }} .highlight {{ color: #256D85; font-weight: bold; }} ul {{ list-style: none; padding: 0; }} li {{ padding: 5px 0; }}</style></head>
-<body><div class="container"><div class="header"><h2>✅ تسجيل مذكرة جديدة</h2></div><div class="content"><p>تحية طيبة، الأستاذ(ة) <span class="highlight">{prof_name}</span>،</p><p>نحيطكم علماً بأنه تم تسجيل مذكرة جديدة تحت إشرافكم:</p><div class="info-box"><p>📄 <strong>رقم المذكرة:</strong> {memo_info['رقم المذكرة']}</p><p>📑 <strong>عنوان المذكرة:</strong> {memo_info['عنوان المذكرة']}</p><p>🎓 <strong>التخصص:</strong> {memo_info['التخصص']}</p><p>👤 <strong>الطالب الأول:</strong> {s1_lname} {s1_fname}{student2_info}</p><p>🕒 <strong>تاريخ التسجيل:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p></div><div class="stats-box"><h3 style="color: #256D85; margin-top: 0;">📊 إحصائيات مذكراتك:</h3><ul><li>📝 <strong>إجمالي المذكرات:</strong> {total_memos}</li><li>✅ <strong>المذكرات المسجلة:</strong> {registered_memos}</li><li>⏳ <strong>المذكرات المتبقية:</strong> {total_memos - registered_memos}</li></ul></div><p style="margin-top: 20px; color: #666;">للاستفسار، يرجى التواصل مع الإدارة.</p></div><div class="footer"><p>© 2026 جامعة محمد البشير الإبراهيمي</p></div></div></body></html>
+<body><div class="container"><div class="header"><h2>✅ تسجيل مذكرة جديدة</h2></div><div class="content"><p>تحية طيبة، الأستاذ(ة) <span class="highlight">{prof_name}</span>،</p><p>نحيطكم علماً بأنه تم تسجيل مذكرة جديدة تحت إشرافكم:</p><div class="info-box"><p>📄 <strong>رقم المذكرة:</strong> {memo_info['رقم المذكرة']}</p><p>📑 <strong>عنوان المذكرة:</strong> {memo_info['عنوان المذكرة']}</p><p>🎓 <strong>التخصص:</strong> {memo_info['التخصص']}</p><p>👤 <strong>الطالب الأول:</strong> {s1_lname} {s1_fname}{student2_info}</p><p>🕒 <strong>تاريخ التسجيل:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p></div><div class="stats-box"><h3 style="color: #256D85; margin-top: 0;">📊 إحصائيات مذكراتك:</h3><ul><li>📝 <strong>إجمالي المذكرات:</strong> {total_memos}</li><li>✅ <strong>المذكرات المسجلة:</strong> {registered_memos}</li><li>⏳ <strong>المذكرات المتبقية:</strong> {total_memos - registered_memos}</li></ul></div><p style="margin-top: 20px; color: #666;">للاستفسار والدعم، يرجى التواصل مع مسؤول الميدان البروفيسور رفاف لخضر.</p></div><div class="footer"><p>© 2026 جامعة محمد البشير الإبراهيمي</p></div></div></body></html>
 """
         msg = MIMEMultipart('alternative')
         msg['From'] = EMAIL_SENDER; msg['To'] = prof_email
@@ -1061,7 +932,7 @@ def logout():
 # الصفحة الرئيسية
 # ============================================================
 if st.session_state.user_type is None:
-    st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 1.2rem;'>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 1.2rem;'>جامعة محمد البشير الإبراهيمي - برج بوعريريج</p>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align: center; margin-bottom: 1rem;'>منصة تسجيل المذكرات</h1>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
@@ -1222,7 +1093,11 @@ elif st.session_state.user_type == "student":
         st.markdown(f'<div class="card"><h3>ملف الطالب</h3><p>الطالب الأول: <b style="color:#2F6F7E;">{s1.get("لقب", s1.get("اللقب"))} {s1.get("إسم", s1.get("الإسم"))}</b></p><p>التخصص: <b>{s1.get("التخصص")}</b></p></div>', unsafe_allow_html=True)
         if s2 is not None: st.markdown(f'<div class="card"><p>الطالب الثاني: <b style="color:#2F6F7E;">{s2.get("لقب", s2.get("اللقب"))} {s2.get("إسم", s2.get("الإسم"))}</b></p></div>', unsafe_allow_html=True)
 
-        tab_memo, tab_notify = st.tabs(["مذكرتي", "الإشعارات والطلبات"])
+        # ============================================================
+        # التعديل الجديد: إضافة التبويب الثالث لتتبع الملف
+        # ============================================================
+        tab_memo, tab_notify, tab_file_track = st.tabs(["مذكرتي", "الإشعارات والطلبات", "📂 تتبع ملف التخرج"])
+        
         with tab_memo:
             if st.session_state.mode == "view":
                 df_memos_fresh = load_memos()
@@ -1277,7 +1152,7 @@ elif st.session_state.user_type == "student":
 
                                 if s1_reg_perm != '1' and s2_reg_perm != '1':
                                     st.error("⛔ عذراً، لم يتم السماح لك بتسجيل المذكرة في الوقت الحالي.")
-                                    st.info("يرجى التواصل مع مسؤول الميدان: **الدكتور لخضر رفاف**", icon="ℹ️")
+                                    st.info("يرجى التواصل مع مسؤول الميدان: **البروفيسور لخضر رفاف**", icon="ℹ️")
                                     st.stop()
                                 # =============================================================
 
@@ -1382,6 +1257,112 @@ elif st.session_state.user_type == "student":
                 if prof_sessions.empty and my_reqs.empty: st.info("لا توجد إشعارات جديدة.")
             else: st.info("يجب تسجيل مذكرة أولاً لتلقي الإشعارات.")
 
+        # ============================================================
+        // --- التبويب الجديد: تتبع ملف التخرج (Student File Tracking) ---
+        // ============================================================
+        with tab_file_track:
+            st.markdown("<h2 style='color: #F8FAFC; margin-bottom: 20px;'>📂 حالة ملف التخرج الإداري</h2>", unsafe_allow_html=True)
+            st.info("يرجى التأكد من أن ملفك كامل ومتوفر في مصلحة التدريس لتجنب التأخير في إصدار الشهادة.")
+            
+            # إعادة تحميل بيانات الطالب لضمان الحصول على آخر التحديثات
+            # ملاحظة: نستخدم df_students الحالي لأنه محدث بالكامل
+            s1_data = s1 # البيانات المخزنة في الجلسة
+            
+            # الوصول للأعمدة الجديدة O, P, Q, R, S, T
+            # نستخدم get للمأمونة، وإذا لم تكن موجودة سنعيد "غير محدد"
+            
+            # الأعمدة حسب الطلب:
+            # O: شهادة الميلاد
+            # P: كشف1
+            # Q: كشف2
+            # R: محضر المناقشة
+            # S: حالة الملف
+            # T: حالة الشهادة
+            
+            # دالة مساعدة لتحديد اللون
+            def get_status_color(val):
+                val_str = str(val).strip()
+                if val_str in ["موجودة", "موجود", "كامل", "جاهزة", "تم تسليمها للطالب", "قيد الانجاز"]:
+                    return "status-ok"
+                elif val_str in ["غير موجودة", "غير موجود", "غير كامل", "الملف غير كامل", "مدين", "خطأ في الكشف"]:
+                    return "status-err"
+                else:
+                    return "status-neutral"
+
+            # تهيئة القائمة (List of dictionaries)
+            docs_list = [
+                {
+                    "title": "📄 شهادة الميلاد",
+                    "desc": "على الطالب إحضارها لمصلحة التدريس",
+                    "value": s1_data.get("شهادة الميلاد", "غير محدد").strip() if "شهادة الميلاد" in s1_data else "غير محدد"
+                },
+                {
+                    "title": "📊 كشف النقاط - السنة أولى ماستر",
+                    "desc": "يجب أن تكون غير مدين",
+                    "value": s1_data.get("كشف1", "غير محدد").strip() if "كشف1" in s1_data else "غير محدد"
+                },
+                {
+                    "title": "📊 كشف النقاط - السنة ثانية ماستر",
+                    "desc": "إلى غاية إجراء المداولات",
+                    "value": s1_data.get("كشف2", "غير محدد").strip() if "كشف2" in s1_data else "غير محدد"
+                },
+                {
+                    "title": "🎓 محضر المناقشة",
+                    "desc": "يتوفر بعد المناقشة",
+                    "value": s1_data.get("محضر المناقشة", "غير محدد").strip() if "محضر المناقشة" in s1_data else "غير محدد"
+                }
+            ]
+
+            # عرض الوثائق في شبكة (Grid)
+            st.markdown("<div class='file-track-grid'>", unsafe_allow_html=True)
+            
+            for doc in docs_list:
+                # تحديد اللون بناءً على القيمة
+                color_class = get_status_color(doc["value"])
+                
+                # إذا كانت القيمة "nan" أو فارغة نعتبرها "غير محدد" رمادي
+                if doc["value"].lower() in ["nan", "", "none"]:
+                    display_value = "لم يُحدد بعد"
+                    color_class = "status-neutral"
+                else:
+                    display_value = doc["value"]
+
+                st.markdown(f"""
+                <div class='file-track-card'>
+                    <div class='doc-title'>{doc['title']}</div>
+                    <div class='doc-status {color_class}'>{display_value}</div>
+                    <small style='color: #64748B; font-size: 0.85rem;'>{doc['desc']}</small>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            # عرض حالة الملف والشهادة في الأسفل كبطاقات مميزة
+            st.markdown("<hr style='border-color: #334155; margin: 30px 0;'>", unsafe_allow_html=True)
+            
+            col_file, col_cert = st.columns(2)
+            
+            with col_file:
+                file_status = s1_data.get("حالة الملف", "غير محدد").strip() if "حالة الملف" in s1_data else "غير محدد"
+                file_color = get_status_color(file_status)
+                st.markdown(f"""
+                <div class='card' style='text-align:center; border-top: 4px solid #64748B;'>
+                    <h3 style='color: #94A3B8; font-size: 1rem; margin-bottom: 10px;'>📁 حالة الملف الإداري</h3>
+                    <div style='font-size: 1.5rem; font-weight: bold; color: #F8FAFC;' class='{file_color}'>{file_status}</div>
+                    <p style='font-size:0.8rem; color:#64748B; margin-top:10px;'>مكان الملف: <span style='color:#fff; font-weight:600;'>{s1_data.get("مكان الملف", "غير محدد") if "مكان الملف" in s1_data else "غير محدد"}</span></p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col_cert:
+                cert_status = s1_data.get("حالة الشهادة", "غير محدد").strip() if "حالة الشهادة" in s1_data else "غير محدد"
+                cert_color = get_status_color(cert_status)
+                st.markdown(f"""
+                <div class='card' style='text-align:center; border-top: 4px solid #FFD700;'>
+                    <h3 style='color: #94A3B8; font-size: 1rem; margin-bottom: 10px;'>🎓 حالة الشهادة</h3>
+                    <div style='font-size: 1.5rem; font-weight: bold; color: #F8FAFC;' class='{cert_color}'>{cert_status}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
 # ============================================================
 # فضاء الأساتذة
 # ============================================================
@@ -1418,69 +1399,28 @@ elif st.session_state.user_type == "professor":
             progress_val = str(current_memo.get('نسبة التقدم', '0')).strip()
             try: prog_int = int(progress_val) if progress_val else 0
             except: prog_int = 0
-            # إضافة معلومات الاتصال (إيميل + هاتف)
-            contact1 = get_student_contact_info(student_info['s1_reg'], df_students)
-            
             student_cards_html = f"""
 <div class="student-card">
     <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الأول</h4>
     <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s1_name']}</p>
     <p style="font-size: 0.9rem; color: #94A3B8;">رقم التسجيل: {student_info['s1_reg'] or '--'}</p>
-    <div style="margin-top: 15px; padding: 15px; background: rgba(47,111,126,0.15); border-radius: 10px; border-right: 3px solid #2F6F7E;">
-        <div style="margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                <span style="font-size: 1.1em; margin-left: 8px;">📧</span>
-                <strong style="color: #E2E8F0;">البريد الإلكتروني</strong>
-            </div>
-            <p style="margin: 0; padding-right: 28px; color: #10B981; font-size: 0.9rem; word-break: break-all;">
-                {contact1['email'] if contact1['email'] else 'غير متوفر'}
-            </p>
-        </div>
-        <div>
-            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                <span style="font-size: 1.1em; margin-left: 8px;">📱</span>
-                <strong style="color: #E2E8F0;">رقم الهاتف</strong>
-            </div>
-            <p style="margin: 0; padding-right: 28px;">
-                <span style="font-size: 1.3em; color: #FFD700; font-weight: bold; direction: ltr; display: inline-block;">
-                    {contact1['phone'] if contact1['phone'] else 'غير متوفر'}
-                </span>
-            </p>
-        </div>
+    <div style="margin-top: 15px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10B981; font-size: 0.9rem;">
+        📧 {student_info['s1_email'] or 'غير متوفر'}
     </div>
 </div>
 """
             if student_info['s2_name']:
-                contact2 = get_student_contact_info(student_info['s2_reg'], df_students)
                 student_cards_html += f"""
 <div class="student-card">
     <h4 style="color: #FFD700; margin-top: 0; font-size: 1.1rem;">الطالب الثاني</h4>
     <p style="font-size: 1.3rem; font-weight: bold; margin: 15px 0 5px 0; color: #fff;">{student_info['s2_name']}</p>
     <p style="font-size: 0.9rem; color: #C0C0C0;">رقم التسجيل: {student_info['s2_reg'] or '--'}</p>
-    <div style="margin-top: 15px; padding: 15px; background: rgba(47,111,126,0.15); border-radius: 10px; border-right: 3px solid #2F6F7E;">
-        <div style="margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                <span style="font-size: 1.1em; margin-left: 8px;">📧</span>
-                <strong style="color: #E2E8F0;">البريد الإلكتروني</strong>
-            </div>
-            <p style="margin: 0; padding-right: 28px; color: #10B981; font-size: 0.9rem; word-break: break-all;">
-                {contact2['email'] if contact2['email'] else 'غير متوفر'}
-            </p>
-        </div>
-        <div>
-            <div style="display: flex; align-items: center; margin-bottom: 5px;">
-                <span style="font-size: 1.1em; margin-left: 8px;">📱</span>
-                <strong style="color: #E2E8F0;">رقم الهاتف</strong>
-            </div>
-            <p style="margin: 0; padding-right: 28px;">
-                <span style="font-size: 1.3em; color: #FFD700; font-weight: bold; direction: ltr; display: inline-block;">
-                    {contact2['phone'] if contact2['phone'] else 'غير متوفر'}
-                </span>
-            </p>
-        </div>
+    <div style="margin-top: 15px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; color: #10B981; font-size: 0.9rem;">
+        📧 {student_info['s2_email'] or 'غير متوفر'}
     </div>
 </div>
 """
+            student_cards_html += "</div>"
             full_memo_html = f"""<div class="full-view-container">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap;">
     <div>
@@ -1826,4 +1766,4 @@ elif st.session_state.user_type == "admin":
                                 st.text(log)
 
 st.markdown("---")
-st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">  إشراف مسؤول الميدان الدكتور لخضر رفاف © </div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">  إشراف مسؤول الميدان البروفيسور لخضر رفاف © </div>', unsafe_allow_html=True)
