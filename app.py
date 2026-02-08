@@ -1012,14 +1012,13 @@ elif st.session_state.user_type == "student":
             memo_info = df_memos_fresh[df_memos_fresh["رقم المذكرة"] == note_num].iloc[0]
 
             tab_memo, tab_track, tab_notify = st.tabs(["مذكرتي", "تتبع ملف الشهادة", "الإشعارات والطلبات"])
-
-
+            
             with tab_memo:
                 session_date = memo_info.get("موعد الجلسة القادمة", "")
                 session_html = f"<p>📅 <b>موعد الجلسة القادمة:</b> {session_date}</p>" if session_date else ""
                 st.markdown(f'''<div class="card" style="border-left: 5px solid #FFD700;"><h3>✅ أنت مسجل في المذكرة التالية:</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {memo_info['الأستاذ']}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p>{session_html}</div>''', unsafe_allow_html=True)
                 
-                # استخراج الاسم واللقب بشكل صحيح للطالب الأول
+                # استخدام الدالة الجديدة لاستخراج الأسماء
                 s1_lname, s1_fname = get_student_name_display(s1)
                 s1_email = get_email_smart(s1)
                 
@@ -1044,7 +1043,6 @@ elif st.session_state.user_type == "student":
                         <p><b>الإيميل:</b> {s2_email}</p>
                     </div>
                     """, unsafe_allow_html=True)
-
 
             with tab_track:
                 st.subheader("📂 حالة ملف التخرج")
