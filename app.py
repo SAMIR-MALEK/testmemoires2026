@@ -224,7 +224,7 @@ def validate_note_number(note_number):
 # ============================================================
 def get_student_name_display(student_dict):
     # محاولة العثور على اللقب
-    keys_lname = ['لقب', 'اللقب', 'Last Name']
+    keys_lname = ["اللقب", ""]
     lname = ""
     for k in keys_lname:
         if k in student_dict and str(student_dict[k]).strip() != 'nan' and str(student_dict[k]).strip() != '':
@@ -232,7 +232,7 @@ def get_student_name_display(student_dict):
             break
     
     # محاولة العثور على الاسم
-    keys_fname = ['إسم', 'الاسم', 'الاسم الشخصي', 'First Name', 'Name']
+    keys_fname = ["الإسم", ""]
     fname = ""
     for k in keys_fname:
         if k in student_dict and str(student_dict[k]).strip() != 'nan' and str(student_dict[k]).strip() != '':
