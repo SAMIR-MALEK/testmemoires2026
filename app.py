@@ -22,7 +22,7 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 # ========================
 # إعداد الموعد النهائي
 # ========================
-REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
+REGISTRATION_DEADLINE = datetime(2027, 1, 28,23, 59)
 
 # ---------------- CSS ----------------
 st.markdown("""
@@ -47,7 +47,7 @@ label, p, span { color: #E2E8F0; }
 }
 .stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
 .card {
-    background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255,255,255, 0.08);
+    background: rgba(30, 41, 59, 0.95); border:1px solid rgba(255,255,255, 0.08);
     border-radius: 20px; padding: 30px; margin-bottom: 20px;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
     border-top: 3px solid #2F6F7E; transition: transform 0.2s ease;
@@ -1342,7 +1342,7 @@ elif st.session_state.user_type == "professor":
                         if pwd:
                             color = "#10B981" if stat == "نعم" else "#F59E0B"
                             status_txt = "مستخدمة" if stat == "نعم" else "متاحة"
-                            st.markdown(f'''<div class="card" style="border-right:5px solid {color}; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3><p style="margin:5px 0 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p></div></div>''', unsafe_allow_html=True)
+                            st.markdown(f'''<div class="card" style="border-right:5px solid {color}; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin:0; font-family:monospace; font-size:1.8rem; color:#FFD700;">{pwd}</h3><p style="margin:5px 0 0 0 0 0; color:#94A3B8;">الحالة: {status_txt}</p></div></div>''', unsafe_allow_html=True)
                 else: st.info("لا توجد كلمات سر مسندة إليك.")
             
             with tab4:
@@ -1470,20 +1470,36 @@ elif st.session_state.user_type == "admin":
 
         with tab3:
             st.subheader("توزيع الأساتذة")
-            profs_list = sorted(df_memos["الأستاذ"].dropna().unique())
-            sel_p = st.selectbox("اختر أستاذ:", ["الكل"] + profs_list)
-            if sel_p != "الكل":
-                if sel_p not in df_memos["الأستاذ"].values: st.error("بيانات الأساتذة غير متاحة")
-                else: st.dataframe(df_memos[df_memos["الأستاذ"].astype(str).str.strip() == sel_p.strip()], use_container_width=True, height=400)
+            # Fix: Ensure df_memos is not empty and has the required columns to avoid NameError
+            if df_memos.empty:
+                st.warning("لا توجد بيانات مذكرات للعرض.")
             else:
-                # تم إصلاح الخطأ هنا: التأكد من وجود الأعمدة قبل الاستخدام
-                required_cols = ["الأستاذ", "رقم المذكرة", "تم التسجيل"]
-                if all(col in df_memos.columns for col in required_cols):
-                    s_df = df_memos.groupby("الأستاذ").agg(total=("رقم المذكرة", "count"), registered=("تم التسجيل", lambda x: (x.astype(str).str.strip() == "نعم").sum())).reset_index()
-                    s_df["المتاحة"] = s_df["total"] - s_df["registered"]
-                    s_df = s_df.rename(columns={"total": "الإجمالي", "registered": "المسجلة"})
-                    st.dataframe(s_df, use_container_width)
-                else: st.error("بعض الأعمدة المطلوبة مفقودة في شيت المذكرات")
+                # Ensure 'الأستاذ' column exists before accessing it
+                if "الأستاذ" not in df_memos.columns:
+                    st.error("العمود 'الأستاذ' غير موجود في ملف المذكرات.")
+                else:
+                    profs_list = sorted(df_memos["الأستاذ"].dropna().unique().tolist())
+                    sel_p = st.selectbox("اختر أستاذ:", ["الكل"] + profs_list)
+                    
+                    if sel_p != "الكل":
+                        # Show specific prof data
+                        st.dataframe(df_memos[df_memos["الأستاذ"].astype(str).str.strip() == sel_p.strip()], use_container_width=True, height=400)
+                    else:
+                        # Show summary (s_df)
+                        required_cols = ["الأستاذ", "رقم المذكرة", "تم التسجيل"]
+                        missing_cols = [c for c in required_cols if c not in df_memos.columns]
+                        
+                        if not missing_cols:
+                            # Safe definition of s_df
+                            s_df = df_memos.groupby("الأستاذ").agg(
+                                total=("رقم المذكرة", "count"), 
+                                registered=("تم التسجيل", lambda x: (x.astype(str).str.strip() == "نعم").sum())
+                            ).reset_index()
+                            s_df["المتاحة"] = s_df["total"] - s_df["registered"]
+                            s_df = s_df.rename(columns={"total": "الإجمالي", "registered": "المسجلة"})
+                            st.dataframe(s_df, use_container_width=True)
+                        else:
+                            st.error(f"بعض الأعمدة المطلوبة مفقودة: {', '.join(missing_cols)}")
 
         with tab4:
             st.subheader("التحليل الإحصائي")
