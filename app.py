@@ -1,3 +1,182 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+import base64
+import time
+import logging
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# ============================================================
+# إعدادات الصفحة
+# ============================================================
+st.set_page_config(page_title="نظام إدارة مذكرات التخرج", layout="wide", page_icon="📚")
+
+# ============================================================
+# إعداد نظام السجل
+# ============================================================
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ============================================================
+# الثوابت والإعدادات
+# ============================================================
+ADMIN_CREDENTIALS = {
+    "admin": st.secrets.get("ADMIN_PASSWORD", "admin123"),
+}
+
+# معرفات Google Sheets
+try:
+    MEMOS_SHEET_ID = st.secrets["MEMOS_SHEET_ID"]
+    STUDENTS_SHEET_ID = st.secrets["STUDENTS_SHEET_ID"]
+    PROF_MEMOS_SHEET_ID = st.secrets["PROF_MEMOS_SHEET_ID"]
+    REQUESTS_SHEET_ID = st.secrets.get("REQUESTS_SHEET_ID", "")
+except KeyError as e:
+    st.error(f"❌ خطأ: معرف Google Sheet مفقود في secrets: {e}")
+    st.stop()
+
+# إعدادات البريد الإلكتروني
+EMAIL_CONFIG = {
+    "smtp_server": st.secrets.get("EMAIL_SMTP_SERVER", "smtp.gmail.com"),
+    "smtp_port": st.secrets.get("EMAIL_SMTP_PORT", 587),
+    "sender_email": st.secrets.get("EMAIL_SENDER", ""),
+    "sender_password": st.secrets.get("EMAIL_PASSWORD", ""),
+}
+
+# ============================================================
+# الاتصال بـ Google Sheets
+# ============================================================
+@st.cache_resource
+def get_sheets_service():
+    try:
+        credentials_dict = dict(st.secrets["gcp_service_account"])
+        credentials = service_account.Credentials.from_service_account_info(
+            credentials_dict,
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        return build('sheets', 'v4', credentials=credentials)
+    except Exception as e:
+        st.error(f"❌ خطأ في الاتصال بـ Google Sheets: {str(e)}")
+        return None
+
+sheets_service = get_sheets_service()
+
+# ============================================================
+# دوال تحميل البيانات
+# ============================================================
+@st.cache_data(ttl=300)
+def load_memos():
+    if not sheets_service or not MEMOS_SHEET_ID:
+        return pd.DataFrame()
+    try:
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=MEMOS_SHEET_ID,
+            range="Feuille 1!A:Z"
+        ).execute()
+        values = result.get('values', [])
+        if not values or len(values) < 2:
+            return pd.DataFrame()
+        df = pd.DataFrame(values[1:], columns=values[0])
+        return df
+    except Exception as e:
+        logger.error(f"خطأ في تحميل المذكرات: {str(e)}")
+        return pd.DataFrame()
+
+@st.cache_data(ttl=300)
+def load_students():
+    if not sheets_service or not STUDENTS_SHEET_ID:
+        return pd.DataFrame()
+    try:
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=STUDENTS_SHEET_ID,
+            range="Feuille 1!A:Z"
+        ).execute()
+        values = result.get('values', [])
+        if not values or len(values) < 2:
+            return pd.DataFrame()
+        df = pd.DataFrame(values[1:], columns=values[0])
+        return df
+    except Exception as e:
+        logger.error(f"خطأ في تحميل الطلاب: {str(e)}")
+        return pd.DataFrame()
+
+@st.cache_data(ttl=300)
+def load_prof_memos():
+    if not sheets_service or not PROF_MEMOS_SHEET_ID:
+        return pd.DataFrame()
+    try:
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=PROF_MEMOS_SHEET_ID,
+            range="Feuille 1!A:Z"
+        ).execute()
+        values = result.get('values', [])
+        if not values or len(values) < 2:
+            return pd.DataFrame()
+        df = pd.DataFrame(values[1:], columns=values[0])
+        return df
+    except Exception as e:
+        logger.error(f"خطأ في تحميل بيانات الأساتذة: {str(e)}")
+        return pd.DataFrame()
+
+@st.cache_data(ttl=300)
+def load_requests():
+    if not sheets_service or not REQUESTS_SHEET_ID:
+        return pd.DataFrame()
+    try:
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=REQUESTS_SHEET_ID,
+            range="Feuille 1!A:Z"
+        ).execute()
+        values = result.get('values', [])
+        if not values or len(values) < 2:
+            return pd.DataFrame()
+        df = pd.DataFrame(values[1:], columns=values[0])
+        return df
+    except Exception as e:
+        logger.error(f"خطأ في تحميل الطلبات: {str(e)}")
+        return pd.DataFrame()
+
+# ============================================================
+# دوال مساعدة
+# ============================================================
+def sanitize_input(text):
+    """تنظيف النص من المسافات الزائدة"""
+    if not text:
+        return ""
+    return str(text).strip()
+
+def validate_username(username):
+    """التحقق من صحة اسم المستخدم"""
+    username = sanitize_input(username)
+    if not username:
+        return False, "❌ اسم المستخدم فارغ"
+    if len(username) < 3:
+        return False, "❌ اسم المستخدم قصير جداً"
+    return True, username
+
+def validate_note_number(note_number):
+    """التحقق من صحة رقم المذكرة"""
+    note_number = sanitize_input(note_number)
+    if not note_number:
+        return False, "❌ رقم المذكرة فارغ"
+    return True, note_number
+
+def col_letter(col_num):
+    """تحويل رقم العمود إلى حرف (1=A, 2=B, ...، 27=AA)"""
+    string = ""
+    while col_num > 0:
+        col_num, remainder = divmod(col_num - 1, 26)
+        string = chr(65 + remainder) + string
+    return string
+
+def clear_cache_and_reload():
+    """مسح الذاكرة المؤقتة وإعادة تحميل البيانات"""
+    st.cache_data.clear()
+
+
 # ---------------- دوال التحقق ----------------
 def verify_student(username, password, df_students):
     valid, result = validate_username(username)
@@ -163,7 +342,12 @@ def update_registration(note_number, student1, student2=None):
 # ============================================================
 # جلب البيانات
 # ============================================================
-df_students = load_students(); df_memos = load_memos(); df_prof_memos = load_prof_memos(); df_requests = load_requests()
+
+# تحميل البيانات الأولي
+df_students = load_students()
+df_memos = load_memos()
+df_prof_memos = load_prof_memos()
+df_requests = load_requests()
 if df_students.empty or df_memos.empty or df_prof_memos.empty: st.error("❌ خطأ في تحميل البيانات. يرجى المحاولة لاحقاً."); st.stop()
 
 # ============================================================
