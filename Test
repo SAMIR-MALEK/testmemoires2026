@@ -1019,6 +1019,7 @@ elif st.session_state.user_type == "student":
                 st.markdown(f'''<div class="card" style="border-left: 5px solid #FFD700;"><h3>✅ أنت مسجل في المذكرة التالية:</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {memo_info['الأستاذ']}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p>{session_html}</div>''', unsafe_allow_html=True)
                 
                 # استخدام الدالة الجديدة لاستخراج الأسماء
+                                # === عرض الطالب الأول ===
                 s1_lname, s1_fname = get_student_name_display(s1)
                 s1_email = get_email_smart(s1)
                 
@@ -1026,19 +1027,25 @@ elif st.session_state.user_type == "student":
                 st.markdown(f"""
                 <div class="card">
                     <h4 style="color:#2F6F7E;">الطالب الأول</h4>
-                    <p><b>الاسم:</b> {s1_lname} {s1_fname}</p>
+                    <p><b>اللقب:</b> {s1_lname}</p>
+                    <p><b>الإسم:</b> {s1_fname}</p>
                     <p><b>رقم التسجيل:</b> {s1.get('رقم التسجيل')}</p>
                     <p><b>الإيميل:</b> {s1_email}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # === عرض الطالب الثاني (تم التعديل هنا لضمان جلب بياناته الصحيحة) ===
                 if s2:
-                    s2_lname, s2_fname = get_student_name_display(s2)
+                    # التأكد من جلب اللقب والإسم من الأعمدة الصحيحة مباشرة
+                    s2_lname = s2.get("اللقب", "")
+                    s2_fname = s2.get("الإسم", "")
                     s2_email = get_email_smart(s2)
+                    
                     st.markdown(f"""
                     <div class="card">
                         <h4 style="color:#2F6F7E;">الطالب الثاني</h4>
-                        <p><b>الاسم:</b> {s2_lname} {s2_fname}</p>
+                        <p><b>اللقب:</b> {s2_lname}</p>
+                        <p><b>الإسم:</b> {s2_fname}</p>
                         <p><b>رقم التسجيل:</b> {s2.get('رقم التسجيل')}</p>
                         <p><b>الإيميل:</b> {s2_email}</p>
                     </div>
