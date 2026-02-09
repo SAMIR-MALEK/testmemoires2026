@@ -930,6 +930,7 @@ elif st.session_state.user_type == "student":
         s1 = st.session_state.student1; s2 = st.session_state.student2
         
         # --- واجهة التسجيل (Register Mode) - تم التعديل ---
+                # --- واجهة التسجيل (Register Mode) - تم التعديل النهائي ---
         if st.session_state.mode == "register":
             st.markdown("<div class='alert-card'>📝 مرحباً بك، أنت غير مسجل في مذكرة بعد.</div>", unsafe_allow_html=True)
             st.markdown("---")
@@ -955,39 +956,58 @@ elif st.session_state.user_type == "student":
                         st.error(r2)
             
             # ==========================================
-            # === منطق التصفية الذكية للأساتذة ===
+            # === منطق التصفية الذكية للأساتذة (المعدل لمحاكاة الكود الأصلي) ===
             # ==========================================
             student_specialty = s1.get("التخصص", "")
             
-            # تصفية المذكرات المتاحة في تخصص الطالب
-            available_memos_df = df_memos[
-                (df_memos["التخصص"] == student_specialty) &
-                (df_memos["تم التسجيل"] != "نعم")
-            ]
-
-            if available_memos_df.empty:
-                st.warning("⚠️ عذراً، لا توجد مذكرات متاحة في تخصصك حالياً.")
+            if not student_specialty:
+                st.warning("⚠️ لم نتمكن من تحديد تخصصك.")
             else:
-                # استخراج قائمة الأساتذة الذين لديهم مذكرات متاحة في هذا التخصص
-                eligible_profs = sorted(available_memos_df["الأستاذ"].unique().tolist())
+                # 1. جلب كل مذكرات هذا التخصص
+                specialty_memos = df_memos[df_memos["التخصص"] == student_specialty]
                 
-                selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + eligible_profs)
-                
-                if selected_prof:
-                    # تصفية المذكرات حسب الأستاذ المختار
-                    prof_memos = available_memos_df[available_memos_df["الأستاذ"] == selected_prof]
+                if specialty_memos.empty:
+                    st.warning("⚠️ عذراً، لا توجد مذكرات مسندة لتخصصك حالياً في النظام.")
+                else:
+                    # 2. تجميع البيانات حسب الأستاذ وحساب عدد المسجل لكل أستاذ
+                    # هذا يحاكي منطق الكود الأصلي: if reg_count >= 4 -> استنفذ
+                    prof_stats = specialty_memos.groupby("الأستاذ")["تم التسجيل"].apply(
+                        lambda x: (x.astype(str).str.strip() == "نعم").sum()
+                    ).reset_index()
+                    prof_stats.columns = ["الأستاذ", "count_registered"]
                     
-                    st.success(f"✅ المذكرات المتاحة لدى الأستاذ {selected_prof}:")
-                    for _, row in prof_memos.iterrows():
-                        st.markdown(f"**{row['رقم المذكرة']}** - {row['عنوان المذكرة']}")
+                    # 3. تصفية الأستاذة: نأخذ فقط من هم مسجل لديهم أقل من 4 مذكرات
+                    available_profs_df = prof_stats[prof_stats["count_registered"] < 4]
                     
-                    # اختيار المذكرة من القائمة
-                    memo_options = [f"{row['رقم المذكرة']} - {row['عنوان المذكرة']}" for _, row in prof_memos.iterrows()]
-                    selected_memo_display = st.selectbox("اختر المذكرة للتسجيل:", [""] + memo_options)
-                    
-                    if selected_memo_display:
-                        # استخراج رقم المذكرة من النص المختار
-                        st.session_state.note_number = selected_memo_display.split(" - ")[0]
+                    eligible_profs = sorted(available_profs_df["الأستاذ"].unique().tolist())
+
+                    if not eligible_profs:
+                        st.warning("⚠️ عذراً، جميع الأساتذة المختصين في مجالك استنفدت حصتهم من المذكرات.")
+                    else:
+                        selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + eligible_profs)
+                        
+                        if selected_prof:
+                            # عرض المذكرات المتاحة لهذا الأستاذ
+                            # نستخدم الـ DataFrame الأصلي للفلترة حسب الأستاذ وتجاهل المسجلة
+                            prof_memos = specialty_memos[
+                                (specialty_memos["الأستاذ"] == selected_prof) &
+                                (specialty_memos["تم التسجيل"] != "نعم")
+                            ]
+                            
+                            if prof_memos.empty:
+                                st.warning(f"⚠️ الأستاذ {selected_prof} متاح، ولكن لا توجد عناوين متاحة حالياً (قد تكون قيد الحجز أو المراجعة).")
+                            else:
+                                st.success(f"✅ المذكرات المتاحة لدى الأستاذ {selected_prof}:")
+                                for _, row in prof_memos.iterrows():
+                                    st.markdown(f"**{row['رقم المذكرة']}** - {row['عنوان المذكرة']}")
+                                
+                                # اختيار المذكرة من القائمة
+                                memo_options = [f"{row['رقم المذكرة']} - {row['عنوان المذكرة']}" for _, row in prof_memos.iterrows()]
+                                selected_memo_display = st.selectbox("اختر المذكرة للتسجيل:", [""] + memo_options)
+                                
+                                if selected_memo_display:
+                                    # استخراج رقم المذكرة من النص المختار
+                                    st.session_state.note_number = selected_memo_display.split(" - ")[0]
             # ==========================================
             
             # حقل كلمة السر (يظل يدوياً)
@@ -1042,12 +1062,6 @@ elif st.session_state.user_type == "student":
                             else: st.error(msg); st.session_state.show_confirmation = False
                 with col2:
                     if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
-
-        # --- لوحة التحكم (View Mode) ---
-        elif st.session_state.mode == "view":
-            col1, col2 = st.columns([4, 1])
-            with col2:
-                if st.button("خروج", key="logout_btn"): logout()
             
             note_num = str(s1.get('رقم المذكرة', '')).strip()
             df_memos_fresh = load_memos()
