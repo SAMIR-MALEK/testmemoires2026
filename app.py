@@ -120,36 +120,39 @@ label, p, span { color: #E2E8F0; }
 }
 .memo-id { font-size: 3rem; font-weight: 900; color: #2F6F7E; margin: 0; line-height: 1; }
 
-/* تنسيقات خاصة لتتبع الملف - التعديلات المطلوبة */
+/* تنسيقات خاصة لتتبع الملف - المصحح */
 .diploma-status-grid {
     display: grid;
-    /* عمود واحد فقط */
+    /* عمود واحد لترتيب العناصر تحت بعضها */
     grid-template-columns: 1fr; 
-    gap: 15px;
-    /* تحديد العرض الأقصى ليكون أنيقاً على الكمبيوتر */
-    max-width: 500px; 
-    margin: 0 auto; /* توسيط الشبكة */
+    gap: 12px; /* مسافة بسيطة بين الصفوف */
+    width: 100%; /* أخذ العرض الكامل للحاوية */
 }
 .diploma-item {
     background: rgba(255,255,255,0.05);
-    padding: 15px 20px;
-    border-radius: 10px;
-    margin-bottom: 0; /* لأننا نستخدم gap */
+    padding: 12px 20px; /* حشوة مريحة */
+    border-radius: 8px;
+    margin-bottom: 0; 
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* توزيع العناصر (النص يمين، الشارة يسار) */
     align-items: center;
     border: 1px solid rgba(255,255,255,0.05);
+    width: 100%; /* التأكد من أن العنصر يمتلئ الصف */
+    transition: background 0.2s;
+}
+.diploma-item:hover {
+    background: rgba(255,255,255,0.08); /* تأثير بسيط عند التمرير */
 }
 .status-badge {
-    padding: 5px 12px;
-    border-radius: 15px;
-    font-size: 0.9rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
     font-weight: bold;
-    white-space: nowrap; /* لمنع كسر النص */
+    white-space: nowrap;
 }
-.status-available { background: rgba(16, 185, 129, 0.2); color: #10B981; }
-.status-unavailable { background: rgba(239, 68, 68, 0.2); color: #EF4444; }
-.status-pending { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+.status-available { background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
+.status-unavailable { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.status-pending { background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
 </style>
 """, unsafe_allow_html=True)
 
