@@ -22,9 +22,9 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 # ========================
 # إعداد الموعد النهائي
 # ========================
-REGISTRATION_DEADLINE = datetime(2027, 1, 28,23, 59)
+REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
-# ---------------- CSS ----------------
+# ---------------- CSS (تم التعديل) ----------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -120,26 +120,32 @@ label, p, span { color: #E2E8F0; }
 }
 .memo-id { font-size: 3rem; font-weight: 900; color: #2F6F7E; margin: 0; line-height: 1; }
 
-/* تنسيقات خاصة لتتبع الملف */
+/* تنسيقات خاصة لتتبع الملف - التعديلات المطلوبة */
 .diploma-status-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
+    /* عمود واحد فقط */
+    grid-template-columns: 1fr; 
+    gap: 15px;
+    /* تحديد العرض الأقصى ليكون أنيقاً على الكمبيوتر */
+    max-width: 500px; 
+    margin: 0 auto; /* توسيط الشبكة */
 }
 .diploma-item {
     background: rgba(255,255,255,0.05);
-    padding: 15px;
+    padding: 15px 20px;
     border-radius: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 0; /* لأننا نستخدم gap */
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border: 1px solid rgba(255,255,255,0.05);
 }
 .status-badge {
     padding: 5px 12px;
     border-radius: 15px;
     font-size: 0.9rem;
     font-weight: bold;
+    white-space: nowrap; /* لمنع كسر النص */
 }
 .status-available { background: rgba(16, 185, 129, 0.2); color: #10B981; }
 .status-unavailable { background: rgba(239, 68, 68, 0.2); color: #EF4444; }
@@ -162,7 +168,6 @@ MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o"
 
-# تحديث النطاق ليشمل أعمدة التتبع (O-T) -> 20 عموداً
 STUDENTS_RANGE = "Feuille 1!A1:T1000" 
 MEMOS_RANGE = "Feuille 1!A1:U1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
@@ -219,23 +224,18 @@ def validate_note_number(note_number):
     if len(note_number) > 20: return False, "⚠️ رقم المذكرة غير صالح"
     return True, note_number
 
-# ============================================================
-# دالة جديدة لعرض اسم الطالب (تتعامل مع اختلاف المسميات)
-# ============================================================
 def get_student_name_display(student_dict):
-    # محاولة العثور على اللقب
-    keys_lname = ["اللقب", ""]
+    keys_lname = ["اللقب", "لقب"]
     lname = ""
     for k in keys_lname:
-        if k in student_dict and str(student_dict[k]).strip() != 'nan' and str(student_dict[k]).strip() != '':
+        if k in student_dict and str(student_dict[k]).strip() not in ['nan', '']:
             lname = student_dict[k]
             break
     
-    # محاولة العثور على الاسم
-    keys_fname = ["الإسم", ""]
+    keys_fname = ["الإسم", "إسم"]
     fname = ""
     for k in keys_fname:
-        if k in student_dict and str(student_dict[k]).strip() != 'nan' and str(student_dict[k]).strip() != '':
+        if k in student_dict and str(student_dict[k]).strip() not in ['nan', '']:
             fname = student_dict[k]
             break
             
@@ -926,7 +926,7 @@ elif st.session_state.user_type == "student":
     else:
         s1 = st.session_state.student1; s2 = st.session_state.student2
         
-        # --- واجهة التسجيل (Register Mode) ---
+        # --- واجهة التسجيل (Register Mode) - تم التعديل ---
         if st.session_state.mode == "register":
             st.markdown("<div class='alert-card'>📝 مرحباً بك، أنت غير مسجل في مذكرة بعد.</div>", unsafe_allow_html=True)
             st.markdown("---")
@@ -951,13 +951,52 @@ elif st.session_state.user_type == "student":
                     else:
                         st.error(r2)
             
+            # ==========================================
+            # === منطق التصفية الذكية للأساتذة ===
+            # ==========================================
+            student_specialty = s1.get("التخصص", "")
+            
+            # تصفية المذكرات المتاحة في تخصص الطالب
+            available_memos_df = df_memos[
+                (df_memos["التخصص"] == student_specialty) &
+                (df_memos["تم التسجيل"] != "نعم")
+            ]
+
+            if available_memos_df.empty:
+                st.warning("⚠️ عذراً، لا توجد مذكرات متاحة في تخصصك حالياً.")
+            else:
+                # استخراج قائمة الأساتذة الذين لديهم مذكرات متاحة في هذا التخصص
+                eligible_profs = sorted(available_memos_df["الأستاذ"].unique().tolist())
+                
+                selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + eligible_profs)
+                
+                if selected_prof:
+                    # تصفية المذكرات حسب الأستاذ المختار
+                    prof_memos = available_memos_df[available_memos_df["الأستاذ"] == selected_prof]
+                    
+                    st.success(f"✅ المذكرات المتاحة لدى الأستاذ {selected_prof}:")
+                    for _, row in prof_memos.iterrows():
+                        st.markdown(f"**{row['رقم المذكرة']}** - {row['عنوان المذكرة']}")
+                    
+                    # اختيار المذكرة من القائمة
+                    memo_options = [f"{row['رقم المذكرة']} - {row['عنوان المذكرة']}" for _, row in prof_memos.iterrows()]
+                    selected_memo_display = st.selectbox("اختر المذكرة للتسجيل:", [""] + memo_options)
+                    
+                    if selected_memo_display:
+                        # استخراج رقم المذكرة من النص المختار
+                        st.session_state.note_number = selected_memo_display.split(" - ")[0]
+            # ==========================================
+            
+            # حقل كلمة السر (يظل يدوياً)
             c1, c2 = st.columns([3, 1])
-            with c1: st.session_state.note_number = st.text_input("رقم المذكرة", value=st.session_state.note_number)
-            with c2: st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
+            with c1:
+                st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
             
             if not st.session_state.show_confirmation:
+                # التحقق من أن المذكرة تم اختيارها قبل المتابعة
                 if st.button("المتابعة للتأكيد"):
-                    if not st.session_state.note_number or not st.session_state.prof_password: st.error("⚠️ يرجى إدخال بيانات المذكرة")
+                    if not st.session_state.note_number or not st.session_state.prof_password: 
+                        st.error("⚠️ يرجى اختيار مذكرة وإدخال كلمة السر")
                     else:
                         s1_reg_perm = str(s1.get('التسجيل', '')).strip()
                         s2 = None
@@ -1018,8 +1057,6 @@ elif st.session_state.user_type == "student":
                 session_html = f"<p>📅 <b>موعد الجلسة القادمة:</b> {session_date}</p>" if session_date else ""
                 st.markdown(f'''<div class="card" style="border-left: 5px solid #FFD700;"><h3>✅ أنت مسجل في المذكرة التالية:</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {memo_info['الأستاذ']}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p>{session_html}</div>''', unsafe_allow_html=True)
                 
-                # استخدام الدالة الجديدة لاستخراج الأسماء
-                                # === عرض الطالب الأول ===
                 s1_lname, s1_fname = get_student_name_display(s1)
                 s1_email = get_email_smart(s1)
                 
@@ -1034,9 +1071,7 @@ elif st.session_state.user_type == "student":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # === عرض الطالب الثاني (تم التعديل هنا لضمان جلب بياناته الصحيحة) ===
                 if s2:
-                    # التأكد من جلب اللقب والإسم من الأعمدة الصحيحة مباشرة
                     s2_lname = s2.get("اللقب", "")
                     s2_fname = s2.get("الإسم", "")
                     s2_email = get_email_smart(s2)
@@ -1053,7 +1088,6 @@ elif st.session_state.user_type == "student":
 
             with tab_track:
                 st.subheader("📂 حالة ملف التخرج")
-                # التعديل: عرض ملف الطالب المسجل فقط (S1)
                 def render_student_diploma_status(student_data, title):
                     if isinstance(student_data, dict):
                         cols = df_students.columns.tolist()
@@ -1093,7 +1127,6 @@ elif st.session_state.user_type == "student":
                     """
                     return html
                 
-                # عرض ملف الطالب المسجل فقط
                 s1_lname, s1_fname = get_student_name_display(s1)
                 st.markdown(render_student_diploma_status(s1, f"👤 {s1_lname} {s1_fname}"), unsafe_allow_html=True)
                 st.info("ℹ️ ملاحظة: إذا كانت المذكرة ثنائية، سيظهر لك هنا فقط ملفك الشخصي. يتعين على الطالب الثاني الدخول بحسابه لمشاهدة ملفه.")
@@ -1477,11 +1510,9 @@ elif st.session_state.user_type == "admin":
 
         with tab3:
             st.subheader("توزيع الأساتذة")
-            # Fix: Ensure df_memos is not empty and has the required columns to avoid NameError
             if df_memos.empty:
                 st.warning("لا توجد بيانات مذكرات للعرض.")
             else:
-                # Ensure 'الأستاذ' column exists before accessing it
                 if "الأستاذ" not in df_memos.columns:
                     st.error("العمود 'الأستاذ' غير موجود في ملف المذكرات.")
                 else:
@@ -1489,15 +1520,12 @@ elif st.session_state.user_type == "admin":
                     sel_p = st.selectbox("اختر أستاذ:", ["الكل"] + profs_list)
                     
                     if sel_p != "الكل":
-                        # Show specific prof data
                         st.dataframe(df_memos[df_memos["الأستاذ"].astype(str).str.strip() == sel_p.strip()], use_container_width=True, height=400)
                     else:
-                        # Show summary (s_df)
                         required_cols = ["الأستاذ", "رقم المذكرة", "تم التسجيل"]
                         missing_cols = [c for c in required_cols if c not in df_memos.columns]
                         
                         if not missing_cols:
-                            # Safe definition of s_df
                             s_df = df_memos.groupby("الأستاذ").agg(
                                 total=("رقم المذكرة", "count"), 
                                 registered=("تم التسجيل", lambda x: (x.astype(str).str.strip() == "نعم").sum())
