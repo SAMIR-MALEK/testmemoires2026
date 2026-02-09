@@ -25,6 +25,7 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
 # ---------------- CSS (تم التعديل) ----------------
+# ---------------- CSS (تم التعديل) ----------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -120,28 +121,27 @@ label, p, span { color: #E2E8F0; }
 }
 .memo-id { font-size: 3rem; font-weight: 900; color: #2F6F7E; margin: 0; line-height: 1; }
 
-/* تنسيقات خاصة لتتبع الملف - المصحح */
+/* تنسيقات خاصة لتتبع الملف - النسخة المصححة */
 .diploma-status-grid {
     display: grid;
-    /* عمود واحد لترتيب العناصر تحت بعضها */
     grid-template-columns: 1fr; 
-    gap: 12px; /* مسافة بسيطة بين الصفوف */
-    width: 100%; /* أخذ العرض الكامل للحاوية */
+    gap: 12px; 
+    width: 100%; 
 }
 .diploma-item {
     background: rgba(255,255,255,0.05);
-    padding: 12px 20px; /* حشوة مريحة */
+    padding: 12px 20px;
     border-radius: 8px;
     margin-bottom: 0; 
     display: flex;
-    justify-content: space-between; /* توزيع العناصر (النص يمين، الشارة يسار) */
+    justify-content: space-between; 
     align-items: center;
     border: 1px solid rgba(255,255,255,0.05);
-    width: 100%; /* التأكد من أن العنصر يمتلئ الصف */
+    width: 100%; 
     transition: background 0.2s;
 }
 .diploma-item:hover {
-    background: rgba(255,255,255,0.08); /* تأثير بسيط عند التمرير */
+    background: rgba(255,255,255,0.08); 
 }
 .status-badge {
     padding: 6px 14px;
