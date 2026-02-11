@@ -32,24 +32,12 @@ st.markdown("""
 html, body, [class*="css"] {
     font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right;
 }
+/* --- بقية التنسيقات العامة (ابقها كما هي) --- */
 .main { background-color: #0A1B2C; color: #ffffff; }
 .block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 16px; margin:auto; }
-h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #F8FAFC; }
-label, p, span { color: #E2E8F0; }
-.stTextInput label, .stSelectbox label { color: #F8FAFC !important; font-weight: 600; }
-.stButton>button, button[kind="primary"], div[data-testid="stFormSubmitButton"] button {
-    background-color: #2F6F7E !important; color: #ffffff !important;
-    font-size: 16px; font-weight: 600; padding: 14px 32px;
-    border: none !important; border-radius: 12px !important;
-    cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease; width: 100%;
-    text-align: center; display: flex; justify-content: center; align-items: center; gap: 10px;
-}
-.stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
 .card {
     background: rgba(30, 41, 59, 0.95); border:1px solid rgba(255,255,255, 0.08);
     border-radius: 20px; padding: 30px; margin-bottom: 20px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
     border-top: 3px solid #2F6F7E; transition: transform 0.2s ease;
 }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
@@ -80,62 +68,23 @@ label, p, span { color: #E2E8F0; }
 .stTabs [aria-selected="true"] {
     background: rgba(47, 111, 126, 0.2); color: #FFD700; border: 1px solid #2F6F7E; font-weight: bold; box-shadow: 0 0 15px rgba(47, 111, 126, 0.2);
 }
-.full-view-container {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 40px;
-    background: rgba(15,23, 42, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 24px;
-    box-shadow: 0 0 40px rgba(0,0,0,0.6);
-    overflow: hidden;
-}
-.students-grid {
-    display: flex;
-    justify-content: center;
-    gap: 40px;
-    flex-wrap: wrap;
-    margin-top: 20px;
-    margin-bottom: 30px;
-}
-.student-card {
-    flex: 1;
-    max-width: 450px;
-    min-width: 300px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 25px;
-    text-align: center;
-    transition: all 0.3s ease;
-}
-.student-card:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: #2F6F7E;
-}
-.memo-badge {
-    display: inline-block; background: rgba(47, 111, 126, 0.2);
-    color: #FFD700; padding: 6px 16px; border-radius: 20px;
-    font-size: 1rem; margin-bottom: 10px; font-weight: 600;
-}
-.memo-id { font-size: 3rem; font-weight: 900; color: #2F6F7E; margin: 0; line-height: 1; }
 
-/* تنسيقات خاصة لتتبع الملف - التعديل النهائي للعرض العمودي */
+/* --- تنسيقات تتبع الملف (تم التصحيح للعمل كـ CSS حقيقي) --- */
 .diploma-status-grid {
-    display: flex;
-    flex-direction: column; /* لجعل العناصر تظهر عمودياً واحدة تحت الأخرى */
-    gap: 12px; /* مسافة بين العناصر */
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
     width: 100%;
 }
 .diploma-item {
     background: rgba(255,255,255,0.05);
     padding: 15px 20px;
     border-radius: 10px;
-    margin-bottom: 0; /* الغاء الهامش السفلي لأننا نستخدم gap */
-    display: flex;
-    justify-content: space-between; /* النص على اليمين والحالة على اليسار */
+    margin-bottom: 0;
+    display: flex !important;
+    justify-content: space-between;
     align-items: center;
-    border-right: 4px solid #2F6F7E; /* إضافة خط جانبي للتميز */
+    border-right: 4px solid #2F6F7E;
     transition: background 0.3s;
 }
 .diploma-item:hover {
