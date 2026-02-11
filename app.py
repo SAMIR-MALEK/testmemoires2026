@@ -24,7 +24,7 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 # ========================
 REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
-# ---------------- CSS (تم التعديل) ----------------
+# ---------------- CSS (تم التعديل لتصميم التتبع العمودي) ----------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -120,36 +120,38 @@ label, p, span { color: #E2E8F0; }
 }
 .memo-id { font-size: 3rem; font-weight: 900; color: #2F6F7E; margin: 0; line-height: 1; }
 
-/* تنسيقات خاصة لتتبع الملف - التعديلات المطلوبة */
+/* تنسيقات خاصة لتتبع الملف - تم التعديل للعرض العمودي */
 .diploma-status-grid {
-    display: grid;
-    /* عمود واحد فقط */
-    grid-template-columns: 1fr; 
-    gap: 15px;
-    /* تحديد العرض الأقصى ليكون أنيقاً على الكمبيوتر */
-    max-width: 500px; 
-    margin: 0 auto; /* توسيط الشبكة */
+    display: flex;
+    flex-direction: column; /* لجعل العناصر تظهر عمودياً واحدة تحت الأخرى */
+    gap: 12px; /* مسافة بين العناصر */
+    width: 100%;
 }
 .diploma-item {
     background: rgba(255,255,255,0.05);
     padding: 15px 20px;
     border-radius: 10px;
-    margin-bottom: 0; /* لأننا نستخدم gap */
+    margin-bottom: 0; /* الغاء الهامش السفلي لأننا نستخدم gap */
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* النص على اليمين والحالة على اليسار */
     align-items: center;
-    border: 1px solid rgba(255,255,255,0.05);
+    border-right: 4px solid #2F6F7E; /* إضافة خط جانبي للتميز */
+    transition: background 0.3s;
+}
+.diploma-item:hover {
+    background: rgba(255,255,255,0.1);
 }
 .status-badge {
-    padding: 5px 12px;
-    border-radius: 15px;
-    font-size: 0.9rem;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 0.95rem;
     font-weight: bold;
-    white-space: nowrap; /* لمنع كسر النص */
+    min-width: 100px;
+    text-align: center;
 }
-.status-available { background: rgba(16, 185, 129, 0.2); color: #10B981; }
-.status-unavailable { background: rgba(239, 68, 68, 0.2); color: #EF4444; }
-.status-pending { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+.status-available { background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
+.status-unavailable { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.status-pending { background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -168,6 +170,7 @@ MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o"
 
+# تحديث النطاق ليشمل أعمدة التتبع (O-T) -> 20 عموداً
 STUDENTS_RANGE = "Feuille 1!A1:T1000" 
 MEMOS_RANGE = "Feuille 1!A1:U1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
@@ -224,15 +227,20 @@ def validate_note_number(note_number):
     if len(note_number) > 20: return False, "⚠️ رقم المذكرة غير صالح"
     return True, note_number
 
+# ============================================================
+# دالة جديدة لعرض اسم الطالب (تتعامل مع اختلاف المسميات)
+# ============================================================
 def get_student_name_display(student_dict):
-    keys_lname = ["اللقب", "لقب"]
+    # محاولة العثور على اللقب
+    keys_lname = ["لقب", "اللقب", ""]
     lname = ""
     for k in keys_lname:
         if k in student_dict and str(student_dict[k]).strip() not in ['nan', '']:
             lname = student_dict[k]
             break
     
-    keys_fname = ["الإسم", "إسم"]
+    # محاولة العثور على الاسم
+    keys_fname = ["إسم", "اسم", "الإسم", ""]
     fname = ""
     for k in keys_fname:
         if k in student_dict and str(student_dict[k]).strip() not in ['nan', '']:
@@ -926,7 +934,7 @@ elif st.session_state.user_type == "student":
     else:
         s1 = st.session_state.student1; s2 = st.session_state.student2
         
-        # --- واجهة التسجيل (Register Mode) - تم التعديل ---
+        # --- واجهة التسجيل (Register Mode) ---
         if st.session_state.mode == "register":
             st.markdown("<div class='alert-card'>📝 مرحباً بك، أنت غير مسجل في مذكرة بعد.</div>", unsafe_allow_html=True)
             st.markdown("---")
@@ -952,51 +960,61 @@ elif st.session_state.user_type == "student":
                         st.error(r2)
             
             # ==========================================
-            # === منطق التصفية الذكية للأساتذة ===
-            # ==========================================
-            student_specialty = s1.get("التخصص", "")
+            //  كود إضافة القائمة الذكية للأساتذة المتاحين
+            // ==========================================
+            st.markdown("### 🔍 البحث عن مذكرة متاحة")
             
-            # تصفية المذكرات المتاحة في تخصص الطالب
+            # 1. تحديد تخصص الطالب المسجل
+            student_specialty = str(s1.get("التخصص", "")).strip()
+            
+            # 2. تصفية المذكرات: (غير مسجلة) AND (تخصصها يطابق تخصص الطالب)
             available_memos_df = df_memos[
-                (df_memos["التخصص"] == student_specialty) &
-                (df_memos["تم التسجيل"] != "نعم")
+                (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم") & 
+                (df_memos["التخصص"].astype(str).str.strip() == student_specialty)
             ]
-
-            if available_memos_df.empty:
-                st.warning("⚠️ عذراً، لا توجد مذكرات متاحة في تخصصك حالياً.")
-            else:
-                # استخراج قائمة الأساتذة الذين لديهم مذكرات متاحة في هذا التخصص
-                eligible_profs = sorted(available_memos_df["الأستاذ"].unique().tolist())
-                
-                selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + eligible_profs)
+            
+            # 3. استخراج أسماء الأساتذة الذين لديهم مذكرات في هذه القائمة المصفاة
+            available_profs = sorted(available_memos_df["الأستاذ"].dropna().unique())
+            
+            if available_profs:
+                selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + available_profs)
                 
                 if selected_prof:
-                    # تصفية المذكرات حسب الأستاذ المختار
-                    prof_memos = available_memos_df[available_memos_df["الأستاذ"] == selected_prof]
+                    # عرض المذكرات المتاحة لهذا الأستاذ في تخصص الطالب
+                    prof_specific_memos = available_memos_df[
+                        available_memos_df["الأستاذ"].astype(str).str.strip() == selected_prof.strip()
+                    ]
                     
-                    st.success(f"✅ المذكرات المتاحة لدى الأستاذ {selected_prof}:")
-                    for _, row in prof_memos.iterrows():
-                        st.markdown(f"**{row['رقم المذكرة']}** - {row['عنوان المذكرة']}")
-                    
-                    # اختيار المذكرة من القائمة
-                    memo_options = [f"{row['رقم المذكرة']} - {row['عنوان المذكرة']}" for _, row in prof_memos.iterrows()]
-                    selected_memo_display = st.selectbox("اختر المذكرة للتسجيل:", [""] + memo_options)
-                    
-                    if selected_memo_display:
-                        # استخراج رقم المذكرة من النص المختار
-                        st.session_state.note_number = selected_memo_display.split(" - ")[0]
-            # ==========================================
+                    if not prof_specific_memos.empty:
+                        st.success(f'✅ لديك {len(prof_specific_memos)} خيار/خيارات متاحة:')
+                        for _, row in prof_specific_memos.iterrows():
+                            # عرض بطاقة أنيقة لكل مذكرة
+                            st.markdown(f"""
+                            <div style="background: rgba(47, 111, 126, 0.15); border: 1px solid #2F6F7E; padding: 10px; border-radius: 8px; margin-bottom: 5px;">
+                                <strong style="color: #FFD700;">{row['رقم المذكرة']}</strong> - {row['عنوان المذكرة']}
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.info("هذا الأستاذ ليس لديه عناوين متاحة حالياً في تخصصك (يتم التحديث لحظياً).")
+            else:
+                st.warning("🔒 عذراً، لا يوجد أساتذة لديهم مذكرات شاغرة في تخصصك حالياً.")
+                st.info("يرجى التواصل مع مسؤول الميدان أو المحاولة لاحقاً.")
+                # إيقاف التنفيذ هنا إذا لم يوجد أساتذة لمنع إدخال بيانات عشوائية
+                st.stop()
             
-            # حقل كلمة السر (يظل يدوياً)
+            st.markdown("---")
+            st.markdown("### ✍️ تسجيل المذكرة المختارة")
+            // ==========================================
+            //  نهاية الكود المضاف
+            // ==========================================
+
             c1, c2 = st.columns([3, 1])
-            with c1:
-                st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
+            with c1: st.session_state.note_number = st.text_input("رقم المذكرة", value=st.session_state.note_number)
+            with c2: st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
             
             if not st.session_state.show_confirmation:
-                # التحقق من أن المذكرة تم اختيارها قبل المتابعة
                 if st.button("المتابعة للتأكيد"):
-                    if not st.session_state.note_number or not st.session_state.prof_password: 
-                        st.error("⚠️ يرجى اختيار مذكرة وإدخال كلمة السر")
+                    if not st.session_state.note_number or not st.session_state.prof_password: st.error("⚠️ يرجى إدخال بيانات المذكرة")
                     else:
                         s1_reg_perm = str(s1.get('التسجيل', '')).strip()
                         s2 = None
@@ -1057,6 +1075,8 @@ elif st.session_state.user_type == "student":
                 session_html = f"<p>📅 <b>موعد الجلسة القادمة:</b> {session_date}</p>" if session_date else ""
                 st.markdown(f'''<div class="card" style="border-left: 5px solid #FFD700;"><h3>✅ أنت مسجل في المذكرة التالية:</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {memo_info['الأستاذ']}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p>{session_html}</div>''', unsafe_allow_html=True)
                 
+                # استخدام الدالة الجديدة لاستخراج الأسماء
+                # === عرض الطالب الأول ===
                 s1_lname, s1_fname = get_student_name_display(s1)
                 s1_email = get_email_smart(s1)
                 
@@ -1071,9 +1091,11 @@ elif st.session_state.user_type == "student":
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # === عرض الطالب الثاني (تم التعديل هنا لضمان جلب بياناته الصحيحة) ===
                 if s2:
-                    s2_lname = s2.get("اللقب", "")
-                    s2_fname = s2.get("الإسم", "")
+                    # التأكد من جلب اللقب والإسم من الأعمدة الصحيحة مباشرة
+                    s2_lname = s2.get("لقب", "")
+                    s2_fname = s2.get("إسم", "")
                     s2_email = get_email_smart(s2)
                     
                     st.markdown(f"""
@@ -1088,6 +1110,7 @@ elif st.session_state.user_type == "student":
 
             with tab_track:
                 st.subheader("📂 حالة ملف التخرج")
+                # التعديل: عرض ملف الطالب المسجل فقط (S1)
                 def render_student_diploma_status(student_data, title):
                     if isinstance(student_data, dict):
                         cols = df_students.columns.tolist()
@@ -1127,6 +1150,7 @@ elif st.session_state.user_type == "student":
                     """
                     return html
                 
+                # عرض ملف الطالب المسجل فقط
                 s1_lname, s1_fname = get_student_name_display(s1)
                 st.markdown(render_student_diploma_status(s1, f"👤 {s1_lname} {s1_fname}"), unsafe_allow_html=True)
                 st.info("ℹ️ ملاحظة: إذا كانت المذكرة ثنائية، سيظهر لك هنا فقط ملفك الشخصي. يتعين على الطالب الثاني الدخول بحسابه لمشاهدة ملفه.")
