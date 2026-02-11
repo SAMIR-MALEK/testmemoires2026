@@ -32,34 +32,63 @@ st.markdown("""
 html, body, [class*="css"] {
     font-family: 'Cairo', sans-serif !important; direction: rtl; text-align: right;
 }
-/* --- بقية التنسيقات العامة (ابقها كما هي) --- */
 .main { background-color: #0A1B2C; color: #ffffff; }
 .block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 16px; margin:auto; }
+
+/* تعديل الألوان لتكون بيضاء بالكامل */
+h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #ffffff !important; }
+label, p, span { color: #ffffff !important; }
+h1 { text-align: center; }
+
+/* تنسيق الحقول والأزرار */
+.stTextInput label, .stSelectbox label { color: #ffffff !important; font-weight: 600; }
+.stButton>button, button[kind="primary"], div[data-testid="stFormSubmitButton"] button {
+    background-color: #2F6F7E !important; color: #ffffff !important;
+    font-size: 16px; font-weight: 600; padding: 14px 32px;
+    border: none !important; border-radius: 12px !important;
+    cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease; width: 100%;
+    text-align: center; display: flex; justify-content: center; align-items: center; gap: 10px;
+}
+.stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
+
+/* تنسيق البطاقات (Cards) */
 .card {
     background: rgba(30, 41, 59, 0.95); border:1px solid rgba(255,255,255, 0.08);
     border-radius: 20px; padding: 30px; margin-bottom: 20px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
     border-top: 3px solid #2F6F7E; transition: transform 0.2s ease;
 }
+
+/* تنسيق KPI Cards */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
 .kpi-card {
     background: linear-gradient(145deg, #1E293B, #0F172A); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 2.5rem 1rem;
     text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); position: relative; overflow: hidden;
 }
 .kpi-value { font-size: 2.5rem; font-weight: 900; color: #FFD700; margin: 15px 0; }
-.kpi-label { font-size: 1.2rem; color: #94A3B8; font-weight: 600; margin-top: 10px; }
+.kpi-label { font-size: 1.2rem; color: #ffffff !important; font-weight: 600; margin-top: 10px; }
+
+/* بطاقات التنبيه */
 .alert-card {
     background: linear-gradient(90deg, #8B4513 0%, #A0522D 100%);
     border: 1px solid #CD853F; color: white; padding: 25px; border-radius: 12px;
     box-shadow: 0 10px 20px -5px rgba(139, 69, 19, 0.4); text-align: center; font-weight: bold;
 }
+
+/* شريط التقدم */
 .progress-container { background-color: #0F172A; border-radius: 99px; padding: 6px; margin: 20px 0; overflow: hidden; box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.3); }
 .progress-bar {
     height: 24px; border-radius: 99px;
     background: linear-gradient(90deg, #2F6F7E 0%, #285E6B 50%, #FFD700 100%);
     box-shadow: 0 0 15px rgba(47, 111, 126, 0.5); transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* تنسيق الجداول */
 .stDataFrame { border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,white, 0.1); background: #1E293B; }
 .stDataFrame th { background-color: #0F172A; color: #FFD700; font-weight: bold; }
+
+/* تنسيق التبويبات */
 .stTabs [data-baseweb="tab-list"] { gap: 2rem; padding-bottom: 15px; }
 .stTabs [data-baseweb="tab"] {
     background: transparent; color: #94A3B8; font-weight: 600; padding: 12px 24px; border-radius: 12px; border: 1px solid transparent;
@@ -69,10 +98,51 @@ html, body, [class*="css"] {
     background: rgba(47, 111, 126, 0.2); color: #FFD700; border: 1px solid #2F6F7E; font-weight: bold; box-shadow: 0 0 15px rgba(47, 111, 126, 0.2);
 }
 
-/* --- تنسيقات تتبع الملف (تم التصحيح للعمل كـ CSS حقيقي) --- */
+/* تنسيق عرض المذكرة الكامل */
+.full-view-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px;
+    background: rgba(15,23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+}
+.students-grid {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+.student-card {
+    flex: 1;
+    max-width: 450px;
+    min-width: 300px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+.student-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: #2F6F7E;
+}
+.memo-badge {
+    display: inline-block; background: rgba(47, 111, 126, 0.2);
+    color: #FFD700; padding: 6px 16px; border-radius: 20px;
+    font-size: 1rem; margin-bottom: 10px; font-weight: 600;
+}
+.memo-id { font-size: 3rem; font-weight: 900; color: #2F6F7E; margin: 0; line-height: 1; }
+
+/* تنسيقات خاصة لتتبع الملف - العرض العمودي */
 .diploma-status-grid {
-    display: flex !important;
-    flex-direction: column !important;
+    display: flex;
+    flex-direction: column;
     gap: 12px !important;
     width: 100%;
 }
@@ -81,7 +151,7 @@ html, body, [class*="css"] {
     padding: 15px 20px;
     border-radius: 10px;
     margin-bottom: 0;
-    display: flex !important;
+    display: flex;
     justify-content: space-between;
     align-items: center;
     border-right: 4px solid #2F6F7E;
