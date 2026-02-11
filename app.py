@@ -120,7 +120,7 @@ label, p, span { color: #E2E8F0; }
 }
 .memo-id { font-size: 3rem; font-weight: 900; color: #2F6F7E; margin: 0; line-height: 1; }
 
-/* تنسيقات خاصة لتتبع الملف - تم التعديل للعرض العمودي */
+/* تنسيقات خاصة لتتبع الملف - التعديل النهائي للعرض العمودي */
 .diploma-status-grid {
     display: flex;
     flex-direction: column; /* لجعل العناصر تظهر عمودياً واحدة تحت الأخرى */
