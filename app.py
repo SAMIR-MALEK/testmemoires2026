@@ -756,7 +756,7 @@ def update_registration(note_number, student1, student2=None):
             st.session_state.student2 = df_students_updated[df_students_updated["اسم المستخدم"].astype(str).str.strip() == student2['اسم المستخدم'].strip()].iloc[0].to_dict()
         memo_data = df_memos[df_memos["رقم المذكرة"].astype(str).str.strip() == str(note_number).strip()].iloc[0]
         email_sent, email_msg = send_email_to_professor(prof_name, memo_data, st.session_state.student1, st.session_state.student2 if student2 else None)
-        if not email_sent: st.error(f"⚠️ {email_msg}"); st.warning("تم تسجيل المذكرة في النظام، ولكن لم يتم إرسال الإيميل للأستاذ.")
+        if not email_sent: st.error(f"⚠️ {email_msg}"); st.warning("تم تسجيل المذكرة في النظام، لكن لم يتم إرسال الإيميل للأستاذ.")
         else: st.success("📧 تم إرسال إشعار بالبريد الإلكتروني للأستاذ.")
         return True, "✅ تم تسجيل المذكرة بنجاح!"
     except Exception as e:
@@ -1391,7 +1391,7 @@ elif st.session_state.user_type == "professor":
                                         st.info(f"تم تحديث موعد الجلسة في ملفات {len(target_students)} طالب.")
                                         email_success, email_msg = send_session_emails(target_students, details_text, prof_name)
                                         if email_success: st.success("📧 تم إرسال الإشعارات للطلبة والإدارة.")
-                                        else: st.warning(f"⚠️ تم الحفظ لكن فشل الإرسال: {email_msg}")
+                                        else: st.warning(f"⚠️ تم الحفظ لكن فاشل الإرسال: {email_msg}")
                                         time.sleep(2); st.rerun()
                                     else: st.error(f"تم حفظ الطلب ولكن حدث خطأ في تحديث المذكرات: {update_msg}")
                                 else: st.error(save_msg)
