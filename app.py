@@ -202,13 +202,42 @@ def validate_note_number(note_number):
     return True, note_number
 
 # ============================================================
-# دالة جديدة للتحقق من صحة NIN (علاج المشكلة الثانية)
+# دوال التحقق المحسنة (الهاتف و NIN)
 # ============================================================
-def is_nin_valid(nin_val):
-    val = str(nin_val).strip().replace('.0', '')
-    if len(val) == 18 and val.isdigit():
+def is_phone_valid(phone_val):
+    """
+    التحقق من وجود رقم الهاتف
+    المهم: ليس فارغ، ليس 0، ليس -، ليس nan
+    """
+    val = str(phone_val).strip()
+    # قائمة القيم المرفوضة
+    invalid_values = ['', '0', '-', 'nan', 'None', 'NaN', '.0', '0.0']
+    if val in invalid_values:
+        return False
+    # إذا كان يحتوي على أرقام فقط بعد التنظيف
+    cleaned = val.replace(' ', '').replace('-', '')
+    if cleaned.isdigit() and len(cleaned) > 0:
+        return True
+    # قبول أي قيمة غير فارغة تماماً
+    if val and val not in invalid_values:
         return True
     return False
+
+def is_nin_valid(nin_val):
+    """
+    التحقق من وجود NIN
+    المهم: ليس فارغ، ليس 0، ليس -، ليس nan
+    كل شيء آخر مقبول
+    """
+    val = str(nin_val).strip()
+    # إزالة .0 و .00 من الأرقام
+    val = val.replace('.0', '').replace('.00', '')
+    # قائمة القيم المرفوضة
+    invalid_values = ['', '0', '-', 'nan', 'None', 'NaN']
+    if val in invalid_values:
+        return False
+    # قبول أي قيمة موجودة
+    return True
 
 def get_student_name_display(student_dict):
     keys_lname = ["لقب", "اللقب", ""]
@@ -823,8 +852,16 @@ def restore_session_from_url():
         if user_type == 'student':
             s_data = lookup_student(username)
             if s_data:
+                # ============================================================
+                # تم إصلاح الخطأ: التحقق من الهاتف AND NIN معاً
+                # ============================================================
                 s_nin = str(s_data.get('NIN', '')).strip().replace('.0', '')
-                if is_nin_valid(s_nin):
+                s_phone = str(s_data.get('الهاتف', '')).strip()
+                
+                nin_valid = is_nin_valid(s_nin)
+                phone_valid = is_phone_valid(s_phone)
+                
+                if nin_valid and phone_valid:  # ✅ تم إضافة التحقق من الهاتف
                     st.session_state.user_type = 'student'
                     st.session_state.student1 = s_data
                     note_num = str(s_data.get('رقم المذكرة', '')).strip()
@@ -905,20 +942,28 @@ elif st.session_state.user_type == "student":
         st.markdown("<h2>⚠️ استكمال الملف الشخصي</h2>", unsafe_allow_html=True)
         st.warning("⚠️ يجب إكمال بياناتك الشخصية (رقم الهاتف والرقم الوطني للتعريف) للمتابعة.")
         
+        # عرض البيانات الحالية للتشخيص
+        temp_data = st.session_state.profile_user_temp
+        if temp_data:
+            current_phone = str(temp_data.get('الهاتف', 'غير موجود')).strip()
+            current_nin = str(temp_data.get('NIN', 'غير موجود')).strip().replace('.0', '')
+            st.info(f"📞 الهاتف الحالي: `{current_phone}` | 🆔 NIN الحالي: `{current_nin}`")
+        
         with st.form("complete_profile_form"):
             st.markdown("<div class='card'>", unsafe_allow_html=True)
-            new_phone = st.text_input("📞 رقم الهاتف (10 أرقام)", placeholder="0550XXXXXX")
-            new_nin = st.text_input("🆔 الرقم الوطني للتعريف NIN (18 رقم)", placeholder="xxxxxxxxxxxxxxxxxx")
+            new_phone = st.text_input("📞 رقم الهاتف", placeholder="أدخل رقم هاتفك")
+            new_nin = st.text_input("🆔 الرقم الوطني للتعريف NIN", placeholder="أدخل الرقم الوطني")
             submitted = st.form_submit_button("💾 حفظ البيانات والمتابعة", type="primary", use_container_width=True)
             
             if submitted:
-                phone_ok = len(new_phone) == 10 and new_phone.isdigit()
+                # التحقق المرن: المهم أن يكون موجود وليس فارغ/0/-
+                phone_ok = is_phone_valid(new_phone)
                 nin_ok = is_nin_valid(new_nin)
                 
                 if not phone_ok:
-                    st.error("❌ رقم الهاتف يجب أن يتكون من 10 أرقام.")
+                    st.error("❌ رقم الهاتف مطلوب (لا يمكن أن يكون فارغاً أو 0 أو -)")
                 elif not nin_ok:
-                    st.error("❌ الرقم الوطني للتعريف NIN يجب أن يتكون من 18 رقم.")
+                    st.error("❌ الرقم الوطني للتعريف NIN مطلوب (لا يمكن أن يكون فارغاً أو 0 أو -)")
                 else:
                     username = st.session_state.profile_user_temp['اسم المستخدم']
                     success, msg = update_student_profile(username, new_phone, new_nin)
@@ -969,10 +1014,13 @@ elif st.session_state.user_type == "student":
                 if not valid:
                     st.error(result)
                 else:
+                    # ============================================================
+                    # تم إصلاح التحقق: استخدام الدوال الجديدة المرنة
+                    # ============================================================
                     s_phone = str(result.get('الهاتف', '')).strip()
                     s_nin = str(result.get('NIN', '')).strip().replace('.0', '')
                     
-                    phone_valid = len(s_phone) == 10 and s_phone.isdigit()
+                    phone_valid = is_phone_valid(s_phone)
                     nin_valid = is_nin_valid(s_nin)
                     
                     if phone_valid and nin_valid:
@@ -1032,18 +1080,20 @@ elif st.session_state.user_type == "student":
                         student2_obj = r2
                         s2_phone = str(r2.get('الهاتف', '')).strip()
                         s2_nin = str(r2.get('NIN', '')).strip().replace('.0', '')
-                        s2_phone_ok = len(s2_phone) == 10 and s2_phone.isdigit()
+                        
+                        # استخدام الدوال الجديدة المرنة
+                        s2_phone_ok = is_phone_valid(s2_phone)
                         s2_nin_ok = is_nin_valid(s2_nin)
                         
                         if not s2_phone_ok or not s2_nin_ok:
                             s2_missing_info = True
                             st.warning(f"⚠️ الطالب الثاني ({r2.get('لقب')} {r2.get('إسم')}) لم يستكمل ملفه الشخصي. يرجى إدخال بياناته أدناه للمتابعة.")
                             
-                            s2_new_phone_val = st.text_input("📞 هاتف الطالب الثاني (10 أرقام)", value=s2_phone, key="s2_phone_input_new")
-                            s2_new_nin_val = st.text_input("🆔 NIN الطالب الثاني (18 رقم)", value=s2_nin, key="s2_nin_input_new")
+                            s2_new_phone_val = st.text_input("📞 هاتف الطالب الثاني", value=s2_phone, key="s2_phone_input_new")
+                            s2_new_nin_val = st.text_input("🆔 NIN الطالب الثاني", value=s2_nin, key="s2_nin_input_new")
                             
                             if s2_new_phone_val and s2_new_nin_val:
-                                if len(s2_new_phone_val) == 10 and is_nin_valid(s2_new_nin_val):
+                                if is_phone_valid(s2_new_phone_val) and is_nin_valid(s2_new_nin_val):
                                     st.info("✅ بيانات الطالب الثاني جاهزة للحفظ عند التسجيل.")
                                 else:
                                     st.error("❌ صيغة الهاتف أو NIN غير صحيحة للطالب الثاني.")
@@ -1531,7 +1581,7 @@ elif st.session_state.user_type == "admin":
         reg_st = (memo_col != "").sum()
         unreg_st = (memo_col == "").sum()
         st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
-        st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{a_m}</div><div class="kpi-label">مذكرات متاحة</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{reg_st}</div><div class="kpi-label">طلاب مسجلين</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{unreg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{a_m}</div><div class="kpi-label">مذكرات متاحة</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B98E;">{reg_st}</div><div class="kpi-label">طلاب مسجلين</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{unreg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["المذكرات", "الطلاب", "الأساتذة", "تقارير", "تحديث", "إدارة الطلبات", "📧 إرسال إيميلات"])
