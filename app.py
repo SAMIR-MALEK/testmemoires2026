@@ -1071,6 +1071,11 @@ elif st.session_state.user_type == "student":
         s1 = st.session_state.student1; s2 = st.session_state.student2
         
         # --- واجهة التسجيل (Register Mode) ---
+
+
+
+       
+              # --- واجهة التسجيل (Register Mode) ---
         if st.session_state.mode == "register":
             st.markdown("<div class='alert-card'>📝 مرحباً بك، أنت غير مسجل في مذكرة بعد.</div>", unsafe_allow_html=True)
             st.markdown("---")
@@ -1124,6 +1129,17 @@ elif st.session_state.user_type == "student":
             
             student_specialty = str(s1.get("التخصص", "")).strip()
             
+            # ============================================================
+            # بداية التعديل: حساب الحصة الفعلية لكل أستاذ
+            # ============================================================
+            
+            # 1. حساب عدد المذكرات المسجلة فعلياً لكل أستاذ من شيت المتابعة (df_prof_memos)
+            # نعتبر المذكرة مستنفذة إذا كان عمود "رقم المذكرة" غير فارغ
+            prof_usage_counts = df_prof_memos.groupby("الأستاذ")["رقم المذكرة"].apply(
+                lambda x: x.notna().sum() # يحسب الخانات غير الفارغة (المستنفذة)
+            ).to_dict()
+            
+            # 2. جلب المذكرات المتاحة في الشيت الرئيسية للتخصص الحالي
             available_memos_df = df_memos[
                 (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم") & 
                 (df_memos["التخصص"].astype(str).str.strip() == student_specialty)
@@ -1131,8 +1147,24 @@ elif st.session_state.user_type == "student":
             
             available_profs = []
             if not available_memos_df.empty:
-                profs_counts = available_memos_df["الأستاذ"].value_counts()
-                available_profs = sorted(profs_counts[profs_counts > 0].index.tolist())
+                # نمر على الأساتذة الموجودين في المذكرات المتاحة
+                unique_profs_in_memos = available_memos_df["الأستاذ"].unique()
+                
+                for prof in unique_profs_in_memos:
+                    prof_clean = str(prof).strip()
+                    # نجلب عدد المذكرات المستنفذة لهذا الأستاذ (الافتراضي 0 إذا غير موجود)
+                    used_count = prof_usage_counts.get(prof_clean, 0)
+                    
+                    # الشرط: لا يظهر الأستاذ إلا إذا كانت مذكراته المستنفذة أقل من 4
+                    if used_count < 4:
+                        available_profs.append(prof_clean)
+                
+                # ترتيب القائمة أبجدياً
+                available_profs = sorted(list(set(available_profs)))
+
+            # ============================================================
+            # نهاية التعديل
+            # ============================================================
             
             if available_profs:
                 selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + available_profs)
@@ -1153,7 +1185,7 @@ elif st.session_state.user_type == "student":
                     else:
                         st.info("هذا الأستاذ ليس لديه عناوين متاحة حالياً في تخصصك.")
             else:
-                st.warning("🔒 عذراً، لا يوجد أساتذة لديهم مذكرات شاغرة في تخصصك حالياً.")
+                st.warning("🔒 عذراً، لا يوجد أساتذة لديهم أماكن شاغرة (أقل من 4 مذكرات) في تخصصك حالياً.")
                 st.info("يرجى التواصل مع مسؤول الميدان أو المحاولة لاحقاً.")
             
             st.markdown("---")
@@ -1215,6 +1247,12 @@ elif st.session_state.user_type == "student":
                             else: st.error(msg); st.session_state.show_confirmation = False
                 with col2:
                     if st.button("إلغاء"): st.session_state.show_confirmation = False; st.rerun()
+
+
+
+
+
+       
 
         # --- لوحة التحكم (View Mode) ---
         elif st.session_state.mode == "view":
