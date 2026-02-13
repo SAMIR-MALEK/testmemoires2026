@@ -1076,6 +1076,7 @@ elif st.session_state.user_type == "student":
 
        
               # --- واجهة التسجيل (Register Mode) ---
+              # --- واجهة التسجيل (Register Mode) ---
         if st.session_state.mode == "register":
             st.markdown("<div class='alert-card'>📝 مرحباً بك، أنت غير مسجل في مذكرة بعد.</div>", unsafe_allow_html=True)
             st.markdown("---")
@@ -1101,7 +1102,6 @@ elif st.session_state.user_type == "student":
                         s2_phone = str(r2.get('الهاتف', '')).strip()
                         s2_nin = str(r2.get('NIN', '')).strip().replace('.0', '')
                         
-                        # استخدام الدوال الجديدة
                         s2_phone_ok, s2_phone_msg = is_phone_valid(s2_phone)
                         s2_nin_ok, s2_nin_msg = is_nin_valid(s2_nin)
                         
@@ -1130,16 +1130,23 @@ elif st.session_state.user_type == "student":
             student_specialty = str(s1.get("التخصص", "")).strip()
             
             # ============================================================
-            # بداية التعديل: حساب الحصة الفعلية لكل أستاذ
+            # بداية التعديل: حساب المذكرات المستنفذة بدقة
             # ============================================================
             
-            # 1. حساب عدد المذكرات المسجلة فعلياً لكل أستاذ من شيت المتابعة (df_prof_memos)
-            # نعتبر المذكرة مستنفذة إذا كان عمود "رقم المذكرة" غير فارغ
-            prof_usage_counts = df_prof_memos.groupby("الأستاذ")["رقم المذكرة"].apply(
-                lambda x: x.notna().sum() # يحسب الخانات غير الفارغة (المستنفذة)
+            # دالة مساعدة لتنظيف النص وإرجاع القيمة الحقيقية أو فارغ
+            def clean_text(val):
+                v = str(val).strip()
+                if v in ['', 'nan', 'None', 'NaN', '-', '0', '0.0']:
+                    return ''
+                return v
+
+            # 1. حساب عدد المذكرات المستنفذة لكل أستاذ من شيت المتابعة
+            # نقوم بتنظيف العمود أولاً ثم نعد ما تبقى (غير الفارغ)
+            prof_counts = df_prof_memos.groupby("الأستاذ")["رقم المذكرة"].apply(
+                lambda x: sum([1 for val in x if clean_text(val) != ''])
             ).to_dict()
             
-            # 2. جلب المذكرات المتاحة في الشيت الرئيسية للتخصص الحالي
+            # 2. جلب المذكرات المتاحة في الشيت الرئيسية للتخصص
             available_memos_df = df_memos[
                 (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم") & 
                 (df_memos["التخصص"].astype(str).str.strip() == student_specialty)
@@ -1147,20 +1154,20 @@ elif st.session_state.user_type == "student":
             
             available_profs = []
             if not available_memos_df.empty:
-                # نمر على الأساتذة الموجودين في المذكرات المتاحة
-                unique_profs_in_memos = available_memos_df["الأستاذ"].unique()
+                # نجلب أسماء الأساتذة الذين لديهم عناوين متاحة
+                profs_in_list = available_memos_df["الأستاذ"].unique().tolist()
                 
-                for prof in unique_profs_in_memos:
-                    prof_clean = str(prof).strip()
-                    # نجلب عدد المذكرات المستنفذة لهذا الأستاذ (الافتراضي 0 إذا غير موجود)
-                    used_count = prof_usage_counts.get(prof_clean, 0)
+                for p in profs_in_list:
+                    p_clean = str(p).strip()
+                    # نجلب عدد المذكرات المستنفذة لهذا الأستاذ
+                    count = prof_counts.get(p_clean, 0)
                     
-                    # الشرط: لا يظهر الأستاذ إلا إذا كانت مذكراته المستنفذة أقل من 4
-                    if used_count < 4:
-                        available_profs.append(prof_clean)
-                
-                # ترتيب القائمة أبجدياً
-                available_profs = sorted(list(set(available_profs)))
+                    # إذا كان العدد أقل من 4، نضيفه للقائمة
+                    if count < 4:
+                        available_profs.append(p_clean)
+            
+            # ترتيب الأساتذة أبجدياً
+            available_profs = sorted(list(set(available_profs)))
 
             # ============================================================
             # نهاية التعديل
