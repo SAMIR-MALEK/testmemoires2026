@@ -949,7 +949,7 @@ elif st.session_state.user_type == "student":
         
         # عرض سبب المشكلة بدقة
         error_msg = st.session_state.get('profile_error_msg', "بيانات ناقصة")
-        st.error(f"🚫 تم اكتشاف أن بياناتك غير مكتملة أو غير صالحة في النظام:")
+        st.error(f"يجب إدخال المعلومات  الناقصة:")
         st.markdown(f"<div style='background:rgba(255,0,0,0.1); padding:10px; border-radius:5px; color:#FF6B6B; margin-bottom:20px;'>{error_msg}</div>", unsafe_allow_html=True)
         
         temp_data = st.session_state.profile_user_temp
@@ -965,7 +965,7 @@ elif st.session_state.user_type == "student":
             if default_nin in ['0', 'nan', '-']: default_nin = ""
 
             new_phone = st.text_input("📞 أدخل رقم هاتف صحيح (10 أرقام)", value=default_phone)
-            new_nin = st.text_input("🆔 أدخل الرقم الوطني للتعريف (18 رقم)", value=default_nin)
+            new_nin = st.text_input("🆔 أدخل رقم التعريف الوطني (18 رقم)", value=default_nin)
             
             submitted = st.form_submit_button("💾 حفظ البيانات والمتابعة", type="primary", use_container_width=True)
             
