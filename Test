@@ -24,17 +24,7 @@ st.set_page_config(page_title="تسجيل مذكرات الماستر", page_ico
 # ========================
 REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
-# ---------------- CSS (تم التعديل لتصميم التتبع العمودي) ----------------
-
-
-
-
-
-# ---------------- CSS (تم التعديل والإصلاح) ----------------
-
-
-
-# ---------------- CSS (تم التعديل والإصلاح) ----------------
+# ---------------- CSS ----------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -134,14 +124,10 @@ st.markdown("""
     .status-available { background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
     .status-unavailable { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
     .status-pending { background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
+    
+    .memo-card-title { color: #FFFFFF !important; font-size: 1.1rem; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
 
 # ---------------- Google Sheets ----------------
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -158,8 +144,7 @@ MEMOS_SHEET_ID = "1LNJMBAye4QIQy7JHz6F8mQ6-XNC1weZx1ozDZFfjD5s"
 PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o"
 
-# تحديث النطاق ليشمل أعمدة التتبع (O-T) -> 20 عموداً
-STUDENTS_RANGE = "Feuille 1!A1:T1000" 
+STUDENTS_RANGE = "Feuille 1!A1:U1000" 
 MEMOS_RANGE = "Feuille 1!A1:U1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
 REQUESTS_RANGE = "Feuille 1!A1:K1000"
@@ -216,10 +201,52 @@ def validate_note_number(note_number):
     return True, note_number
 
 # ============================================================
-# دالة جديدة لعرض اسم الطالب (تتعامل مع اختلاف المسميات)
+# دوال التحقق والجلب الذكي (محدثة)
 # ============================================================
+
+def get_val_smart(row, keywords):
+    """
+    تبحث عن قيمة في صف الطالب بناءً على كلمات مفتاحية في اسم العمود.
+    مثلاً: تبحث عن "هاتف" سواء كان العمود اسمه "الهاتف" أو "رقم الهاتف".
+    """
+    # Handle dictionary
+    if isinstance(row, dict):
+        for key, val in row.items():
+            col_name = str(key).strip()
+            # Check if any keyword is in the column name
+            if any(kw in col_name for kw in keywords):
+                v = str(val).strip()
+                if v and v.lower() != 'nan': return v
+    # Handle Pandas Series
+    elif isinstance(row, pd.Series):
+        for col in row.index:
+            col_name = str(col).strip()
+            if any(kw in col_name for kw in keywords):
+                v = str(row[col]).strip()
+                if v and v.lower() != 'nan': return v
+    return ""
+
+def is_phone_valid(phone_val):
+    """
+    القاعدة: الافتراضي 0 أو فارغ = خطأ. أي شيء آخر = صحيح.
+    """
+    val = str(phone_val).strip()
+    # المرفوض فقط: فارغ، أو 0
+    if val in ['', '0', 'nan']:
+        return False
+    return True
+
+def is_nin_valid(nin_val):
+    """
+    القاعدة: الافتراضي - أو فارغ = خطأ. أي شيء آخر = صحيح.
+    """
+    val = str(nin_val).strip()
+    # المرفوض فقط: فارغ، أو -
+    if val in ['', '-', 'nan']:
+        return False
+    return True
+
 def get_student_name_display(student_dict):
-    # محاولة العثور على اللقب
     keys_lname = ["لقب", "اللقب", ""]
     lname = ""
     for k in keys_lname:
@@ -227,7 +254,6 @@ def get_student_name_display(student_dict):
             lname = student_dict[k]
             break
     
-    # محاولة العثور على الاسم
     keys_fname = ["إسم", "اسم", "الإسم", ""]
     fname = ""
     for k in keys_fname:
@@ -345,23 +371,31 @@ def clear_cache_and_reload():
     st.cache_data.clear()
     logger.info("تم مسح السجلات")
 
-def update_student_phone(username, new_phone):
+# ============================================================
+# دالة تحديث بيانات الطالب
+# ============================================================
+def update_student_profile(username, phone, nin):
     try:
         df_students = load_students()
         student_row = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == username]
         if student_row.empty: return False, "❌ لم يتم العثور على الطالب"
+        
         row_idx = student_row.index[0] + 2
-        body = {"values": [[new_phone]]}
-        sheets_service.spreadsheets().values().update(
-            spreadsheetId=STUDENTS_SHEET_ID,
-            range=f"Feuille 1!M{row_idx}",
-            valueInputOption="USER_ENTERED",
+        updates = [
+            {"range": f"Feuille 1!M{row_idx}", "values": [[phone]]},
+            {"range": f"Feuille 1!U{row_idx}", "values": [[nin]]}
+        ]
+        
+        body = {"valueInputOption": "USER_ENTERED", "data": updates}
+        sheets_service.spreadsheets().values().batchUpdate(
+            spreadsheetId=STUDENTS_SHEET_ID, 
             body=body
         ).execute()
+        
         clear_cache_and_reload()
-        return True, "✅ تم تحديث رقم الهاتف بنجاح"
+        return True, "✅ تم تحديث البيانات بنجاح"
     except Exception as e:
-        logger.error(f"خطأ في تحديث الهاتف: {str(e)}")
+        logger.error(f"خطأ في تحديث الملف: {str(e)}")
         return False, f"❌ حدث خطأ أثناء التحديث: {str(e)}"
 
 def sync_student_registration_numbers():
@@ -510,7 +544,6 @@ def send_welcome_email_to_one(prof_name):
         logger.error(f"Error sending single email: {e}")
         return False, f"حدث خطأ: {str(e)}"
 
-# -------------------------------------------------------------
 def format_datetime_ar(date_obj, time_str):
     days_ar = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
     day_name = days_ar[date_obj.weekday()]
@@ -679,7 +712,7 @@ def verify_professor_password(note_number, prof_password, df_memos, df_prof_memo
 # ============================================================
 # الدالة: تحديث التسجيل
 # ============================================================
-def update_registration(note_number, student1, student2=None):
+def update_registration(note_number, student1, student2=None, s2_new_phone=None, s2_new_nin=None):
     try:
         df_memos = load_memos()
         df_prof_memos = load_prof_memos()
@@ -729,12 +762,24 @@ def update_registration(note_number, student1, student2=None):
             updates2.append({"range": f"Feuille 1!{col_letter(memo_cols.index('الطالب الثاني')+1)}{memo_row_idx}", "values": [[s2_lname + ' ' + s2_fname]]})
             updates2.append({"range": f"Feuille 1!T{memo_row_idx}", "values": [[reg2]]})
         sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": updates2}).execute()
+        
         students_cols = df_students.columns.tolist()
         student1_row_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student1['اسم المستخدم'].strip()].index[0] + 2
         sheets_service.spreadsheets().values().update(spreadsheetId=STUDENTS_SHEET_ID, range=f"Feuille 1!{col_letter(students_cols.index('رقم المذكرة')+1)}{student1_row_idx}", valueInputOption="USER_ENTERED", body={"values": [[note_number]]}).execute()
+        
         if student2 is not None:
             student2_row_idx = df_students[df_students["اسم المستخدم"].astype(str).str.strip() == student2['اسم المستخدم'].strip()].index[0] + 2
             sheets_service.spreadsheets().values().update(spreadsheetId=STUDENTS_SHEET_ID, range=f"Feuille 1!{col_letter(students_cols.index('رقم المذكرة')+1)}{student2_row_idx}", valueInputOption="USER_ENTERED", body={"values": [[note_number]]}).execute()
+            
+            s2_updates = []
+            if s2_new_phone:
+                 s2_updates.append({"range": f"Feuille 1!M{student2_row_idx}", "values": [[s2_new_phone]]})
+            if s2_new_nin:
+                 s2_updates.append({"range": f"Feuille 1!U{student2_row_idx}", "values": [[s2_new_nin]]})
+            
+            if s2_updates:
+                sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=STUDENTS_SHEET_ID, body={"valueInputOption": "USER_ENTERED", "data": s2_updates}).execute()
+
         time.sleep(2)
         clear_cache_and_reload()
         time.sleep(1)
@@ -814,27 +859,41 @@ def restore_session_from_url():
         if user_type == 'student':
             s_data = lookup_student(username)
             if s_data:
-                st.session_state.user_type = 'student'
-                st.session_state.logged_in = True
-                st.session_state.student1 = s_data
-                note_num = str(s_data.get('رقم المذكرة', '')).strip()
-                st.session_state.mode = "view" if note_num else "register"
-                if note_num:
-                    memo_row = df_memos[df_memos["رقم المذكرة"] == note_num]
-                    if not memo_row.empty:
-                        memo_row = memo_row.iloc[0]
-                        s2_name = str(memo_row.get("الطالب الثاني", "")).strip()
-                        if s2_name and s2_name != "--":
-                            s2_reg = str(memo_row.get("رقم تسجيل الطالب 2", "")).replace('.0', '').strip()
-                            if s2_reg:
-                                s2_data = df_students[df_students["رقم التسجيل"] == s2_reg]
-                                if not s2_data.empty: st.session_state.student2 = s2_data.iloc[0].to_dict()
+                # ============================================================
+                # استخدام الدالة الذكية لجلب البيانات
+                # ============================================================
+                s_phone = get_val_smart(s_data, ["هاتف", "Phone", "رقم الهاتف"])
+                s_nin = get_val_smart(s_data, ["NIN", "N.I.N", "التعريف", "الرقم الوطني"]).replace('.0', '')
+                
+                nin_valid = is_nin_valid(s_nin)
+                phone_valid = is_phone_valid(s_phone)
+                
+                if nin_valid and phone_valid:  
+                    st.session_state.user_type = 'student'
+                    st.session_state.student1 = s_data
+                    note_num = str(s_data.get('رقم المذكرة', '')).strip()
+                    st.session_state.mode = "view" if note_num else "register"
+                    st.session_state.logged_in = True
+                    if note_num:
+                        memo_row = df_memos[df_memos["رقم المذكرة"] == note_num]
+                        if not memo_row.empty:
+                            memo_row = memo_row.iloc[0]
+                            s2_name = str(memo_row.get("الطالب الثاني", "")).strip()
+                            if s2_name and s2_name != "--":
+                                s2_reg = str(memo_row.get("رقم تسجيل الطالب 2", "")).replace('.0', '').strip()
+                                if s2_reg:
+                                    s2_data = df_students[df_students["رقم التسجيل"] == s2_reg]
+                                    if not s2_data.empty: st.session_state.student2 = s2_data.iloc[0].to_dict()
+                else:
+                     st.session_state.user_type = 'student'
+                     st.session_state.profile_incomplete = True
+                     st.session_state.profile_user_temp = s_data
         elif user_type == 'professor':
             p_data = df_prof_memos[df_prof_memos["إسم المستخدم"].astype(str).str.strip() == username]
-            if not p_data.empty: st.session_state.professor = p_data.iloc[0].to_dict()
+            if not p_data.empty: st.session_state.professor = p_data.iloc[0].to_dict(); st.session_state.logged_in = True
         elif user_type == 'admin':
-            if username in ADMIN_CREDENTIALS: st.session_state.admin_user = username
-        if user_type: st.session_state.logged_in = True
+            if username in ADMIN_CREDENTIALS: st.session_state.admin_user = username; st.session_state.logged_in = True
+        if user_type: st.session_state.user_type = user_type
 
 restore_session_from_url()
 
@@ -843,16 +902,19 @@ required_state = {
     'professor': None, 'admin_user': None, 'memo_type': "فردية",
     'mode': "register", 'note_number': "", 'prof_password': "",
     'show_confirmation': False, 'selected_memo_id': None,
-    'admin_edit_student_user': None, 's2_phone_input': "" 
+    'admin_edit_student_user': None, 's2_phone_input': "", 's2_nin_input': "",
+    'profile_incomplete': False, 'profile_user_temp': None
 }
 for key, value in required_state.items():
     if key not in st.session_state: st.session_state[key] = value
 
 def logout():
     st.query_params.clear()
-    for key in st.session_state.keys():
-        if key not in ['user_type']: del st.session_state[key]
-    st.session_state.update({'logged_in': False, 'student1': None, 'student2': None, 'professor': None, 'admin_user': None, 'mode': "register", 'note_number': "", 'prof_password': "", 'show_confirmation': False, 'user_type': None, 'selected_memo_id': None, 'admin_edit_student_user': None, 's2_phone_input': ""})
+    keys_to_del = list(st.session_state.keys())
+    for key in keys_to_del:
+         del st.session_state[key]
+    for key, value in required_state.items():
+        st.session_state[key] = value
     st.rerun()
 
 # ============================================================
@@ -882,7 +944,69 @@ if st.session_state.user_type is None:
 # فضاء الطلبة
 # ============================================================
 elif st.session_state.user_type == "student":
-    if not st.session_state.logged_in:
+    # --- حالة استكمال الملف الشخصي (Phone + NIN) ---
+    if st.session_state.get('profile_incomplete', False):
+        st.markdown("<h2>⚠️ استكمال الملف الشخصي</h2>", unsafe_allow_html=True)
+        st.warning("⚠️ يجب إكمال بياناتك الشخصية (رقم الهاتف والرقم الوطني للتعريف) للمتابعة.")
+        
+        # عرض البيانات الحالية للتشخيص
+        temp_data = st.session_state.profile_user_temp
+        if temp_data:
+            # استخدام الدالة الذكية هنا أيضاً
+            current_phone = get_val_smart(temp_data, ["هاتف", "Phone", "رقم الهاتف"])
+            current_nin = get_val_smart(temp_data, ["NIN", "N.I.N", "التعريف", "الرقم الوطني"]).replace('.0', '')
+            st.info(f"📞 الهاتف الحالي: `{current_phone if current_phone else 'غير موجود'}` | 🆔 NIN الحالي: `{current_nin if current_nin else 'غير موجود'}`")
+        
+        with st.form("complete_profile_form"):
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            new_phone = st.text_input("📞 رقم الهاتف", placeholder="أدخل رقم هاتفك")
+            new_nin = st.text_input("🆔 الرقم الوطني للتعريف NIN", placeholder="أدخل الرقم الوطني")
+            submitted = st.form_submit_button("💾 حفظ البيانات والمتابعة", type="primary", use_container_width=True)
+            
+            if submitted:
+                # التحقق المرن: المهم أن يكون موجود وليس فارغ/0/-
+                phone_ok = is_phone_valid(new_phone)
+                nin_ok = is_nin_valid(new_nin)
+                
+                if not phone_ok:
+                    st.error("❌ رقم الهاتف مطلوب (لا يمكن أن يكون فارغاً أو 0)")
+                elif not nin_ok:
+                    st.error("❌ الرقم الوطني للتعريف NIN مطلوب (لا يمكن أن يكون فارغاً أو -)")
+                else:
+                    username = st.session_state.profile_user_temp['اسم المستخدم']
+                    success, msg = update_student_profile(username, new_phone, new_nin)
+                    
+                    if success:
+                        st.success(msg)
+                        df_updated = load_students()
+                        updated_data = df_updated[df_updated["اسم المستخدم"] == username].iloc[0].to_dict()
+                        st.session_state.student1 = updated_data
+                        
+                        note_num = str(updated_data.get('رقم المذكرة', '')).strip()
+                        if note_num:
+                            st.session_state.mode = "view"
+                            memo_row = df_memos[df_memos["رقم المذكرة"] == note_num]
+                            if not memo_row.empty:
+                                memo_row = memo_row.iloc[0]
+                                s2_name = str(memo_row.get("الطالب الثاني", "")).strip()
+                                if s2_name and s2_name != "--":
+                                    s2_reg = str(memo_row.get("رقم تسجيل الطالب 2", "")).replace('.0', '').strip()
+                                    if s2_reg:
+                                        s2_data = df_students[df_students["رقم التسجيل"] == s2_reg]
+                                        if not s2_data.empty: st.session_state.student2 = s2_data.iloc[0].to_dict()
+                        else:
+                            st.session_state.mode = "register"
+                            
+                        st.session_state.profile_incomplete = False
+                        st.session_state.logged_in = True
+                        st.session_state.profile_user_temp = None
+                        st.rerun()
+                    else:
+                        st.error(msg)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # --- حالة عدم تسجيل الدخول (عرض فورم الدخول) ---
+    elif not st.session_state.logged_in:
         col1, col2 = st.columns([4, 1])
         with col2:
             if st.button("رجوع", key="back_student"): st.session_state.user_type = None; st.rerun()
@@ -898,27 +1022,44 @@ elif st.session_state.user_type == "student":
                 if not valid:
                     st.error(result)
                 else:
-                    st.session_state.student1 = result
-                    note_num = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
+                    # ============================================================
+                    # استخدام الدالة الذكية لجلب البيانات
+                    # ============================================================
+                    s_phone = get_val_smart(result, ["هاتف", "Phone", "رقم الهاتف"])
+                    s_nin = get_val_smart(result, ["NIN", "N.I.N", "التعريف", "الرقم الوطني"]).replace('.0', '')
                     
-                    if note_num:
-                        st.session_state.mode = "view"
-                        memo_row = df_memos[df_memos["رقم المذكرة"] == note_num]
-                        if not memo_row.empty:
-                            memo_row = memo_row.iloc[0]
-                            s2_name = str(memo_row.get("الطالب الثاني", "")).strip()
-                            if s2_name and s2_name != "--":
-                                s2_reg = str(memo_row.get("رقم تسجيل الطالب 2", "")).replace('.0', '').strip()
-                                if s2_reg:
-                                    s2_data = df_students[df_students["رقم التسجيل"] == s2_reg]
-                                    if not s2_data.empty: st.session_state.student2 = s2_data.iloc[0].to_dict()
+                    phone_valid = is_phone_valid(s_phone)
+                    nin_valid = is_nin_valid(s_nin)
+                    
+                    if phone_valid and nin_valid:
+                        st.session_state.student1 = result
+                        note_num = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
+                        
+                        if note_num:
+                            st.session_state.mode = "view"
+                            memo_row = df_memos[df_memos["رقم المذكرة"] == note_num]
+                            if not memo_row.empty:
+                                memo_row = memo_row.iloc[0]
+                                s2_name = str(memo_row.get("الطالب الثاني", "")).strip()
+                                if s2_name and s2_name != "--":
+                                    s2_reg = str(memo_row.get("رقم تسجيل الطالب 2", "")).replace('.0', '').strip()
+                                    if s2_reg:
+                                        s2_data = df_students[df_students["رقم التسجيل"] == s2_reg]
+                                        if not s2_data.empty: st.session_state.student2 = s2_data.iloc[0].to_dict()
+                        else:
+                            st.session_state.mode = "register"
+                        
+                        st.session_state.logged_in = True
+                        st.query_params['ut'] = 'student'
+                        st.query_params['un'] = encode_str(st.session_state.student1['اسم المستخدم'])
+                        st.rerun()
                     else:
-                        st.session_state.mode = "register"
-                    
-                    st.session_state.logged_in = True
-                    st.query_params['ut'] = 'student'
-                    st.query_params['un'] = encode_str(st.session_state.student1['اسم المستخدم'])
-                    st.rerun()
+                        st.session_state.student1 = result
+                        st.session_state.profile_user_temp = result
+                        st.session_state.profile_incomplete = True
+                        st.rerun()
+    
+    # --- حالة تسجيل الدخول (الواجهة الرئيسية) ---
     else:
         s1 = st.session_state.student1; s2 = st.session_state.student2
         
@@ -931,44 +1072,64 @@ elif st.session_state.user_type == "student":
             
             username2 = password2 = None
             student2_obj = None
+            s2_missing_info = False
+            
+            s2_new_phone_val = ""
+            s2_new_nin_val = ""
 
             if registration_type == "ثنائية":
                 st.markdown("### 👥 بيانات الطالب الثاني")
                 username2 = st.text_input("اسم المستخدم الطالب الثاني")
                 password2 = st.text_input("كلمة السر الطالب الثاني", type="password")
-                s2_phone_new = st.text_input("رقم هاتف الطالب الثاني (إجباري للتسجيل)", placeholder="0550...")
                 
                 if username2 and password2:
                     v2, r2 = verify_student(username2, password2, df_students)
                     if v2:
                         student2_obj = r2
-                        if s2_phone_new and len(s2_phone_new) >= 10: st.success("✅ بيانات الطالب الثاني صحيحة")
-                        else: st.warning("⚠️ يرجى إدخال رقم هاتف صحيح للطالب الثاني للتسجيل")
+                        # استخدام الدالة الذكية
+                        s2_phone = get_val_smart(r2, ["هاتف", "Phone", "رقم الهاتف"])
+                        s2_nin = get_val_smart(r2, ["NIN", "N.I.N", "التعريف", "الرقم الوطني"]).replace('.0', '')
+                        
+                        # استخدام الدوال الجديدة المرنة
+                        s2_phone_ok = is_phone_valid(s2_phone)
+                        s2_nin_ok = is_nin_valid(s2_nin)
+                        
+                        if not s2_phone_ok or not s2_nin_ok:
+                            s2_missing_info = True
+                            st.warning(f"⚠️ الطالب الثاني ({r2.get('لقب')} {r2.get('إسم')}) لم يستكمل ملفه الشخصي. يرجى إدخال بياناته أدناه للمتابعة.")
+                            
+                            s2_new_phone_val = st.text_input("📞 هاتف الطالب الثاني", value=s2_phone, key="s2_phone_input_new")
+                            s2_new_nin_val = st.text_input("🆔 NIN الطالب الثاني", value=s2_nin, key="s2_nin_input_new")
+                            
+                            if s2_new_phone_val and s2_new_nin_val:
+                                if is_phone_valid(s2_new_phone_val) and is_nin_valid(s2_new_nin_val):
+                                    st.info("✅ بيانات الطالب الثاني جاهزة للحفظ عند التسجيل.")
+                                else:
+                                    st.error("❌ صيغة الهاتف أو NIN غير صحيحة للطالب الثاني.")
+                                    student2_obj = None
+                        else:
+                            st.success("✅ بيانات الطالب الثاني كاملة.")
                     else:
                         st.error(r2)
             
-            # ==========================================
-            #  كود إضافة القائمة الذكية للأساتذة المتاحين
-            # ==========================================
             st.markdown("### 🔍 البحث عن مذكرة متاحة")
             
-            # 1. تحديد تخصص الطالب المسجل
             student_specialty = str(s1.get("التخصص", "")).strip()
             
-            # 2. تصفية المذكرات: (غير مسجلة) AND (تخصصها يطابق تخصص الطالب)
             available_memos_df = df_memos[
                 (df_memos["تم التسجيل"].astype(str).str.strip() != "نعم") & 
                 (df_memos["التخصص"].astype(str).str.strip() == student_specialty)
             ]
             
-            # 3. استخراج أسماء الأساتذة الذين لديهم مذكرات في هذه القائمة المصفاة
-            available_profs = sorted(available_memos_df["الأستاذ"].dropna().unique())
+            available_profs = []
+            if not available_memos_df.empty:
+                profs_counts = available_memos_df["الأستاذ"].value_counts()
+                available_profs = sorted(profs_counts[profs_counts > 0].index.tolist())
             
             if available_profs:
                 selected_prof = st.selectbox("اختر الأستاذ المشرف:", [""] + available_profs)
                 
                 if selected_prof:
-                    # عرض المذكرات المتاحة لهذا الأستاذ في تخصص الطالب
                     prof_specific_memos = available_memos_df[
                         available_memos_df["الأستاذ"].astype(str).str.strip() == selected_prof.strip()
                     ]
@@ -976,56 +1137,50 @@ elif st.session_state.user_type == "student":
                     if not prof_specific_memos.empty:
                         st.success(f'✅ لديك {len(prof_specific_memos)} خيار/خيارات متاحة:')
                         for _, row in prof_specific_memos.iterrows():
-                            # عرض بطاقة أنيقة لكل مذكرة
                             st.markdown(f"""
                             <div style="background: rgba(47, 111, 126, 0.15); border: 1px solid #2F6F7E; padding: 10px; border-radius: 8px; margin-bottom: 5px;">
-                                <strong style="color: #FFD700;">{row['رقم المذكرة']}</strong> - {row['عنوان المذكرة']}
+                                <strong class="memo-card-title" style="color: #FFFFFF;">{row['رقم المذكرة']}</strong> - <span style="color: #FFFFFF;">{row['عنوان المذكرة']}</span>
                             </div>
                             """, unsafe_allow_html=True)
                     else:
-                        st.info("هذا الأستاذ ليس لديه عناوين متاحة حالياً في تخصصك (يتم التحديث لحظياً).")
+                        st.info("هذا الأستاذ ليس لديه عناوين متاحة حالياً في تخصصك.")
             else:
                 st.warning("🔒 عذراً، لا يوجد أساتذة لديهم مذكرات شاغرة في تخصصك حالياً.")
                 st.info("يرجى التواصل مع مسؤول الميدان أو المحاولة لاحقاً.")
-                # إيقاف التنفيذ هنا إذا لم يوجد أساتذة لمنع إدخال بيانات عشوائية
-                st.stop()
             
             st.markdown("---")
             st.markdown("### ✍️ تسجيل المذكرة المختارة")
-            # ==========================================
-            #  نهاية الكود المضاف
-            # ==========================================
-
+            
             c1, c2 = st.columns([3, 1])
             with c1: st.session_state.note_number = st.text_input("رقم المذكرة", value=st.session_state.note_number)
             with c2: st.session_state.prof_password = st.text_input("كلمة سر المشرف", type="password")
             
             if not st.session_state.show_confirmation:
                 if st.button("المتابعة للتأكيد"):
-                    if not st.session_state.note_number or not st.session_state.prof_password: st.error("⚠️ يرجى إدخال بيانات المذكرة")
+                    if not st.session_state.note_number or not st.session_state.prof_password: 
+                        st.error("⚠️ يرجى إدخال بيانات المذكرة")
+                    elif registration_type == "ثنائية" and not student2_obj:
+                        st.error("❌ يرجى إدخال بيانات الطالب الثاني بشكل صحيح.")
+                    elif s2_missing_info and (not s2_new_phone_val or not s2_new_nin_val):
+                        st.error("❌ يرجى إدخال بيانات الطالب الثاني الناقصة (هاتف و NIN).")
                     else:
                         s1_reg_perm = str(s1.get('التسجيل', '')).strip()
-                        s2 = None
                         
                         if registration_type == "ثنائية":
-                            if not student2_obj: st.error("❌ بيانات الطالب الثاني غير صحيحة"); st.stop()
-                            if not s2_phone_new or len(s2_phone_new) < 10: st.error("❌ رقم هاتف الطالب الثاني مطلوب"); st.stop()
-                            
                             s2 = student2_obj
                             s2_reg_perm = str(s2.get('التسجيل', '')).strip()
                             
                             if s1_reg_perm != '1' and s2_reg_perm != '1':
                                 st.error("⛔ عذراً، لم يتم السماح لك بتسجيل المذكرة في الوقت الحالي."); st.stop()
-                            
-                            success, msg = update_student_phone(s2['اسم المستخدم'], s2_phone_new)
-                            if success: s2['الهاتف'] = s2_phone_new; st.toast(msg)
-                            else: st.warning(msg)
                         else:
                             fardiya_val = str(s1.get('فردية', '')).strip()
                             if fardiya_val not in ["1", "نعم"]: st.error("❌ لا يمكنك تسجيل مذكرة فردية"); st.stop()
                             if s1_reg_perm != '1': st.error("⛔ لم يتم السماح لك بتسجيل المذكرة في الوقت الحالي."); st.stop()
 
-                        st.session_state.show_confirmation = True; st.rerun()
+                        st.session_state.show_confirmation = True
+                        st.session_state.s2_phone_input = s2_new_phone_val if s2_missing_info else ""
+                        st.session_state.s2_nin_input = s2_new_nin_val if s2_missing_info else ""
+                        st.rerun()
             else:
                 st.warning(f"⚠️ تأكيد التسجيل - المذكرة رقم: {st.session_state.note_number}")
                 col1, col2 = st.columns(2)
@@ -1035,7 +1190,14 @@ elif st.session_state.user_type == "student":
                         if not valid: st.error(err); st.session_state.show_confirmation = False
                         else:
                             with st.spinner('⏳ جاري تسجيل...'):
-                                success, msg = update_registration(st.session_state.note_number, s1, student2_obj if registration_type == "ثنائية" else None)
+                                s2_to_pass = student2_obj if registration_type == "ثنائية" else None
+                                success, msg = update_registration(
+                                    st.session_state.note_number, 
+                                    s1, 
+                                    s2_to_pass, 
+                                    st.session_state.s2_phone_input, 
+                                    st.session_state.s2_nin_input
+                                )
                             if success: 
                                 st.success(msg); st.balloons(); 
                                 clear_cache_and_reload(); 
@@ -1063,8 +1225,6 @@ elif st.session_state.user_type == "student":
                 session_html = f"<p>📅 <b>موعد الجلسة القادمة:</b> {session_date}</p>" if session_date else ""
                 st.markdown(f'''<div class="card" style="border-left: 5px solid #FFD700;"><h3>✅ أنت مسجل في المذكرة التالية:</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {memo_info['الأستاذ']}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p>{session_html}</div>''', unsafe_allow_html=True)
                 
-                # استخدام الدالة الجديدة لاستخراج الأسماء
-                # === عرض الطالب الأول ===
                 s1_lname, s1_fname = get_student_name_display(s1)
                 s1_email = get_email_smart(s1)
                 
@@ -1079,9 +1239,7 @@ elif st.session_state.user_type == "student":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # === عرض الطالب الثاني (تم التعديل هنا لضمان جلب بياناته الصحيحة) ===
                 if s2:
-                    # التأكد من جلب اللقب والإسم من الأعمدة الصحيحة مباشرة
                     s2_lname = s2.get("لقب", "")
                     s2_fname = s2.get("إسم", "")
                     s2_email = get_email_smart(s2)
@@ -1098,7 +1256,7 @@ elif st.session_state.user_type == "student":
 
             with tab_track:
                 st.subheader("📂 حالة ملف التخرج")
-                # التعديل: عرض ملف الطالب المسجل فقط (S1)
+                
                 def render_student_diploma_status(student_data, title):
                     if isinstance(student_data, dict):
                         cols = df_students.columns.tolist()
@@ -1138,7 +1296,6 @@ elif st.session_state.user_type == "student":
                     """
                     return html
                 
-                # عرض ملف الطالب المسجل فقط
                 s1_lname, s1_fname = get_student_name_display(s1)
                 st.markdown(render_student_diploma_status(s1, f"👤 {s1_lname} {s1_fname}"), unsafe_allow_html=True)
                 st.info("ℹ️ ملاحظة: إذا كانت المذكرة ثنائية، سيظهر لك هنا فقط ملفك الشخصي. يتعين على الطالب الثاني الدخول بحسابه لمشاهدة ملفه.")
@@ -1433,7 +1590,7 @@ elif st.session_state.user_type == "admin":
         reg_st = (memo_col != "").sum()
         unreg_st = (memo_col == "").sum()
         st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
-        st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{a_m}</div><div class="kpi-label">مذكرات متاحة</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{reg_st}</div><div class="kpi-label">طلاب مسجلين</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{unreg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{a_m}</div><div class="kpi-label">مذكرات متاحة</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B98E;">{reg_st}</div><div class="kpi-label">طلاب مسجلين</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{unreg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["المذكرات", "الطلاب", "الأساتذة", "تقارير", "تحديث", "إدارة الطلبات", "📧 إرسال إيميلات"])
@@ -1621,9 +1778,9 @@ elif st.session_state.user_type == "admin":
                         sent, failed, logs = send_welcome_emails_to_all_profs()
                         st.markdown("---")
                         st.success(f"تم الانتهاء! تم الإرسال بنجاح لـ {sent} أستاذ.")
-                        if failed >0: st.error(f"فشل الإرسال لـ {failed} أستاذ.")
+                        if failed > 0: st.error(f"فشل الإرسال لـ {failed} أستاذ.")
                         with st.expander("سجل العمليات (Logs)", expanded=True):
                             for log in logs: st.text(log)
 
 st.markdown("---")
-st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;">  إشراف مسؤول الميدان البروفيسور لخضر رفاف © </div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;"> إشراف مسؤول الميدان البروفيسور لخضر رفاف © </div>', unsafe_allow_html=True)
