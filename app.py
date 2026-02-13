@@ -1058,7 +1058,7 @@ elif st.session_state.user_type == "student":
                         if not phone_ok:
                             error_details.append(f"الهاتف الحالي ('{s_phone}') غير صالح: {phone_msg}")
                         if not nin_ok:
-                            error_details.append(f"الرقم الوطني الحالي ('{s_nin}') غير صالح: {nin_msg}")
+                            error_details.append(f"أدخل الرقم الوطني (18 رقما)")
                         
                         st.session_state.student1 = result
                         st.session_state.profile_user_temp = result
