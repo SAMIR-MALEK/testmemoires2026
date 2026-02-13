@@ -201,50 +201,52 @@ def validate_note_number(note_number):
     return True, note_number
 
 # ============================================================
-# دوال التحقق والجلب الذكي (محدثة)
+# دوال التحقق المحسنة (الهاتف و NIN) - تقوم الآن بإرجاع سبب الرفض
 # ============================================================
-
-def get_val_smart(row, keywords):
-    """
-    تبحث عن قيمة في صف الطالب بناءً على كلمات مفتاحية في اسم العمود.
-    مثلاً: تبحث عن "هاتف" سواء كان العمود اسمه "الهاتف" أو "رقم الهاتف".
-    """
-    # Handle dictionary
-    if isinstance(row, dict):
-        for key, val in row.items():
-            col_name = str(key).strip()
-            # Check if any keyword is in the column name
-            if any(kw in col_name for kw in keywords):
-                v = str(val).strip()
-                if v and v.lower() != 'nan': return v
-    # Handle Pandas Series
-    elif isinstance(row, pd.Series):
-        for col in row.index:
-            col_name = str(col).strip()
-            if any(kw in col_name for kw in keywords):
-                v = str(row[col]).strip()
-                if v and v.lower() != 'nan': return v
-    return ""
-
 def is_phone_valid(phone_val):
     """
-    القاعدة: الافتراضي 0 أو فارغ = خطأ. أي شيء آخر = صحيح.
+    التحقق من وجود رقم الهاتف
     """
     val = str(phone_val).strip()
-    # المرفوض فقط: فارغ، أو 0
-    if val in ['', '0', 'nan']:
-        return False
-    return True
+    # قائمة القيم المرفوضة (قيم تعتبر "فارغة" أو "غير صالحة")
+    invalid_values = ['', '0', '-', 'nan', 'None', 'NaN', '.0', '0.0']
+    
+    if val in invalid_values:
+        return False, "قيمة فارغة أو غير صالحة (0/-)"
+    
+    # التحقق من وجود أرقام فعلاً
+    cleaned = val.replace(' ', '').replace('-', '')
+    if not cleaned.isdigit():
+        return False, "لا يحتوي على أرقام فقط"
+    
+    if len(cleaned) < 9: # أقل من 9 أرقام غالباً رقم خاطئ
+         return False, "رقم قصير جداً"
+         
+    return True, "صالح"
 
 def is_nin_valid(nin_val):
     """
-    القاعدة: الافتراضي - أو فارغ = خطأ. أي شيء آخر = صحيح.
+    التحقق من وجود NIN
     """
     val = str(nin_val).strip()
-    # المرفوض فقط: فارغ، أو -
-    if val in ['', '-', 'nan']:
-        return False
-    return True
+    # إزالة .0 و .00 من الأرقام العشرية
+    val = val.replace('.0', '').replace('.00', '')
+    
+    invalid_values = ['', '0', '-', 'nan', 'None', 'NaN']
+    
+    if val in invalid_values:
+        return False, "قيمة فارغة أو غير صالحة (0/-)"
+        
+    # الـ NIN يجب أن يكون أرقاماً
+    if not val.isdigit():
+        return False, "يجب أن يحتوي على أرقام فقط"
+        
+    # التحقق من طول الـ NIN (عادة 18 رقم في الجزائر)
+    if len(val) != 18:
+        # يمكن تقليل هذا الشرط إذا كان النظام يقبل أطوالاً أخرى
+        pass # سنقبله حالياً حتى لو كان الطول مختلفاً
+        
+    return True, "صالح"
 
 def get_student_name_display(student_dict):
     keys_lname = ["لقب", "اللقب", ""]
@@ -372,7 +374,7 @@ def clear_cache_and_reload():
     logger.info("تم مسح السجلات")
 
 # ============================================================
-# دالة تحديث بيانات الطالب
+# دالة جديدة: تحديث بيانات الطالب (هاتف + NIN)
 # ============================================================
 def update_student_profile(username, phone, nin):
     try:
@@ -859,16 +861,13 @@ def restore_session_from_url():
         if user_type == 'student':
             s_data = lookup_student(username)
             if s_data:
-                # ============================================================
-                # استخدام الدالة الذكية لجلب البيانات
-                # ============================================================
-                s_phone = get_val_smart(s_data, ["هاتف", "Phone", "رقم الهاتف"])
-                s_nin = get_val_smart(s_data, ["NIN", "N.I.N", "التعريف", "الرقم الوطني"]).replace('.0', '')
+                s_nin = str(s_data.get('NIN', '')).strip().replace('.0', '')
+                s_phone = str(s_data.get('الهاتف', '')).strip()
                 
-                nin_valid = is_nin_valid(s_nin)
-                phone_valid = is_phone_valid(s_phone)
+                nin_valid, _ = is_nin_valid(s_nin)
+                phone_valid, _ = is_phone_valid(s_phone)
                 
-                if nin_valid and phone_valid:  
+                if nin_valid and phone_valid:
                     st.session_state.user_type = 'student'
                     st.session_state.student1 = s_data
                     note_num = str(s_data.get('رقم المذكرة', '')).strip()
@@ -903,7 +902,7 @@ required_state = {
     'mode': "register", 'note_number': "", 'prof_password': "",
     'show_confirmation': False, 'selected_memo_id': None,
     'admin_edit_student_user': None, 's2_phone_input': "", 's2_nin_input': "",
-    'profile_incomplete': False, 'profile_user_temp': None
+    'profile_incomplete': False, 'profile_user_temp': None, 'profile_error_msg': None
 }
 for key, value in required_state.items():
     if key not in st.session_state: st.session_state[key] = value
@@ -947,62 +946,62 @@ elif st.session_state.user_type == "student":
     # --- حالة استكمال الملف الشخصي (Phone + NIN) ---
     if st.session_state.get('profile_incomplete', False):
         st.markdown("<h2>⚠️ استكمال الملف الشخصي</h2>", unsafe_allow_html=True)
-        st.warning("⚠️ يجب إكمال بياناتك الشخصية (رقم الهاتف والرقم الوطني للتعريف) للمتابعة.")
         
-        # عرض البيانات الحالية للتشخيص
+        # عرض سبب المشكلة بدقة
+        error_msg = st.session_state.get('profile_error_msg', "بيانات ناقصة")
+        st.error(f"🚫 تم اكتشاف أن بياناتك غير مكتملة أو غير صالحة في النظام:")
+        st.markdown(f"<div style='background:rgba(255,0,0,0.1); padding:10px; border-radius:5px; color:#FF6B6B; margin-bottom:20px;'>{error_msg}</div>", unsafe_allow_html=True)
+        
         temp_data = st.session_state.profile_user_temp
-        if temp_data:
-            # استخدام الدالة الذكية هنا أيضاً
-            current_phone = get_val_smart(temp_data, ["هاتف", "Phone", "رقم الهاتف"])
-            current_nin = get_val_smart(temp_data, ["NIN", "N.I.N", "التعريف", "الرقم الوطني"]).replace('.0', '')
-            st.info(f"📞 الهاتف الحالي: `{current_phone if current_phone else 'غير موجود'}` | 🆔 NIN الحالي: `{current_nin if current_nin else 'غير موجود'}`")
         
         with st.form("complete_profile_form"):
             st.markdown("<div class='card'>", unsafe_allow_html=True)
-            new_phone = st.text_input("📞 رقم الهاتف", placeholder="أدخل رقم هاتفك")
-            new_nin = st.text_input("🆔 الرقم الوطني للتعريف NIN", placeholder="أدخل الرقم الوطني")
+            
+            # القيمة الافتراضية هي القديمة (إذا كان هناك رقم خاطئ نريد تصحيحه)
+            default_phone = str(temp_data.get('الهاتف', '')).strip()
+            if default_phone in ['0', '0.0', 'nan', '-']: default_phone = ""
+            
+            default_nin = str(temp_data.get('NIN', '')).strip().replace('.0', '')
+            if default_nin in ['0', 'nan', '-']: default_nin = ""
+
+            new_phone = st.text_input("📞 أدخل رقم هاتف صحيح (10 أرقام)", value=default_phone)
+            new_nin = st.text_input("🆔 أدخل الرقم الوطني للتعريف (18 رقم)", value=default_nin)
+            
             submitted = st.form_submit_button("💾 حفظ البيانات والمتابعة", type="primary", use_container_width=True)
             
             if submitted:
-                # التحقق المرن: المهم أن يكون موجود وليس فارغ/0/-
-                phone_ok = is_phone_valid(new_phone)
-                nin_ok = is_nin_valid(new_nin)
+                # التحقق من الصيغة قبل الإرسال
+                phone_ok, _ = is_phone_valid(new_phone)
+                nin_ok, _ = is_nin_valid(new_nin)
                 
                 if not phone_ok:
-                    st.error("❌ رقم الهاتف مطلوب (لا يمكن أن يكون فارغاً أو 0)")
+                    st.error("❌ رقم الهاتف غير صالح. يجب أن يتكون من أرقام فقط (مثلاً: 0550000000) ولا يمكن أن يكون 0.")
                 elif not nin_ok:
-                    st.error("❌ الرقم الوطني للتعريف NIN مطلوب (لا يمكن أن يكون فارغاً أو -)")
+                    st.error("❌ الرقم الوطني غير صالح. يجب أن يتكون من 18 رقم.")
                 else:
                     username = st.session_state.profile_user_temp['اسم المستخدم']
                     success, msg = update_student_profile(username, new_phone, new_nin)
                     
                     if success:
                         st.success(msg)
+                        # مسح رسالة الخطأ وتحديث الجلسة
+                        st.session_state.profile_error_msg = None
+                        st.session_state.profile_incomplete = False
+                        st.session_state.logged_in = True
+                        
+                        # تحديث بيانات الجلسة
                         df_updated = load_students()
                         updated_data = df_updated[df_updated["اسم المستخدم"] == username].iloc[0].to_dict()
                         st.session_state.student1 = updated_data
                         
                         note_num = str(updated_data.get('رقم المذكرة', '')).strip()
-                        if note_num:
-                            st.session_state.mode = "view"
-                            memo_row = df_memos[df_memos["رقم المذكرة"] == note_num]
-                            if not memo_row.empty:
-                                memo_row = memo_row.iloc[0]
-                                s2_name = str(memo_row.get("الطالب الثاني", "")).strip()
-                                if s2_name and s2_name != "--":
-                                    s2_reg = str(memo_row.get("رقم تسجيل الطالب 2", "")).replace('.0', '').strip()
-                                    if s2_reg:
-                                        s2_data = df_students[df_students["رقم التسجيل"] == s2_reg]
-                                        if not s2_data.empty: st.session_state.student2 = s2_data.iloc[0].to_dict()
-                        else:
-                            st.session_state.mode = "register"
-                            
-                        st.session_state.profile_incomplete = False
-                        st.session_state.logged_in = True
-                        st.session_state.profile_user_temp = None
+                        if note_num: st.session_state.mode = "view"
+                        else: st.session_state.mode = "register"
+                        
                         st.rerun()
                     else:
                         st.error(msg)
+                        
             st.markdown("</div>", unsafe_allow_html=True)
 
     # --- حالة عدم تسجيل الدخول (عرض فورم الدخول) ---
@@ -1022,16 +1021,16 @@ elif st.session_state.user_type == "student":
                 if not valid:
                     st.error(result)
                 else:
-                    # ============================================================
-                    # استخدام الدالة الذكية لجلب البيانات
-                    # ============================================================
-                    s_phone = get_val_smart(result, ["هاتف", "Phone", "رقم الهاتف"])
-                    s_nin = get_val_smart(result, ["NIN", "N.I.N", "التعريف", "الرقم الوطني"]).replace('.0', '')
+                    # استخراج القيم الحالية
+                    s_phone = str(result.get('الهاتف', '')).strip()
+                    s_nin = str(result.get('NIN', '')).strip().replace('.0', '')
                     
-                    phone_valid = is_phone_valid(s_phone)
-                    nin_valid = is_nin_valid(s_nin)
+                    # التحقق باستخدام الدوال الجديدة
+                    phone_ok, phone_msg = is_phone_valid(s_phone)
+                    nin_ok, nin_msg = is_nin_valid(s_nin)
                     
-                    if phone_valid and nin_valid:
+                    if phone_ok and nin_ok:
+                        # كل شيء تمام، الدخول للنظام
                         st.session_state.student1 = result
                         note_num = str(st.session_state.student1.get('رقم المذكرة', '')).strip()
                         
@@ -1054,9 +1053,17 @@ elif st.session_state.user_type == "student":
                         st.query_params['un'] = encode_str(st.session_state.student1['اسم المستخدم'])
                         st.rerun()
                     else:
+                        # تشخيص المشكلة
+                        error_details = []
+                        if not phone_ok:
+                            error_details.append(f"الهاتف الحالي ('{s_phone}') غير صالح: {phone_msg}")
+                        if not nin_ok:
+                            error_details.append(f"الرقم الوطني الحالي ('{s_nin}') غير صالح: {nin_msg}")
+                        
                         st.session_state.student1 = result
                         st.session_state.profile_user_temp = result
                         st.session_state.profile_incomplete = True
+                        st.session_state.profile_error_msg = "<br>".join(error_details)
                         st.rerun()
     
     # --- حالة تسجيل الدخول (الواجهة الرئيسية) ---
@@ -1086,13 +1093,12 @@ elif st.session_state.user_type == "student":
                     v2, r2 = verify_student(username2, password2, df_students)
                     if v2:
                         student2_obj = r2
-                        # استخدام الدالة الذكية
-                        s2_phone = get_val_smart(r2, ["هاتف", "Phone", "رقم الهاتف"])
-                        s2_nin = get_val_smart(r2, ["NIN", "N.I.N", "التعريف", "الرقم الوطني"]).replace('.0', '')
+                        s2_phone = str(r2.get('الهاتف', '')).strip()
+                        s2_nin = str(r2.get('NIN', '')).strip().replace('.0', '')
                         
-                        # استخدام الدوال الجديدة المرنة
-                        s2_phone_ok = is_phone_valid(s2_phone)
-                        s2_nin_ok = is_nin_valid(s2_nin)
+                        # استخدام الدوال الجديدة
+                        s2_phone_ok, s2_phone_msg = is_phone_valid(s2_phone)
+                        s2_nin_ok, s2_nin_msg = is_nin_valid(s2_nin)
                         
                         if not s2_phone_ok or not s2_nin_ok:
                             s2_missing_info = True
@@ -1102,7 +1108,9 @@ elif st.session_state.user_type == "student":
                             s2_new_nin_val = st.text_input("🆔 NIN الطالب الثاني", value=s2_nin, key="s2_nin_input_new")
                             
                             if s2_new_phone_val and s2_new_nin_val:
-                                if is_phone_valid(s2_new_phone_val) and is_nin_valid(s2_new_nin_val):
+                                tmp_ph_ok, _ = is_phone_valid(s2_new_phone_val)
+                                tmp_nin_ok, _ = is_nin_valid(s2_new_nin_val)
+                                if tmp_ph_ok and tmp_nin_ok:
                                     st.info("✅ بيانات الطالب الثاني جاهزة للحفظ عند التسجيل.")
                                 else:
                                     st.error("❌ صيغة الهاتف أو NIN غير صحيحة للطالب الثاني.")
