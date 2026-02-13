@@ -31,6 +31,10 @@ REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
 
 # ---------------- CSS (تم التعديل والإصلاح) ----------------
+
+
+
+# ---------------- CSS (تم التعديل والإصلاح) ----------------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -83,7 +87,6 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(47, 111, 126, 0.5); transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* تم إصلاح الخطأ هنا: rgba تستخدم أرقاماً فقط */
     .stDataFrame { border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255, 0.1); background: #1E293B; }
     .stDataFrame th { background-color: #0F172A; color: #FFD700; font-weight: bold; }
 
@@ -132,14 +135,7 @@ st.markdown("""
     .status-unavailable { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
     .status-pending { background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
 </style>
-""", unsafe_allow_html=True)  <!-- هذا السطر ضروري جداً ليعمل التنسيق
-
-
-
-
-
-
-
+""", unsafe_allow_html=True)
 
 
 
