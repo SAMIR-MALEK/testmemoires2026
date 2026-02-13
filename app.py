@@ -977,7 +977,7 @@ elif st.session_state.user_type == "student":
                 if not phone_ok:
                     st.error("❌ رقم الهاتف غير صالح. يجب أن يتكون من أرقام فقط (مثلاً: 0550000000) ولا يمكن أن يكون 0.")
                 elif not nin_ok:
-                    st.error("❌ الرقم الوطني غير صالح. يجب أن يتكون من 18 رقم.")
+                    st.error("❌  الرقم الوطني غير صحيح. يجب أن يتكون من 18 رقم موجود في بطاقة التعريف البيوميترية.")
                 else:
                     username = st.session_state.profile_user_temp['اسم المستخدم']
                     success, msg = update_student_profile(username, new_phone, new_nin)
