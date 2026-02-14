@@ -193,9 +193,11 @@ def validate_username(username):
 
 def validate_note_number(note_number):
     note_number = sanitize_input(note_number)
-    if not note_number: return False, "⚠️ رقم المذكرة فارغ"
-    if len(note_number) > 20: return False, "⚠️ رقم المذكرة غير صالح"    return True, note_number
-
+    if not note_number:
+        return False, "⚠️ رقم المذكرة فارغ"
+    if len(note_number) > 20:
+        return False, "⚠️ رقم المذكرة غير صالح"
+    return True, note_number
 # ============================================================
 # دوال التحقق المحسنة (الهاتف و NIN) - تقوم الآن بإرجاع سبب الرفض
 # ============================================================
