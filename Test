@@ -11,6 +11,7 @@ import time
 import textwrap
 import base64
 import re
+st.cache_data.clear()
 
 # ---------------- إعداد Logging ----------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
