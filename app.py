@@ -944,17 +944,6 @@ if st.session_state.user_type is None:
 # ============================================================
 elif st.session_state.user_type == "student":
     # --- حالة استكمال الملف الشخصي (Phone + NIN) ---
-    # --- كود التشخيص (ضعه هنا) ---
-    with st.expander("⚙️ تشخيص البيانات (اضغط هنا)"):
-        st.write("**أسماء الأعمدة:**", df_students.columns.tolist())
-        st.write("**أول 5 قيم في عمود 'اسم المستخدم':**")
-        st.dataframe(df_students["اسم المستخدم"].head())
-        st.write("**أول 5 قيم في عمود 'كلمة السر':**")
-        st.dataframe(df_students["كلمة السر"].head())
-    # -----------------------------
-
-    # --- (2) حالة استكمال الملف الشخصي ---
-    if st.session_state.get('profile_incomplete', False):
     if st.session_state.get('profile_incomplete', False):
         st.markdown("<h2>⚠️ استكمال الملف الشخصي</h2>", unsafe_allow_html=True)
         
