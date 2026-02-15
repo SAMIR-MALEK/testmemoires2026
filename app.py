@@ -943,12 +943,10 @@ if st.session_state.user_type is None:
 # فضاء الطلبة
 # ============================================================
 elif st.session_state.user_type == "student":
-   
     # --- حالة استكمال الملف الشخصي (Phone + NIN) ---
     # --- كود التشخيص (ضعه هنا) ---
-    with st.expander("⚙️ تشخيص البيانات (اضغط للفتح)"):
-        st.write("**أسماء الأعمدة التي يقرأها النظام:**")
-        st.write(df_students.columns.tolist())
+    with st.expander("⚙️ تشخيص البيانات (اضغط هنا)"):
+        st.write("**أسماء الأعمدة:**", df_students.columns.tolist())
         st.write("**أول 5 قيم في عمود 'اسم المستخدم':**")
         st.dataframe(df_students["اسم المستخدم"].head())
         st.write("**أول 5 قيم في عمود 'كلمة السر':**")
