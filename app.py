@@ -942,7 +942,7 @@ if st.session_state.user_type is None:
 # ============================================================
 # فضاء الطلبة
 # ============================================================
-elif st.session_state.user_type == "student":ذ
+elif st.session_state.user_type == "student":
    
     # --- حالة استكمال الملف الشخصي (Phone + NIN) ---
     # --- كود التشخيص (ضعه هنا) ---
