@@ -320,6 +320,85 @@ def update_progress(memo_number, progress_value):
     except: return False
 
 # --- نهاية الجزء الثاني ---
+
+# ---------------- دوال إضافية من الكود الأصلي ----------------
+def sync_student_registration_numbers():
+    try:
+        st.info("⏳ جاري بدء عملية الربط...")
+        df_s = load_students()
+        df_m = load_memos()
+        updates = []
+        
+        # Normalize for matching
+        df_s['رقم المذكرة_norm'] = df_s['رقم المذكرة'].astype(str).apply(normalize_text)
+        
+        students_with_memo = df_s[df_s['رقم المذكرة_norm'].notna() & (df_s['رقم المذكرة_norm'] != "")]
+        
+        for index, row in df_m.iterrows():
+            memo_num = normalize_text(row.get("رقم المذكرة", ""))
+            if not memo_num: continue
+            
+            matched_students = students_with_memo[students_with_memo["رقم المذكرة_norm"] == memo_num]
+            if matched_students.empty: continue
+            
+            s1_name = str(row.get("الطالب الأول", "")).strip()
+            s2_name = str(row.get("الطالب الثاني", "")).strip()
+            reg_s1 = ""; reg_s2 = ""
+            
+            for _, s_row in matched_students.iterrows():
+                lname = s_row.get('لقب', s_row.get('اللقب', ''))
+                fname = s_row.get('إسم', s_row.get('الإسم', ''))
+                full_name = f"{lname} {fname}".strip()
+                if full_name == s1_name: reg_s1 = normalize_text(s_row.get("رقم التسجيل", ""))
+                elif s2_name and full_name == s2_name: reg_s2 = normalize_text(s_row.get("رقم التسجيل", ""))
+            
+            if not reg_s1 and len(matched_students) > 0: reg_s1 = normalize_text(matched_students.iloc[0].get("رقم التسجيل", ""))
+            
+            row_idx = index + 2
+            if reg_s1: updates.append({"range": f"Feuille 1!S{row_idx}", "values": [[reg_s1]]})
+            if reg_s2: updates.append({"range": f"Feuille 1!T{row_idx}", "values": [[reg_s2]]})
+            
+        if updates:
+            body = {"valueInputOption": "USER_ENTERED", "data": updates}
+            sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body=body).execute()
+            return True, f"✅ تم تحديث {len(updates)} خلية بنجاح."
+        else: return False, "ℹ️ جميع البيانات محدثة أو لا توجد تطابقات."
+    except Exception as e:
+        logger.error(f"Migration Error: {str(e)}")
+        return False, f"❌ حدث خطأ: {str(e)}"
+
+def update_diploma_status(username, status_dict):
+    try:
+        df_students = load_students()
+        username_norm = normalize_text(username)
+        df_students['username_norm'] = df_students["اسم المستخدم"].astype(str).apply(normalize_text)
+        
+        student_row = df_students[df_students["username_norm"] == username_norm]
+        if student_row.empty: return False, "❌ لم يتم العثور على الطالب"
+        
+        row_idx = student_row.index[0] + 2
+        updates = []
+        # الأعمدة O, P, Q, R, S, T تتوافق مع 15, 16, 17, 18, 19, 20
+        cols_map = {'O': 15, 'P': 16, 'Q': 17, 'R': 18, 'S': 19, 'T': 20}
+        
+        for col_letter_name, val in status_dict.items():
+            if col_letter_name in cols_map:
+                updates.append({"range": f"Feuille 1!{col_letter_name}{row_idx}", "values": [[val]]})
+        
+        if updates:
+            body = {"valueInputOption": "USER_ENTERED", "data": updates}
+            sheets_service.spreadsheets().values().batchUpdate(
+                spreadsheetId=STUDENTS_SHEET_ID, 
+                body=body
+            ).execute()
+            st.cache_data.clear()
+            return True, "✅ تم تحديث ملف التخرج بنجاح"
+        return False, "لم يتم تحديث أي بيانات"
+    except Exception as e:
+        logger.error(f"خطأ في تحديث ملف التخرج: {str(e)}")
+        return False, f"❌ حدث خطأ: {str(e)}"
+
+# --- نهاية الجزء الخامس ---
 # ---------------- محرك الجدولة الذكية ----------------
 def run_smart_scheduling(target_memos, date_range, rooms_list):
     df_profs = load_prof_memos()
@@ -733,5 +812,26 @@ elif st.session_state.user_type == "admin":
                     prog.progress((i+1)/len(df_profs), text=f"جاري إرسال للبريد...")
                 prog.empty()
                 st.success(f"تم إرسال الإيميلات بنجاح (محاكاة).")
+
+# --- نهاية الكود ---
+        # --- تابع فضاء الإدارة (تبويب إضافي) ---
+        with tab5:
+            st.subheader("تحديث البيانات والربط")
+            st.warning("⚠️ استخدم هذا الزر لربط أرقام التسجيل (أعمدة S و T) لأول مرة أو لإصلاح الأخطاء.")
+            if st.button("🔄 بدء عملية الربط (Sync)", type="primary"):
+                with st.spinner("جاري المعالجة... قد يستغرق وقتاً"):
+                    s, m = sync_student_registration_numbers()
+                    st.success(m) if s else st.info(m)
+                    if s: st.cache_data.clear(); st.rerun()
+            st.markdown("---")
+            if st.button("تحديث البيانات من Google Sheets"):
+                with st.spinner("جاري التحديث..."):
+                    st.cache_data.clear()
+                    st.success("✅ تم التحديث")
+                    st.rerun()
+
+# --- التذييل (Footer) ---
+st.markdown("---")
+st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;"> إشراف مسؤول الميدان البروفيسور لخضر رفاف © </div>', unsafe_allow_html=True)
 
 # --- نهاية الكود ---
