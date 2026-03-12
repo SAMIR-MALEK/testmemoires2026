@@ -1000,3 +1000,188 @@ elif st.session_state.user_type == "student":
                 # (Notifications logic here)
 
 # --- نهاية الجزء السادس ---
+# ============================================================
+# فضاء الأساتذة
+# ============================================================
+elif st.session_state.user_type == "professor":
+    if not st.session_state.logged_in:
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("رجوع", key="back_prof"): st.session_state.user_type = None; st.rerun()
+        st.markdown("<h2>فضاء الأساتذة</h2>", unsafe_allow_html=True)
+        with st.form("prof_login_form"):
+            c1, c2 = st.columns(2)
+            with c1: u = st.text_input("اسم المستخدم")
+            with c2: p = st.text_input("كلمة المرور", type="password")
+            if st.form_submit_button("تسجيل الدخول"):
+                v, r = verify_professor(u, p, df_prof_memos)
+                if not v: st.error(r)
+                else: st.session_state.professor = r; st.session_state.logged_in = True; st.query_params['ut'] = 'professor'; st.query_params['un'] = encode_str(normalize_text(r.get('إسم المستخدم', ''))); st.rerun()
+    else:
+        prof = st.session_state.professor; prof_name = prof["الأستاذ"]
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("خروج"): logout()
+        st.markdown(f"<h2 style='margin-bottom:20px;'>فضاء الأستاذ <span style='color:#FFD700;'>{prof_name}</span></h2>", unsafe_allow_html=True)
+        
+        tab1, tab2, tab3 = st.tabs(["مراجعة الإيداعات", "جدول مناقشاتي", "إحصائياتي"])
+        
+        with tab1:
+            st.subheader("المذكرات في انتظار الاعتماد")
+            pending = df_memos[(df_memos['الأستاذ'].astype(str).str.strip() == prof_name) & 
+                               (df_memos['حالة الإيداع'].astype(str).str.strip() == 'إيداع مؤقت')]
+            if pending.empty: st.info("لا توجد مذكرات جديدة للمراجعة.")
+            else:
+                for idx, row in pending.iterrows():
+                    st.markdown(f"<div class='card'>", unsafe_allow_html=True)
+                    c1, c2 = st.columns([3, 1])
+                    c1.write(f"**{row['رقم المذكرة']}** - {row['عنوان المذكرة']}")
+                    if row.get('رابط الملف'): c2.link_button("📥 تحميل", row['رابط الملف'])
+                    
+                    cA, cR = st.columns(2)
+                    if cA.button(f"✅ اعتماد", key=f"ok_{idx}"):
+                        update_deposit_status(row['رقم المذكرة'], "معتمدة رسمياً")
+                        st.success("تم الاعتماد"); st.rerun()
+                    if cR.button(f"❌ رفض", key=f"no_{idx}"):
+                        update_deposit_status(row['رقم المذكرة'], "مرفوضة")
+                        st.warning("تم الرفض"); st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+        
+        with tab2:
+            st.subheader("جدول مناقشاتي")
+            sched = df_memos[(df_memos['تاريخ المناقشة'].astype(str).str.strip() != '') & 
+                             ((df_memos['الأستاذ'].astype(str).str.strip() == prof_name) |
+                              (df_memos['الرئيس'].astype(str).str.strip() == prof_name) |
+                              (df_memos['المناقش'].astype(str).str.strip() == prof_name))]
+            
+            if sched.empty: st.info("لا يوجد مناقشات مجدولة.")
+            else:
+                data = []
+                for _, r in sched.iterrows():
+                    role = "مشرف"
+                    if r['الرئيس'] == prof_name: role = "رئيس لجنة"
+                    elif r['المناقش'] == prof_name: role = "مناقش"
+                    data.append([r['تاريخ المناقشة'], r['توقيت المناقشة'], r['القاعة'], r['رقم المذكرة'], role])
+                
+                st.dataframe(pd.DataFrame(data, columns=["التاريخ", "الوقت", "القاعة", "المذكرة", "دوري"]), use_container_width=True)
+        
+        with tab3:
+            st.subheader("رصيد المهام")
+            all_sched = df_memos[df_memos['تاريخ المناقشة'].astype(str).str.strip() != '']
+            p_pres = len(all_sched[all_sched['الرئيس'] == prof_name])
+            p_exam = len(all_sched[all_sched['المناقش'] == prof_name])
+            c1, c2 = st.columns(2)
+            c1.metric("عدد مرات الرئاسة", p_pres)
+            c2.metric("عدد مرات المناقشة", p_exam)
+
+# ============================================================
+# فضاء الإدارة
+# ===========================================================
+elif st.session_state.user_type == "admin":
+    if not st.session_state.logged_in:
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("رجوع", key="back_admin"): st.session_state.user_type = None; st.rerun()
+        st.markdown("<h2>⚙️ فضاء الإدارة</h2>", unsafe_allow_html=True)
+        with st.form("admin_login"):
+            u = st.text_input("اسم المستخدم")
+            p = st.text_input("كلمة المرور", type="password")
+            if st.form_submit_button("دخول"):
+                v, r = verify_admin(u, p)
+                if not v: st.error(r)
+                else: st.session_state.admin_user = r; st.session_state.logged_in = True; st.query_params['ut'] = 'admin'; st.query_params['un'] = encode_str(st.session_state.admin_user); st.rerun()
+    else:
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("خروج"): logout()
+        st.header("📊 لوحة تحكم الإدارة")
+        
+        # KPIs
+        st_s = len(df_students); t_m = len(df_memos); r_m = len(df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
+        a_m = t_m - r_m; t_p = len(df_prof_memos["الأستاذ"].unique())
+        st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["الإعدادات", "القاعات", "الإيداعات", "الجدولة الذكية", "تحديث"])
+        
+        with tab1:
+            st.subheader("إعدادات النظام")
+            settings = get_settings()
+            with st.form("set_form"):
+                d_start = st.date_input("بداية الإيداع", value=datetime.strptime(settings.get('deposit_start', '2027-01-01'), '%Y-%m-%d'))
+                d_end = st.date_input("نهاية الإيداع", value=datetime.strptime(settings.get('deposit_end', '2027-02-01'), '%Y-%m-%d'))
+                f_id = st.text_input("ID مجلد Drive", value=settings.get('drive_folder_id', ''))
+                if st.form_submit_button("حفظ"):
+                    data = [["deposit_start", d_start], ["deposit_end", d_end], ["drive_folder_id", f_id]]
+                    sheets_service.spreadsheets().values().update(
+                        spreadsheetId=SETTINGS_SHEET_ID, range=SETTINGS_RANGE,
+                        valueInputOption="USER_ENTERED", body={"values": data}
+                    ).execute()
+                    st.cache_data.clear(); st.success("تم الحفظ"); st.rerun()
+        
+        with tab2:
+            st.subheader("إدارة القاعات")
+            rooms = get_rooms()
+            st.write("القاعات الحالية:", rooms)
+            new_r = st.text_input("إضافة قاعة جديدة")
+            if st.button("إضافة"):
+                if new_r:
+                    sheets_service.spreadsheets().values().append(
+                        spreadsheetId=SETTINGS_SHEET_ID, range=ROOMS_RANGE,
+                        valueInputOption="USER_ENTERED", body={"values": [[new_r]]}
+                    ).execute()
+                    st.cache_data.clear(); st.success("تمت الإضافة"); st.rerun()
+        
+        with tab3:
+            st.subheader("المذكرات المودعة مؤقتاً")
+            dep = df_memos[df_memos['حالة الإيداع'].astype(str).str.strip() == 'إيداع مؤقت']
+            st.dataframe(dep[['رقم المذكرة', 'عنوان المذكرة', 'الأستاذ', 'تاريخ إيداع المذكرة']], use_container_width=True)
+        
+        with tab4:
+            st.subheader("🧠 محرك الجدولة الآلي")
+            c1, c2 = st.columns(2)
+            with c1: start_d = st.date_input("من تاريخ")
+            with c2: end_d = st.date_input("إلى تاريخ")
+            
+            to_sched = df_memos[(df_memos['حالة الإيداع'].astype(str).str.strip() == 'معتمدة رسمياً') & 
+                                (df_memos['تاريخ المناقشة'].astype(str).str.strip() == '')]
+            
+            st.info(f"عدد المذكرات الجاهزة للبرمجة: **{len(to_sched)}**")
+            
+            if st.button("🚀 تشغيل الخوارزمية", type="primary"):
+                rooms_list = get_rooms()
+                if not rooms_list: st.error("أضف قاعات أولاً!")
+                else:
+                    with st.spinner("جاري الحساب..."):
+                        cnt, logs = run_smart_scheduling(to_sched.to_dict('records'), (start_d, end_d), rooms_list)
+                    st.success(f"تمت جدولة {cnt} مذكرة.")
+                    with st.expander("سجل العمليات"):
+                        for l in logs: st.write(l)
+                    st.rerun()
+            
+            st.markdown("---")
+            st.subheader("الجدول الحالي")
+            sch = df_memos[df_memos['تاريخ المناقشة'].astype(str).str.strip() != '']
+            st.dataframe(sch[['رقم المذكرة', 'تاريخ المناقشة', 'توقيت المناقشة', 'القاعة', 'الرئيس', 'المناقش']], use_container_width=True)
+        
+        with tab5:
+            st.subheader("تحديث البيانات والربط")
+            if st.button("🔄 بدء عملية الربط (Sync)", type="primary"):
+                with st.spinner("جاري المعالجة..."):
+                    s, m = sync_student_registration_numbers()
+                    st.success(m) if s else st.info(m)
+                    if s: clear_cache_and_reload(); st.rerun()
+            if st.button("تحديث البيانات من Google Sheets"):
+                with st.spinner("جاري التحديث..."):
+                    clear_cache_and_reload()
+                    st.success("✅ تم التحديث")
+                    st.rerun()
+
+# ============================================================
+# التذييل
+# ============================================================
+st.markdown("---")
+st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;"> إشراف مسؤول الميدان البروفيسور لخضر رفاف © </div>', unsafe_allow_html=True)
+
+# --- نهاية الكود ---
