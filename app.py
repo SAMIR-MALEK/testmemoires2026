@@ -740,8 +740,23 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
         logger.error(f"❌ Error sending email: {str(e)}")
         return False, f"خطأ تقني أثناء الإرسال: {str(e)}"
 
-def send_deposit_email_to_professor(prof_name, memo_number, memo_title, file_link, student_name):
-    """إرسال إيميل للأستاذ المشرف عند إيداع الطالب للمذكرة"""
+def _email_style():
+    return """<style>
+body{font-family:'Arial',sans-serif;background:#f4f4f4;padding:20px;direction:rtl;text-align:right;}
+.container{background:#fff;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.1);max-width:600px;margin:auto;}
+.header{background:#2F6F7E;color:#fff;padding:20px;border-radius:8px;text-align:center;margin-bottom:20px;}
+.header h2{margin:0;font-size:1.4rem;}
+.info-box{background:#f0f9ff;padding:15px;border-right:4px solid #2F6F7E;margin:15px 0;border-radius:8px;}
+.action-box{background:#fff8e1;padding:15px;border-right:4px solid #F59E0B;margin:15px 0;border-radius:8px;}
+.success-box{background:#f0fdf4;padding:15px;border-right:4px solid #10B981;margin:15px 0;border-radius:8px;}
+.warning-box{background:#fff1f2;padding:15px;border-right:4px solid #EF4444;margin:15px 0;border-radius:8px;}
+.platform-btn{display:inline-block;background:#2F6F7E;color:#fff!important;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:10px;}
+.footer{text-align:center;color:#888;font-size:12px;margin-top:30px;border-top:1px solid #eee;padding-top:15px;}
+p{color:#333;line-height:1.7;}
+</style>"""
+
+def send_deposit_email_to_professor(prof_name, memo_number, memo_title, student1_name, student2_name=None):
+    """إرسال إيميل للأستاذ المشرف + الإدارة عند إيداع المذكرة"""
     try:
         df_profs = load_prof_memos()
         prof_rows = df_profs[df_profs["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
@@ -752,51 +767,188 @@ def send_deposit_email_to_professor(prof_name, memo_number, memo_title, file_lin
         if not prof_email:
             return False, "البريد الإلكتروني للأستاذ غير متوفر"
 
-        email_body = f"""
-<html dir="rtl"><head><style>
-body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
-.container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
-.header {{ background-color: #2F6F7E; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
-.info-box {{ background-color: #f0f9ff; padding: 15px; border-right: 4px solid #2F6F7E; margin: 15px 0; border-radius: 8px; }}
-.action-box {{ background-color: #fff8e1; padding: 15px; border-right: 4px solid #F59E0B; margin: 15px 0; border-radius: 8px; }}
-.btn {{ display: inline-block; background-color: #2F6F7E; color: white; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px; }}
-.footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }}
-</style></head>
+        students_html = f"<p>👤 <strong>الطالب الأول:</strong> {student1_name}</p>"
+        if student2_name and student2_name.strip():
+            students_html += f"<p>👤 <strong>الطالب الثاني:</strong> {student2_name}</p>"
+
+        email_body = f"""<html dir="rtl"><head>{_email_style()}</head>
 <body><div class="container">
-<div class="header"><h2>📥 إيداع مذكرة جديدة</h2></div>
+<div class="header"><h2>📥 إيداع مذكرة — بانتظار موافقتكم</h2></div>
 <p>تحية طيبة، الأستاذ(ة) الفاضل(ة) <strong>{prof_name}</strong>،</p>
-<p>نحيطكم علماً بأن الطالب(ة) <strong>{student_name}</strong> قد أودع نسخة المذكرة النهائية وهي بانتظار مراجعتكم.</p>
+<p>نحيطكم علماً بأن الطالب(ة) أودع/أودعا نسخة المذكرة النهائية عبر المنصة، وهي بانتظار مراجعتكم والموافقة عليها.</p>
 <div class="info-box">
     <p>📄 <strong>رقم المذكرة:</strong> {memo_number}</p>
     <p>📑 <strong>عنوان المذكرة:</strong> {memo_title}</p>
-    <p>👤 <strong>الطالب:</strong> {student_name}</p>
+    {students_html}
     <p>🕒 <strong>تاريخ الإيداع:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
 </div>
 <div class="action-box">
-    <p>⚠️ <strong>مطلوب منكم:</strong> مراجعة المذكرة والموافقة عليها من خلال المنصة لتصبح <span style="color:#10B981; font-weight:bold;">قابلة للمناقشة</span>.</p>
-    <p>هذه النسخة هي التي ستُناقَش رسمياً.</p>
+    <p>⚠️ <strong>مطلوب منكم:</strong> الدخول إلى المنصة، مراجعة المذكرة، والموافقة عليها لتصبح <strong style="color:#10B981;">قابلة للمناقشة</strong>.</p>
+    <p>⚠️ <strong>تنبيه:</strong> يمكنكم الاطلاع على الملف حصراً عبر المنصة من خلال فضاء الأساتذة.</p>
+    <p>هذه النسخة هي التي ستُناقَش رسمياً ولا يمكن تغييرها إلا بموافقة الإدارة.</p>
 </div>
-{'<a href="' + file_link + '" class="btn">📂 عرض المذكرة على Drive</a>' if file_link else ''}
+<div style="text-align:center;">
+    <a href="https://memoires2026.streamlit.app" class="platform-btn">🔗 الدخول إلى المنصة</a>
+</div>
 <div class="footer">
     <p>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
     <p>مسؤول الميدان: البروفيسور لخضر رفاف</p>
 </div>
-</div></body></html>
-"""
+</div></body></html>"""
+
         msg = MIMEMultipart('alternative')
         msg['From'] = EMAIL_SENDER
         msg['To'] = prof_email
+        msg['Cc'] = ADMIN_EMAIL
         msg['Subject'] = f"📥 إيداع مذكرة للمراجعة — رقم {memo_number}"
         msg.attach(MIMEText(email_body, 'html', 'utf-8'))
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
             server.login(EMAIL_SENDER, EMAIL_PASSWORD)
             server.send_message(msg)
-        logger.info(f"✅ تم إرسال إيميل الإيداع للأستاذ {prof_name}")
-        return True, "✅ تم إرسال إشعار للأستاذ المشرف"
+        logger.info(f"✅ تم إرسال إيميل الإيداع للأستاذ {prof_name} + الإدارة")
+        return True, "✅ تم إرسال إشعار للأستاذ المشرف والإدارة"
     except Exception as e:
         logger.error(f"خطأ في إرسال إيميل الإيداع: {e}")
         return False, f"❌ فشل إرسال الإيميل: {str(e)}"
+
+
+def send_approval_email_to_students(memo_number, memo_title, prof_name, student1_data, student2_data=None):
+    """إرسال إيميل للطالب(ين) عند موافقة الأستاذ"""
+    try:
+        recipients = []
+        student_names = []
+        for s in [student1_data, student2_data]:
+            if s is None: continue
+            email = get_email_smart(s)
+            if email: recipients.append(email)
+            lname, fname = get_student_name_display(s)
+            student_names.append(f"{lname} {fname}".strip())
+
+        if not recipients:
+            return False, "لا يوجد بريد إلكتروني للطلبة"
+
+        students_str = " و ".join(student_names)
+        email_body = f"""<html dir="rtl"><head>{_email_style()}</head>
+<body><div class="container">
+<div class="header"><h2>🟢 مذكرتك قابلة للمناقشة</h2></div>
+<p>تحية طيبة، {students_str}،</p>
+<p>يسعدنا إعلامكم بأن الأستاذ المشرف <strong>{prof_name}</strong> قد راجع مذكرتكم ووافق عليها، وأصبحت رسمياً <strong style="color:#10B981;">قابلة للمناقشة</strong>.</p>
+<div class="success-box">
+    <p>📄 <strong>رقم المذكرة:</strong> {memo_number}</p>
+    <p>📑 <strong>عنوان المذكرة:</strong> {memo_title}</p>
+    <p>👨‍🏫 <strong>المشرف:</strong> {prof_name}</p>
+</div>
+<div class="action-box">
+    <p>📌 ستتلقون إشعاراً آخر من الإدارة بتاريخ وتوقيت ومكان المناقشة.</p>
+    <p>يمكنكم متابعة حالة مذكرتكم في أي وقت عبر المنصة.</p>
+</div>
+<div style="text-align:center;">
+    <a href="https://memoires2026.streamlit.app" class="platform-btn">🔗 متابعة على المنصة</a>
+</div>
+<div class="footer">
+    <p>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
+    <p>مسؤول الميدان: البروفيسور لخضر رفاف</p>
+</div>
+</div></body></html>"""
+
+        msg = MIMEMultipart('alternative')
+        msg['From'] = EMAIL_SENDER
+        msg['To'] = recipients[0]
+        if len(recipients) > 1: msg['Cc'] = ", ".join(recipients[1:])
+        msg['Subject'] = f"🟢 مذكرتك قابلة للمناقشة — رقم {memo_number}"
+        msg.attach(MIMEText(email_body, 'html', 'utf-8'))
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+        return True, "✅ تم إرسال إشعار الموافقة للطلبة"
+    except Exception as e:
+        logger.error(f"خطأ في إرسال إيميل الموافقة: {e}")
+        return False, f"❌ فشل إرسال الإيميل: {str(e)}"
+
+
+def send_defense_schedule_email(memo_number, memo_title, prof_name, defense_date, defense_time, defense_room, student1_data, student2_data=None):
+    """إرسال إيميل للطالب(ين) عند تحديد موعد المناقشة"""
+    try:
+        recipients = []
+        student_names = []
+        for s in [student1_data, student2_data]:
+            if s is None: continue
+            email = get_email_smart(s)
+            if email: recipients.append(email)
+            lname, fname = get_student_name_display(s)
+            student_names.append(f"{lname} {fname}".strip())
+
+        if not recipients:
+            return False, "لا يوجد بريد إلكتروني للطلبة"
+
+        students_str = " و ".join(student_names)
+        email_body = f"""<html dir="rtl"><head>{_email_style()}</head>
+<body><div class="container">
+<div class="header"><h2>📅 موعد مناقشة مذكرتك</h2></div>
+<p>تحية طيبة، {students_str}،</p>
+<p>يسعدنا إعلامكم بأنه تم تحديد موعد مناقشة مذكرتكم رسمياً.</p>
+<div class="info-box">
+    <p>📄 <strong>رقم المذكرة:</strong> {memo_number}</p>
+    <p>📑 <strong>عنوان المذكرة:</strong> {memo_title}</p>
+    <p>👨‍🏫 <strong>المشرف:</strong> {prof_name}</p>
+</div>
+<div class="success-box">
+    <p>📆 <strong>تاريخ المناقشة:</strong> <span style="font-size:1.1rem;color:#10B981;">{defense_date}</span></p>
+    <p>🕐 <strong>التوقيت:</strong> <span style="font-size:1.1rem;color:#10B981;">{defense_time}</span></p>
+    <p>🏛️ <strong>القاعة:</strong> <span style="font-size:1.1rem;color:#10B981;">{defense_room}</span></p>
+</div>
+<div class="warning-box">
+    <p>⚠️ يرجى الحضور قبل الموعد بـ 15 دقيقة على الأقل مع إحضار جميع الوثائق المطلوبة.</p>
+</div>
+<div style="text-align:center;">
+    <a href="https://memoires2026.streamlit.app" class="platform-btn">🔗 متابعة على المنصة</a>
+</div>
+<div class="footer">
+    <p>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
+    <p>مسؤول الميدان: البروفيسور لخضر رفاف</p>
+</div>
+</div></body></html>"""
+
+        msg = MIMEMultipart('alternative')
+        msg['From'] = EMAIL_SENDER
+        msg['To'] = recipients[0]
+        if len(recipients) > 1: msg['Cc'] = ", ".join(recipients[1:])
+        msg['Bcc'] = ADMIN_EMAIL
+        msg['Subject'] = f"📅 موعد مناقشة مذكرتك — رقم {memo_number}"
+        msg.attach(MIMEText(email_body, 'html', 'utf-8'))
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+        return True, "✅ تم إرسال موعد المناقشة للطلبة"
+    except Exception as e:
+        logger.error(f"خطأ في إرسال إيميل المناقشة: {e}")
+        return False, f"❌ فشل إرسال الإيميل: {str(e)}"
+
+def reset_memo_deposit(memo_number):
+    """الإدارة تعيد فتح الإيداع للطالب"""
+    try:
+        df_memos = load_memos()
+        memo_row = df_memos[df_memos["رقم المذكرة"].astype(str).apply(normalize_text) == normalize_text(memo_number)]
+        if memo_row.empty:
+            return False, "❌ المذكرة غير موجودة"
+        row_idx = memo_row.index[0] + 2
+        updates = [
+            {"range": f"Feuille 1!V{row_idx}", "values": [[""]]},
+            {"range": f"Feuille 1!W{row_idx}", "values": [[""]]},
+            {"range": f"Feuille 1!X{row_idx}", "values": [[""]]},
+        ]
+        sheets_service.spreadsheets().values().batchUpdate(
+            spreadsheetId=MEMOS_SHEET_ID,
+            body={"valueInputOption": "USER_ENTERED", "data": updates}
+        ).execute()
+        clear_cache_and_reload()
+        return True, "✅ تم إعادة فتح الإيداع للطالب"
+    except Exception as e:
+        logger.error(f"Reset deposit error: {e}")
+        return False, f"❌ خطأ: {str(e)}"
 
 # ============================================================
 # دوال إيداع المذكرات
@@ -1614,30 +1766,14 @@ elif st.session_state.user_type == "student":
                         <p style="color: #94A3B8;">تم إيداع مذكرتك. بانتظار موافقة الأستاذ المشرف.</p>
                     </div>
                     """, unsafe_allow_html=True)
-                    if deposit_link and deposit_link != "nan":
-                        st.markdown(f"📎 [عرض الملف المودع]({deposit_link})")
                     if deposit_date and deposit_date != "nan":
                         st.caption(f"تاريخ الإيداع: {deposit_date}")
-                    st.info("يمكنك إعادة رفع الملف لتحديثه في حال وجود تعديلات.")
-                    # السماح بإعادة الرفع
-                    new_pdf = st.file_uploader("📁 رفع نسخة محدّثة (PDF)", type=["pdf"], key="reupload_pdf")
-                    if new_pdf:
-                        if st.button("🔄 تحديث الملف", type="primary", use_container_width=True):
-                            with st.spinner("⏳ جاري رفع الملف..."):
-                                ok, link, msg = upload_memo_to_drive(new_pdf.read(), note_num, memo_info['عنوان المذكرة'])
-                                if ok:
-                                    s, m = save_memo_deposit(note_num, link)
-                                    if s:
-                                        st.success("✅ تم تحديث الملف بنجاح")
-                                        s1_lname, s1_fname = get_student_name_display(st.session_state.student1)
-                                        student_display = f"{s1_lname} {s1_fname}".strip()
-                                        prof_name_dep = str(memo_info.get('الأستاذ','')).strip()
-                                        send_deposit_email_to_professor(prof_name_dep, note_num, memo_info['عنوان المذكرة'], link, student_display)
-                                        clear_cache_and_reload()
-                                        time.sleep(1)
-                                        st.rerun()
-                                    else: st.error(m)
-                                else: st.error(msg)
+                    st.markdown("""
+                    <div style="background: rgba(239,68,68,0.1); border: 1px solid #EF4444; border-radius: 12px; padding: 20px; margin-top: 15px;">
+                        <p style="color: #EF4444; font-weight: bold; margin: 0;">⛔ الإيداع نهائي ولا يمكن تعديله.</p>
+                        <p style="color: #94A3B8; margin: 8px 0 0 0;">في حالة وجود خطأ، يرجى التواصل مع الإدارة مباشرة لإعادة فتح الإيداع.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
                     # لم يودع بعد
                     st.markdown("""
@@ -1666,13 +1802,18 @@ elif st.session_state.user_type == "student":
                                             st.success("✅ تم إيداع مذكرتك بنجاح! ستُراجَع من قِبل المشرف.")
                                             # إرسال إيميل للأستاذ
                                             s1_lname, s1_fname = get_student_name_display(st.session_state.student1)
-                                            student_display = f"{s1_lname} {s1_fname}".strip()
+                                            student1_display = f"{s1_lname} {s1_fname}".strip()
+                                            student2_display = ""
+                                            if st.session_state.get('student2'):
+                                                s2_lname, s2_fname = get_student_name_display(st.session_state.student2)
+                                                student2_display = f"{s2_lname} {s2_fname}".strip()
                                             prof_name_dep = str(memo_info.get('الأستاذ','')).strip()
                                             email_ok, email_msg = send_deposit_email_to_professor(
-                                                prof_name_dep, note_num, memo_info['عنوان المذكرة'], link, student_display
+                                                prof_name_dep, note_num, memo_info['عنوان المذكرة'],
+                                                student1_display, student2_display
                                             )
                                             if email_ok:
-                                                st.info("📧 تم إرسال إشعار للأستاذ المشرف.")
+                                                st.info("📧 تم إرسال إشعار للأستاذ المشرف والإدارة.")
                                             else:
                                                 st.warning(f"⚠️ تم الإيداع لكن فشل إرسال الإيميل: {email_msg}")
                                             st.balloons()
@@ -1846,6 +1987,22 @@ elif st.session_state.user_type == "professor":
                     with st.spinner("⏳ جاري الحفظ..."):
                         ok, msg = approve_memo_for_defense(memo_id)
                         if ok:
+                            # إرسال إيميل للطلبة
+                            df_students_fresh = load_students()
+                            df_students_fresh['رقم التسجيل_norm'] = df_students_fresh['رقم التسجيل'].astype(str).apply(normalize_text)
+                            s1_data_ap = None; s2_data_ap = None
+                            reg1 = normalize_text(current_memo.get("رقم تسجيل الطالب 1", current_memo.get("S","")))
+                            reg2 = normalize_text(current_memo.get("رقم تسجيل الطالب 2", current_memo.get("T","")))
+                            if reg1:
+                                r = df_students_fresh[df_students_fresh["رقم التسجيل_norm"] == reg1]
+                                if not r.empty: s1_data_ap = r.iloc[0].to_dict()
+                            if reg2:
+                                r = df_students_fresh[df_students_fresh["رقم التسجيل_norm"] == reg2]
+                                if not r.empty: s2_data_ap = r.iloc[0].to_dict()
+                            send_approval_email_to_students(
+                                memo_id, str(current_memo.get('عنوان المذكرة','')),
+                                prof_name, s1_data_ap, s2_data_ap
+                            )
                             st.success(msg); st.balloons(); clear_cache_and_reload(); time.sleep(1); st.rerun()
                         else:
                             st.error(msg)
@@ -2298,12 +2455,47 @@ elif st.session_state.user_type == "admin":
                                     defense_room.strip()
                                 )
                                 if ok:
+                                    # إرسال إيميل للطلبة
+                                    df_students_def = load_students()
+                                    df_students_def['رقم التسجيل_norm'] = df_students_def['رقم التسجيل'].astype(str).apply(normalize_text)
+                                    s1_def = None; s2_def = None
+                                    reg1_def = normalize_text(sel_row.get("رقم تسجيل الطالب 1", sel_row.get("S","")))
+                                    reg2_def = normalize_text(sel_row.get("رقم تسجيل الطالب 2", sel_row.get("T","")))
+                                    if reg1_def:
+                                        r = df_students_def[df_students_def["رقم التسجيل_norm"] == reg1_def]
+                                        if not r.empty: s1_def = r.iloc[0].to_dict()
+                                    if reg2_def:
+                                        r = df_students_def[df_students_def["رقم التسجيل_norm"] == reg2_def]
+                                        if not r.empty: s2_def = r.iloc[0].to_dict()
+                                    email_ok, email_msg = send_defense_schedule_email(
+                                        selected_memo_def, str(sel_row.get('عنوان المذكرة','')),
+                                        str(sel_row.get('الأستاذ','')),
+                                        str(defense_date), str(defense_time), defense_room.strip(),
+                                        s1_def, s2_def
+                                    )
+                                    if email_ok: st.info("📧 تم إرسال إشعار الموعد للطلبة.")
+                                    else: st.warning(f"تم الحفظ لكن فشل الإيميل: {email_msg}")
                                     st.success(msg)
                                     clear_cache_and_reload()
                                     time.sleep(1)
                                     st.rerun()
                                 else:
                                     st.error(msg)
+
+                st.markdown("---")
+                st.markdown("### 🔓 إعادة فتح الإيداع (في حالة خطأ الطالب)")
+                st.info("استخدم هذا الخيار فقط عند طلب الطالب تصحيح ملف خاطئ. سيُمحى الإيداع السابق.")
+                all_deposited_list = df_memos_fresh8[
+                    df_memos_fresh8[col_deposit].astype(str).str.strip().isin(["مودعة","قابلة للمناقشة"])
+                ]["رقم المذكرة"].astype(str).tolist()
+                if all_deposited_list:
+                    reset_memo_sel = st.selectbox("اختر المذكرة لإعادة الفتح:", all_deposited_list, key="reset_deposit_sel")
+                    if st.button("🔓 إعادة فتح الإيداع", key="reset_deposit_btn"):
+                        ok, msg = reset_memo_deposit(reset_memo_sel)
+                        if ok: st.success(msg); clear_cache_and_reload(); time.sleep(1); st.rerun()
+                        else: st.error(msg)
+                else:
+                    st.caption("لا توجد مذكرات مودعة حالياً.")
 
                 st.markdown("---")
                 st.markdown("### 📋 جدول كامل بحالات الإيداع")
