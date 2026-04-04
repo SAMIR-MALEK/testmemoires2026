@@ -129,6 +129,43 @@ st.markdown("""
     .status-pending { background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
     
     .memo-card-title { color: #FFFFFF !important; font-size: 1.1rem; font-weight: bold; }
+
+    /* إصلاح واجهة رفع الملفات */
+    [data-testid="stFileUploader"] {
+        background: rgba(30, 41, 59, 0.8) !important;
+        border: 2px dashed #2F6F7E !important;
+        border-radius: 16px !important;
+        padding: 20px !important;
+    }
+    [data-testid="stFileUploader"] label {
+        color: #ffffff !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stFileUploader"] section {
+        background: rgba(15, 23, 42, 0.6) !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    [data-testid="stFileUploader"] section > div {
+        color: #94A3B8 !important;
+    }
+    [data-testid="stFileUploaderDropzone"] {
+        background: rgba(47, 111, 126, 0.1) !important;
+        border-radius: 12px !important;
+    }
+    [data-testid="stFileUploaderDropzoneInstructions"] span,
+    [data-testid="stFileUploaderDropzoneInstructions"] p,
+    [data-testid="stFileUploaderDropzoneInstructions"] small {
+        color: #94A3B8 !important;
+    }
+    [data-testid="stFileUploader"] button {
+        background-color: #2F6F7E !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        width: auto !important;
+        padding: 8px 20px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -702,6 +739,64 @@ def send_email_to_professor(prof_name, memo_info, student1, student2=None):
     except Exception as e:
         logger.error(f"❌ Error sending email: {str(e)}")
         return False, f"خطأ تقني أثناء الإرسال: {str(e)}"
+
+def send_deposit_email_to_professor(prof_name, memo_number, memo_title, file_link, student_name):
+    """إرسال إيميل للأستاذ المشرف عند إيداع الطالب للمذكرة"""
+    try:
+        df_profs = load_prof_memos()
+        prof_rows = df_profs[df_profs["الأستاذ"].astype(str).str.strip() == prof_name.strip()]
+        if prof_rows.empty:
+            logger.warning(f"لم يتم العثور على بريد الأستاذ: {prof_name}")
+            return False, "لم يتم العثور على بريد الأستاذ"
+        prof_email = get_email_smart(prof_rows.iloc[0])
+        if not prof_email:
+            return False, "البريد الإلكتروني للأستاذ غير متوفر"
+
+        email_body = f"""
+<html dir="rtl"><head><style>
+body {{ font-family: 'Arial', sans-serif; background-color: #f4f4f4; padding: 20px; }}
+.container {{ background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }}
+.header {{ background-color: #2F6F7E; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }}
+.info-box {{ background-color: #f0f9ff; padding: 15px; border-right: 4px solid #2F6F7E; margin: 15px 0; border-radius: 8px; }}
+.action-box {{ background-color: #fff8e1; padding: 15px; border-right: 4px solid #F59E0B; margin: 15px 0; border-radius: 8px; }}
+.btn {{ display: inline-block; background-color: #2F6F7E; color: white; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px; }}
+.footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }}
+</style></head>
+<body><div class="container">
+<div class="header"><h2>📥 إيداع مذكرة جديدة</h2></div>
+<p>تحية طيبة، الأستاذ(ة) الفاضل(ة) <strong>{prof_name}</strong>،</p>
+<p>نحيطكم علماً بأن الطالب(ة) <strong>{student_name}</strong> قد أودع نسخة المذكرة النهائية وهي بانتظار مراجعتكم.</p>
+<div class="info-box">
+    <p>📄 <strong>رقم المذكرة:</strong> {memo_number}</p>
+    <p>📑 <strong>عنوان المذكرة:</strong> {memo_title}</p>
+    <p>👤 <strong>الطالب:</strong> {student_name}</p>
+    <p>🕒 <strong>تاريخ الإيداع:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+</div>
+<div class="action-box">
+    <p>⚠️ <strong>مطلوب منكم:</strong> مراجعة المذكرة والموافقة عليها من خلال المنصة لتصبح <span style="color:#10B981; font-weight:bold;">قابلة للمناقشة</span>.</p>
+    <p>هذه النسخة هي التي ستُناقَش رسمياً.</p>
+</div>
+{'<a href="' + file_link + '" class="btn">📂 عرض المذكرة على Drive</a>' if file_link else ''}
+<div class="footer">
+    <p>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
+    <p>مسؤول الميدان: البروفيسور لخضر رفاف</p>
+</div>
+</div></body></html>
+"""
+        msg = MIMEMultipart('alternative')
+        msg['From'] = EMAIL_SENDER
+        msg['To'] = prof_email
+        msg['Subject'] = f"📥 إيداع مذكرة للمراجعة — رقم {memo_number}"
+        msg.attach(MIMEText(email_body, 'html', 'utf-8'))
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+        logger.info(f"✅ تم إرسال إيميل الإيداع للأستاذ {prof_name}")
+        return True, "✅ تم إرسال إشعار للأستاذ المشرف"
+    except Exception as e:
+        logger.error(f"خطأ في إرسال إيميل الإيداع: {e}")
+        return False, f"❌ فشل إرسال الإيميل: {str(e)}"
 
 # ============================================================
 # دوال إيداع المذكرات
@@ -1532,7 +1627,15 @@ elif st.session_state.user_type == "student":
                                 ok, link, msg = upload_memo_to_drive(new_pdf.read(), note_num, memo_info['عنوان المذكرة'])
                                 if ok:
                                     s, m = save_memo_deposit(note_num, link)
-                                    if s: st.success("✅ تم تحديث الملف بنجاح"); clear_cache_and_reload(); time.sleep(1); st.rerun()
+                                    if s:
+                                        st.success("✅ تم تحديث الملف بنجاح")
+                                        s1_lname, s1_fname = get_student_name_display(st.session_state.student1)
+                                        student_display = f"{s1_lname} {s1_fname}".strip()
+                                        prof_name_dep = str(memo_info.get('الأستاذ','')).strip()
+                                        send_deposit_email_to_professor(prof_name_dep, note_num, memo_info['عنوان المذكرة'], link, student_display)
+                                        clear_cache_and_reload()
+                                        time.sleep(1)
+                                        st.rerun()
                                     else: st.error(m)
                                 else: st.error(msg)
                 else:
@@ -1561,6 +1664,17 @@ elif st.session_state.user_type == "student":
                                         s, m = save_memo_deposit(note_num, link)
                                         if s:
                                             st.success("✅ تم إيداع مذكرتك بنجاح! ستُراجَع من قِبل المشرف.")
+                                            # إرسال إيميل للأستاذ
+                                            s1_lname, s1_fname = get_student_name_display(st.session_state.student1)
+                                            student_display = f"{s1_lname} {s1_fname}".strip()
+                                            prof_name_dep = str(memo_info.get('الأستاذ','')).strip()
+                                            email_ok, email_msg = send_deposit_email_to_professor(
+                                                prof_name_dep, note_num, memo_info['عنوان المذكرة'], link, student_display
+                                            )
+                                            if email_ok:
+                                                st.info("📧 تم إرسال إشعار للأستاذ المشرف.")
+                                            else:
+                                                st.warning(f"⚠️ تم الإيداع لكن فشل إرسال الإيميل: {email_msg}")
                                             st.balloons()
                                             clear_cache_and_reload()
                                             time.sleep(2)
