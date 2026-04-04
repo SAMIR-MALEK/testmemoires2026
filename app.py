@@ -291,6 +291,32 @@ def get_student_name_display(student_dict):
             
     return lname, fname
 
+def load_student2_for_memo(memo_row, current_student_reg, df_students):
+    """يجلب الطالب الآخر في المذكرة بغض النظر عن موضعه (S أو T)"""
+    memo_list = memo_row.tolist() if hasattr(memo_row, 'tolist') else list(memo_row.values())
+    reg_s = normalize_text(memo_row.get("رقم تسجيل الطالب 1", memo_list[18] if len(memo_list) > 18 else ""))
+    reg_t = normalize_text(memo_row.get("رقم تسجيل الطالب 2", memo_list[19] if len(memo_list) > 19 else ""))
+    
+    current_reg = normalize_text(current_student_reg)
+    
+    # الطالب الثاني = الآخر (ليس الطالب الداخل)
+    if current_reg == reg_s:
+        other_reg = reg_t
+    elif current_reg == reg_t:
+        other_reg = reg_s
+    else:
+        # إن لم يُطابق شيء، نأخذ T كافتراضي
+        other_reg = reg_t
+
+    if not other_reg or other_reg in ["", "nan"]:
+        return None
+
+    df_students['رقم التسجيل_norm'] = df_students['رقم التسجيل'].astype(str).apply(normalize_text)
+    s2_data = df_students[df_students["رقم التسجيل_norm"] == other_reg]
+    if not s2_data.empty:
+        return s2_data.iloc[0].to_dict()
+    return None
+
 def get_email_smart(row):
     if isinstance(row, dict):
         priority_keys = ["البريد المهني", "البريد الإلكتروني", "email", "Email", "E-mail"]
@@ -1334,11 +1360,9 @@ def restore_session_from_url():
                             memo_row = memo_row.iloc[0]
                             s2_name = str(memo_row.get("الطالب الثاني", "")).strip()
                             if s2_name and s2_name != "--":
-                                s2_reg = normalize_text(memo_row.get("رقم تسجيل الطالب 2", ""))
-                                if s2_reg:
-                                    df_students['رقم التسجيل_norm'] = df_students['رقم التسجيل'].astype(str).apply(normalize_text)
-                                    s2_data = df_students[df_students["رقم التسجيل_norm"] == s2_reg]
-                                    if not s2_data.empty: st.session_state.student2 = s2_data.iloc[0].to_dict()
+                                current_reg = normalize_text(s_data.get('رقم التسجيل', ''))
+                                s2_obj = load_student2_for_memo(memo_row, current_reg, df_students)
+                                if s2_obj: st.session_state.student2 = s2_obj
                 else:
                      st.session_state.user_type = 'student'
                      st.session_state.profile_incomplete = True
@@ -1472,11 +1496,9 @@ elif st.session_state.user_type == "student":
                                 memo_row = memo_row.iloc[0]
                                 s2_name = str(memo_row.get("الطالب الثاني", "")).strip()
                                 if s2_name and s2_name != "--":
-                                    s2_reg = normalize_text(memo_row.get("رقم تسجيل الطالب 2", ""))
-                                    if s2_reg:
-                                        df_students['رقم التسجيل_norm'] = df_students['رقم التسجيل'].astype(str).apply(normalize_text)
-                                        s2_data = df_students[df_students["رقم التسجيل_norm"] == s2_reg]
-                                        if not s2_data.empty: st.session_state.student2 = s2_data.iloc[0].to_dict()
+                                    current_reg = normalize_text(result.get('رقم التسجيل', ''))
+                                    s2_obj = load_student2_for_memo(memo_row, current_reg, df_students)
+                                    if s2_obj: st.session_state.student2 = s2_obj
                         else:
                             st.session_state.mode = "register"
                         st.session_state.logged_in = True
