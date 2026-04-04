@@ -160,7 +160,7 @@ PROF_MEMOS_SHEET_ID = "1OnZi1o-oPMUI_W_Ew-op0a1uOhSj006hw_2jrMD6FSE"
 REQUESTS_SHEET_ID = "1sTJ6BZRM4Qgt0w2xUkpFZqquL-hfriMYTSN3x1_12_o"
 
 STUDENTS_RANGE = "Feuille 1!A1:U1000" 
-MEMOS_RANGE = "Feuille 1!A1:AA1000"
+MEMOS_RANGE = "Feuille 1!A1:U1000"
 PROF_MEMOS_RANGE = "Feuille 1!A1:P1000"
 REQUESTS_RANGE = "Feuille 1!A1:K1000"
 
@@ -328,10 +328,16 @@ def load_students():
 @st.cache_data(ttl=60)
 def load_memos():
     try:
-        result = sheets_service.spreadsheets().values().get(spreadsheetId=MEMOS_SHEET_ID, range=MEMOS_RANGE).execute()
+        result = sheets_service.spreadsheets().values().get(
+            spreadsheetId=MEMOS_SHEET_ID, range="Feuille 1!A1:AA1000"
+        ).execute()
         values = result.get('values', [])
         if not values: return pd.DataFrame()
-        df = pd.DataFrame(values[1:], columns=values[0])
+        headers = values[0]
+        rows = values[1:]
+        # توحيد عدد الأعمدة في كل صف
+        padded = [r + [''] * (len(headers) - len(r)) for r in rows]
+        df = pd.DataFrame(padded, columns=headers)
         return df
     except Exception as e:
         logger.error(f"خطأ في تحميل بيانات المذكرات: {str(e)}")
