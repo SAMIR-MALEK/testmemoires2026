@@ -955,7 +955,26 @@ def send_defense_schedule_email(memo_number, memo_title, prof_name, defense_date
         logger.error(f"خطأ في إرسال إيميل المناقشة: {e}")
         return False, f"❌ فشل إرسال الإيميل: {str(e)}"
 
-def reset_memo_deposit(memo_number):
+def save_approval_declaration(memo_number, prof_name, signature, declaration_text):
+    """حفظ تصريح الأستاذ في Sheets — عمود AB"""
+    try:
+        df_memos = load_memos()
+        memo_row = df_memos[df_memos["رقم المذكرة"].astype(str).apply(normalize_text) == normalize_text(memo_number)]
+        if memo_row.empty:
+            return False, "❌ المذكرة غير موجودة"
+        row_idx = memo_row.index[0] + 2
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        declaration_full = f"تصريح: {prof_name} | توقيع: {signature} | {timestamp} | {declaration_text}"
+        sheets_service.spreadsheets().values().update(
+            spreadsheetId=MEMOS_SHEET_ID,
+            range=f"Feuille 1!AB{row_idx}",
+            valueInputOption="USER_ENTERED",
+            body={"values": [[declaration_full]]}
+        ).execute()
+        return True, "✅ تم حفظ التصريح"
+    except Exception as e:
+        logger.error(f"Save declaration error: {e}")
+        return False, f"❌ خطأ: {str(e)}"
     """الإدارة تعيد فتح الإيداع للطالب"""
     try:
         df_memos = load_memos()
@@ -1997,58 +2016,183 @@ elif st.session_state.user_type == "professor":
             deposit_date = str(current_memo.get("تاريخ إيداع المذكرة", "")).strip()
             
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<h3 style='text-align:center;'>📥 إيداع المذكرة</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align:center; border-top:1px solid #334155; padding-top:25px;'>📥 حالة إيداع المذكرة</h3>", unsafe_allow_html=True)
             
             if not deposit_status or deposit_status in ["nan", ""]:
                 st.markdown("""
-                <div style="background:rgba(100,116,139,0.1); border:1px solid #475569; border-radius:12px; padding:20px; text-align:center;">
-                    <p style="color:#94A3B8;">⏳ لم يودع الطالب المذكرة بعد.</p>
+                <div style="background:rgba(100,116,139,0.1); border:1px solid #475569; border-radius:16px; padding:25px; text-align:center;">
+                    <div style="font-size:2.5rem;">⏳</div>
+                    <p style="color:#94A3B8; font-size:1.1rem; margin:10px 0;">لم يودع الطالب المذكرة بعد.</p>
                 </div>
                 """, unsafe_allow_html=True)
+
             elif deposit_status == "مودعة":
+                # عرض حالة الإيداع
                 st.markdown(f"""
-                <div style="background:rgba(245,158,11,0.15); border:2px solid #F59E0B; border-radius:12px; padding:20px; text-align:center; margin-bottom:15px;">
+                <div style="background:rgba(245,158,11,0.15); border:2px solid #F59E0B; border-radius:16px; padding:25px; text-align:center; margin-bottom:20px;">
                     <div style="font-size:2.5rem;">🟡</div>
-                    <h4 style="color:#F59E0B;">المذكرة مودعة — بانتظار موافقتك</h4>
+                    <h4 style="color:#F59E0B; margin:10px 0;">المذكرة مودعة — بانتظار موافقتك</h4>
                     <p style="color:#94A3B8;">تاريخ الإيداع: {deposit_date if deposit_date and deposit_date != 'nan' else 'غير محدد'}</p>
                 </div>
                 """, unsafe_allow_html=True)
+
+                # زر الاطلاع على المذكرة
                 if deposit_link and deposit_link != "nan":
-                    st.markdown(f"📎 [**مراجعة الملف على Drive**]({deposit_link})", unsafe_allow_html=False)
+                    st.markdown(f"""
+                    <div style="text-align:center; margin-bottom:25px;">
+                        <a href="{deposit_link}" target="_blank" style="
+                            display:inline-block; background:linear-gradient(135deg,#1E3A5F,#2F6F7E);
+                            color:#ffffff; padding:18px 40px; border-radius:14px; text-decoration:none;
+                            font-size:1.2rem; font-weight:700; letter-spacing:0.5px;
+                            box-shadow:0 8px 20px rgba(47,111,126,0.4);
+                            border:2px solid rgba(255,255,255,0.15);">
+                            📄 الاطلاع على المذكرة المودعة
+                        </a>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # نموذج التصريح
+                st.markdown("""
+                <div style="background:linear-gradient(145deg,#1E293B,#0F172A); border:2px solid #2F6F7E;
+                     border-radius:20px; padding:30px; margin-bottom:20px;">
+                    <h3 style="color:#FFD700; text-align:center; margin-bottom:5px;">📋 نموذج التصريح الرسمي</h3>
+                    <p style="color:#94A3B8; text-align:center; font-size:0.9rem;">يرجى ملء جميع الحقول للمتابعة</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # استخراج بيانات الطلبة للعرض
+                memo_vals_ap = current_memo.tolist() if hasattr(current_memo, 'tolist') else list(current_memo.values())
+                s1_name_ap = str(current_memo.get("الطالب الأول", "")).strip()
+                s2_name_ap = str(current_memo.get("الطالب الثاني", "")).strip()
+                students_str_ap = s1_name_ap
+                if s2_name_ap and s2_name_ap not in ["", "nan", "--"]:
+                    students_str_ap += f" و {s2_name_ap}"
+
+                st.markdown(f"""
+                <div style="background:rgba(47,111,126,0.1); border:1px solid #2F6F7E; border-radius:12px; padding:20px; margin-bottom:20px;">
+                    <p style="margin:5px 0;">📄 <b>رقم المذكرة:</b> {memo_id}</p>
+                    <p style="margin:5px 0;">📑 <b>العنوان:</b> {current_memo.get('عنوان المذكرة','')}</p>
+                    <p style="margin:5px 0;">👤 <b>الطالب(ون):</b> {students_str_ap}</p>
+                    <p style="margin:5px 0;">👨‍🏫 <b>المشرف:</b> {prof_name}</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # الخطوة 1: التحقق من رقم المذكرة
+                st.markdown("**الخطوة 1 — أدخل رقم المذكرة للتأكيد:**")
+                confirm_memo_num = st.text_input("رقم المذكرة", placeholder=f"اكتب: {memo_id}", key=f"confirm_num_{memo_id}")
+
+                # الخطوة 2: خانة الإقرار
+                st.markdown("**الخطوة 2 — اقرأ التصريح وضع علامة الموافقة:**")
+                declaration_text = f"أنا الأستاذ {prof_name}، أصرّح بأن المذكرة رقم {memo_id} بعنوان «{current_memo.get('عنوان المذكرة','')}» للطالب(ين) {students_str_ap}، هي النسخة النهائية المودعة وهي التي ستُعرض على لجنة المناقشة ولن يُقبل أي تعديل بعد هذا التصريح."
+                st.markdown(f"""
+                <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3);
+                     border-radius:10px; padding:15px; margin:10px 0; direction:rtl; line-height:1.9; color:#E2E8F0;">
+                    {declaration_text}
+                </div>
+                """, unsafe_allow_html=True)
+                agree_check = st.checkbox("✅ أوافق على هذا التصريح وأقرّ بصحته", key=f"agree_{memo_id}")
+
+                # الخطوة 3: التوقيع الإلكتروني
+                st.markdown("**الخطوة 3 — التوقيع الإلكتروني (اكتب اسمك الكامل):**")
+                signature = st.text_input("التوقيع", placeholder="اكتب اسمك الكامل كما هو رسمياً", key=f"sig_{memo_id}")
+
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("✅ الموافقة على المذكرة — قابلة للمناقشة", type="primary", use_container_width=True, key=f"approve_{memo_id}"):
-                    with st.spinner("⏳ جاري الحفظ..."):
-                        ok, msg = approve_memo_for_defense(memo_id)
-                        if ok:
-                            # إرسال إيميل للطلبة
-                            df_students_fresh = load_students()
-                            df_students_fresh['رقم التسجيل_norm'] = df_students_fresh['رقم التسجيل'].astype(str).apply(normalize_text)
-                            s1_data_ap = None; s2_data_ap = None
-                            memo_vals = current_memo.tolist() if hasattr(current_memo, 'tolist') else list(current_memo.values())
-                            reg1 = normalize_text(current_memo.get("رقم تسجيل الطالب 1", memo_vals[18] if len(memo_vals) > 18 else ""))
-                            reg2 = normalize_text(current_memo.get("رقم تسجيل الطالب 2", memo_vals[19] if len(memo_vals) > 19 else ""))
-                            if reg1 and reg1 not in ["", "nan"]:
-                                r = df_students_fresh[df_students_fresh["رقم التسجيل_norm"] == reg1]
-                                if not r.empty: s1_data_ap = r.iloc[0].to_dict()
-                            if reg2 and reg2 not in ["", "nan"]:
-                                r = df_students_fresh[df_students_fresh["رقم التسجيل_norm"] == reg2]
-                                if not r.empty: s2_data_ap = r.iloc[0].to_dict()
-                            send_approval_email_to_students(
-                                memo_id, str(current_memo.get('عنوان المذكرة','')),
-                                prof_name, s1_data_ap, s2_data_ap
-                            )
-                            st.success(msg); st.balloons(); clear_cache_and_reload(); time.sleep(1); st.rerun()
+
+                # زر الموافقة الأولى
+                if not st.session_state.get(f"confirm_step_{memo_id}", False):
+                    if st.button("📋 متابعة للتأكيد النهائي", type="primary", use_container_width=True, key=f"pre_approve_{memo_id}"):
+                        errors = []
+                        if normalize_text(confirm_memo_num) != normalize_text(memo_id):
+                            errors.append("❌ رقم المذكرة غير مطابق")
+                        if not agree_check:
+                            errors.append("❌ يجب الموافقة على التصريح")
+                        if not signature.strip():
+                            errors.append("❌ التوقيع فارغ")
+                        elif signature.strip() not in prof_name:
+                            # تحقق مرن — على الأقل كلمة من الاسم
+                            prof_parts = prof_name.strip().split()
+                            sig_parts = signature.strip().split()
+                            if not any(p in prof_name for p in sig_parts):
+                                errors.append("❌ التوقيع لا يطابق اسم الأستاذ المسجل")
+                        if errors:
+                            for e in errors: st.error(e)
                         else:
-                            st.error(msg)
+                            st.session_state[f"confirm_step_{memo_id}"] = True
+                            st.session_state[f"sig_value_{memo_id}"] = signature.strip()
+                            st.rerun()
+                else:
+                    # تأكيد نهائي
+                    st.markdown(f"""
+                    <div style="background:rgba(239,68,68,0.15); border:2px solid #EF4444; border-radius:14px; padding:25px; text-align:center; margin-bottom:20px;">
+                        <div style="font-size:2rem;">⚠️</div>
+                        <h4 style="color:#EF4444; margin:10px 0;">تأكيد نهائي</h4>
+                        <p style="color:#F8FAFC;">هل أنت متأكد تماماً؟</p>
+                        <p style="color:#94A3B8; font-size:0.9rem;">هذا الإجراء <b>نهائي وغير قابل للتراجع</b>.<br>
+                        المذكرة رقم <b>{memo_id}</b> ستُرسل رسمياً للجنة المناقشة.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    col_yes, col_no = st.columns(2)
+                    with col_yes:
+                        if st.button("✅ نعم، أؤكد الموافقة النهائية", type="primary", use_container_width=True, key=f"final_approve_{memo_id}"):
+                            with st.spinner("⏳ جاري حفظ التصريح..."):
+                                # حفظ التصريح
+                                sig_saved = st.session_state.get(f"sig_value_{memo_id}", "")
+                                save_approval_declaration(memo_id, prof_name, sig_saved, declaration_text)
+                                # تغيير الحالة
+                                ok, msg = approve_memo_for_defense(memo_id)
+                                if ok:
+                                    # إرسال إيميل للطلبة
+                                    df_students_fresh = load_students()
+                                    df_students_fresh['رقم التسجيل_norm'] = df_students_fresh['رقم التسجيل'].astype(str).apply(normalize_text)
+                                    s1_data_ap = None; s2_data_ap = None
+                                    memo_vals = current_memo.tolist() if hasattr(current_memo, 'tolist') else list(current_memo.values())
+                                    reg1 = normalize_text(current_memo.get("رقم تسجيل الطالب 1", memo_vals[18] if len(memo_vals) > 18 else ""))
+                                    reg2 = normalize_text(current_memo.get("رقم تسجيل الطالب 2", memo_vals[19] if len(memo_vals) > 19 else ""))
+                                    if reg1 and reg1 not in ["", "nan"]:
+                                        r = df_students_fresh[df_students_fresh["رقم التسجيل_norm"] == reg1]
+                                        if not r.empty: s1_data_ap = r.iloc[0].to_dict()
+                                    if reg2 and reg2 not in ["", "nan"]:
+                                        r = df_students_fresh[df_students_fresh["رقم التسجيل_norm"] == reg2]
+                                        if not r.empty: s2_data_ap = r.iloc[0].to_dict()
+                                    send_approval_email_to_students(
+                                        memo_id, str(current_memo.get('عنوان المذكرة','')),
+                                        prof_name, s1_data_ap, s2_data_ap
+                                    )
+                                    st.session_state.pop(f"confirm_step_{memo_id}", None)
+                                    st.session_state.pop(f"sig_value_{memo_id}", None)
+                                    st.success("✅ تمت الموافقة وحُفظ التصريح رسمياً")
+                                    st.balloons()
+                                    clear_cache_and_reload()
+                                    time.sleep(2)
+                                    st.rerun()
+                                else:
+                                    st.error(msg)
+                    with col_no:
+                        if st.button("❌ إلغاء — العودة للمراجعة", use_container_width=True, key=f"cancel_approve_{memo_id}"):
+                            st.session_state.pop(f"confirm_step_{memo_id}", None)
+                            st.rerun()
+
             elif deposit_status == "قابلة للمناقشة":
                 st.markdown(f"""
-                <div style="background:rgba(16,185,129,0.15); border:2px solid #10B981; border-radius:12px; padding:20px; text-align:center;">
+                <div style="background:rgba(16,185,129,0.15); border:2px solid #10B981; border-radius:16px; padding:25px; text-align:center;">
                     <div style="font-size:2.5rem;">🟢</div>
-                    <h4 style="color:#10B981;">المذكرة معتمدة — قابلة للمناقشة</h4>
+                    <h4 style="color:#10B981; margin:10px 0;">المذكرة معتمدة — قابلة للمناقشة</h4>
+                    <p style="color:#94A3B8;">تم التصريح رسمياً بهذه المذكرة وإرسالها للجنة.</p>
                 </div>
                 """, unsafe_allow_html=True)
                 if deposit_link and deposit_link != "nan":
-                    st.markdown(f"📎 [عرض الملف]({deposit_link})")
+                    st.markdown(f"""
+                    <div style="text-align:center; margin-top:15px;">
+                        <a href="{deposit_link}" target="_blank" style="
+                            display:inline-block; background:rgba(16,185,129,0.2);
+                            color:#10B981; padding:12px 28px; border-radius:10px; text-decoration:none;
+                            font-weight:700; border:1px solid #10B981;">
+                            📄 الاطلاع على المذكرة المودعة
+                        </a>
+                    </div>
+                    """, unsafe_allow_html=True)
             with col2:
                 st.markdown("<div style='background: rgba(30, 41, 59, 0.5); padding: 20px; border-radius: 10px;'>", unsafe_allow_html=True)
                 st.subheader("📨 إرسال طلب للإدارة")
