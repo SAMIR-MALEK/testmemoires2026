@@ -275,18 +275,20 @@ def is_nin_valid(nin_val):
     return True, "صالح"
 
 def get_student_name_display(student_dict):
-    keys_lname = ["لقب", "اللقب", "Nom", "nom"]
+    keys_lname = ["اللقب", "لقب", "Nom", "nom"]
     lname = ""
     for k in keys_lname:
-        if k in student_dict and str(student_dict[k]).strip() not in ['nan', '', 'None']:
-            lname = str(student_dict[k]).strip()
+        val = str(student_dict.get(k, "")).strip()
+        if val and val not in ['nan', 'None', '-']:
+            lname = val
             break
     
-    keys_fname = ["إسم", "اسم", "الإسم", "الاسم", "Prénom", "prenom"]
+    keys_fname = ["الإسم", "إسم", "اسم", "الاسم", "Prénom", "prenom"]
     fname = ""
     for k in keys_fname:
-        if k in student_dict and str(student_dict[k]).strip() not in ['nan', '', 'None']:
-            fname = str(student_dict[k]).strip()
+        val = str(student_dict.get(k, "")).strip()
+        if val and val not in ['nan', 'None', '-']:
+            fname = val
             break
             
     return lname, fname
@@ -314,9 +316,7 @@ def load_student2_for_memo(memo_row, current_student_reg, df_students):
     df_students['رقم التسجيل_norm'] = df_students['رقم التسجيل'].astype(str).apply(normalize_text)
     s2_data = df_students[df_students["رقم التسجيل_norm"] == other_reg]
     if not s2_data.empty:
-        s2_dict = s2_data.iloc[0].to_dict()
-        logger.info(f"DEBUG student2 keys: {list(s2_dict.keys())[:8]}")
-        return s2_dict
+        return s2_data.iloc[0].to_dict()
     return None
 
 def get_email_smart(row):
