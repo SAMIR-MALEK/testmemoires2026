@@ -1804,9 +1804,19 @@ elif st.session_state.user_type == "student":
                                             s1_lname, s1_fname = get_student_name_display(st.session_state.student1)
                                             student1_display = f"{s1_lname} {s1_fname}".strip()
                                             student2_display = ""
-                                            if st.session_state.get('student2'):
-                                                s2_lname, s2_fname = get_student_name_display(st.session_state.student2)
-                                                student2_display = f"{s2_lname} {s2_fname}".strip()
+                                            # جلب الطالب الثاني من عمود T في المذكرة
+                                            reg2_dep = normalize_text(memo_info.get("رقم تسجيل الطالب 2", ""))
+                                            if not reg2_dep or reg2_dep in ["", "nan"]:
+                                                # محاولة من العمود T مباشرة
+                                                memo_list_dep = memo_info.tolist() if hasattr(memo_info, 'tolist') else list(memo_info.values())
+                                                reg2_dep = normalize_text(memo_list_dep[19]) if len(memo_list_dep) > 19 else ""
+                                            if reg2_dep and reg2_dep not in ["", "nan"]:
+                                                df_st_dep = load_students()
+                                                df_st_dep['رقم التسجيل_norm'] = df_st_dep['رقم التسجيل'].astype(str).apply(normalize_text)
+                                                s2_row_dep = df_st_dep[df_st_dep["رقم التسجيل_norm"] == reg2_dep]
+                                                if not s2_row_dep.empty:
+                                                    s2_lname, s2_fname = get_student_name_display(s2_row_dep.iloc[0].to_dict())
+                                                    student2_display = f"{s2_lname} {s2_fname}".strip()
                                             prof_name_dep = str(memo_info.get('الأستاذ','')).strip()
                                             email_ok, email_msg = send_deposit_email_to_professor(
                                                 prof_name_dep, note_num, memo_info['عنوان المذكرة'],
@@ -1991,12 +2001,13 @@ elif st.session_state.user_type == "professor":
                             df_students_fresh = load_students()
                             df_students_fresh['رقم التسجيل_norm'] = df_students_fresh['رقم التسجيل'].astype(str).apply(normalize_text)
                             s1_data_ap = None; s2_data_ap = None
-                            reg1 = normalize_text(current_memo.get("رقم تسجيل الطالب 1", current_memo.get("S","")))
-                            reg2 = normalize_text(current_memo.get("رقم تسجيل الطالب 2", current_memo.get("T","")))
-                            if reg1:
+                            memo_vals = current_memo.tolist() if hasattr(current_memo, 'tolist') else list(current_memo.values())
+                            reg1 = normalize_text(current_memo.get("رقم تسجيل الطالب 1", memo_vals[18] if len(memo_vals) > 18 else ""))
+                            reg2 = normalize_text(current_memo.get("رقم تسجيل الطالب 2", memo_vals[19] if len(memo_vals) > 19 else ""))
+                            if reg1 and reg1 not in ["", "nan"]:
                                 r = df_students_fresh[df_students_fresh["رقم التسجيل_norm"] == reg1]
                                 if not r.empty: s1_data_ap = r.iloc[0].to_dict()
-                            if reg2:
+                            if reg2 and reg2 not in ["", "nan"]:
                                 r = df_students_fresh[df_students_fresh["رقم التسجيل_norm"] == reg2]
                                 if not r.empty: s2_data_ap = r.iloc[0].to_dict()
                             send_approval_email_to_students(
@@ -2459,12 +2470,13 @@ elif st.session_state.user_type == "admin":
                                     df_students_def = load_students()
                                     df_students_def['رقم التسجيل_norm'] = df_students_def['رقم التسجيل'].astype(str).apply(normalize_text)
                                     s1_def = None; s2_def = None
-                                    reg1_def = normalize_text(sel_row.get("رقم تسجيل الطالب 1", sel_row.get("S","")))
-                                    reg2_def = normalize_text(sel_row.get("رقم تسجيل الطالب 2", sel_row.get("T","")))
-                                    if reg1_def:
+                                    sel_vals = sel_row.tolist() if hasattr(sel_row, 'tolist') else list(sel_row.values())
+                                    reg1_def = normalize_text(sel_row.get("رقم تسجيل الطالب 1", sel_vals[18] if len(sel_vals) > 18 else ""))
+                                    reg2_def = normalize_text(sel_row.get("رقم تسجيل الطالب 2", sel_vals[19] if len(sel_vals) > 19 else ""))
+                                    if reg1_def and reg1_def not in ["", "nan"]:
                                         r = df_students_def[df_students_def["رقم التسجيل_norm"] == reg1_def]
                                         if not r.empty: s1_def = r.iloc[0].to_dict()
-                                    if reg2_def:
+                                    if reg2_def and reg2_def not in ["", "nan"]:
                                         r = df_students_def[df_students_def["رقم التسجيل_norm"] == reg2_def]
                                         if not r.empty: s2_def = r.iloc[0].to_dict()
                                     email_ok, email_msg = send_defense_schedule_email(
