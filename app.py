@@ -133,10 +133,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- Google Sheets ----------------
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+SCOPES_SHEETS = ['https://www.googleapis.com/auth/spreadsheets']
+SCOPES_DRIVE  = ['https://www.googleapis.com/auth/drive']
+
 try:
     info = st.secrets["service_account"]
-    credentials = Credentials.from_service_account_info(info, scopes=SCOPES)
+    credentials = Credentials.from_service_account_info(info, scopes=SCOPES_SHEETS)
     sheets_service = build('sheets', 'v4', credentials=credentials)
 except Exception as e:
     st.error("⚠️ خطأ في الاتصال بـ Google Sheets")
@@ -146,10 +148,7 @@ except Exception as e:
 DRIVE_UPLOAD_FOLDER_ID = "1fvckcOGegVD4Ofs-UnVZbVCbYBQlToWs"
 try:
     drive_info = st.secrets["drive_service_account"]
-    drive_credentials = Credentials.from_service_account_info(
-        drive_info,
-        scopes=['https://www.googleapis.com/auth/drive']
-    )
+    drive_credentials = Credentials.from_service_account_info(drive_info, scopes=SCOPES_DRIVE)
     drive_service = build('drive', 'v3', credentials=drive_credentials)
 except Exception as e:
     drive_service = None
