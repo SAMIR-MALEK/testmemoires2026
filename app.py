@@ -316,7 +316,9 @@ def load_student2_for_memo(memo_row, current_student_reg, df_students):
     df_students['رقم التسجيل_norm'] = df_students['رقم التسجيل'].astype(str).apply(normalize_text)
     s2_data = df_students[df_students["رقم التسجيل_norm"] == other_reg]
     if not s2_data.empty:
-        return s2_data.iloc[0].to_dict()
+        s2_dict = s2_data.iloc[0].to_dict()
+        logger.info(f"DEBUG s2 اللقب='{s2_dict.get('اللقب','MISSING')}' الإسم='{s2_dict.get('الإسم','MISSING')}'")
+        return s2_dict
     return None
 
 def get_email_smart(row):
