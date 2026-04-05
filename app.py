@@ -796,44 +796,74 @@ def send_deposit_email_to_professor(prof_name, memo_number, memo_title, student1
             return False, "البريد الإلكتروني للأستاذ غير متوفر"
 
         students_html = f"<p>👤 <strong>الطالب الأول:</strong> {student1_name}</p>"
-        if student2_name and student2_name.strip():
+        if student2_name and student2_name.strip() and student2_name != student1_name:
             students_html += f"<p>👤 <strong>الطالب الثاني:</strong> {student2_name}</p>"
 
-        email_body = f"""<html dir="rtl"><head>{_email_style()}</head>
-<body><div class="container">
-<div class="header"><h2>📥 إيداع مذكرة — بانتظار موافقتكم</h2></div>
-<p>تحية طيبة، الأستاذ(ة) الفاضل(ة) <strong>{prof_name}</strong>،</p>
-<p>نحيطكم علماً بأن الطالب(ة) أودع/أودعا نسخة المذكرة النهائية عبر المنصة، وهي بانتظار مراجعتكم والموافقة عليها.</p>
-<div class="info-box">
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+
+        email_body = f"""<html dir="rtl">
+<head>
+<meta charset="UTF-8">
+{_email_style()}
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>📥 إيداع مذكرة — بانتظار موافقتكم</h2>
+    <p style="color:rgba(255,255,255,0.85); margin:5px 0 0 0; font-size:0.9rem;">جامعة محمد البشير الإبراهيمي — كلية الحقوق والعلوم السياسية</p>
+  </div>
+
+  <p>تحية طيبة، الأستاذ(ة) الفاضل(ة) <strong>{prof_name}</strong>،</p>
+  <p>نحيطكم علماً بأن الطالب(ة) أودع/أودعا نسخة المذكرة النهائية عبر المنصة، وهي بانتظار مراجعتكم والموافقة عليها.</p>
+
+  <div class="info-box">
     <p>📄 <strong>رقم المذكرة:</strong> {memo_number}</p>
     <p>📑 <strong>عنوان المذكرة:</strong> {memo_title}</p>
     {students_html}
-    <p>🕒 <strong>تاريخ الإيداع:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
-</div>
-<div class="action-box">
-    <p>⚠️ <strong>مطلوب منكم:</strong> الدخول إلى المنصة، مراجعة المذكرة، والموافقة عليها لتصبح <strong style="color:#10B981;">قابلة للمناقشة</strong>.</p>
-    <p>⚠️ <strong>تنبيه:</strong> يمكنكم الاطلاع على الملف حصراً عبر المنصة من خلال فضاء الأساتذة.</p>
-    <p>هذه النسخة هي التي ستُناقَش رسمياً ولا يمكن تغييرها إلا بموافقة الإدارة.</p>
-</div>
-<div style="text-align:center;">
-    <a href="https://memoires2026.streamlit.app" class="platform-btn">🔗 الدخول إلى المنصة</a>
-</div>
-<div class="footer">
-    <p>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
-    <p>مسؤول الميدان: البروفيسور لخضر رفاف</p>
-</div>
-</div></body></html>"""
+    <p>🕒 <strong>تاريخ الإيداع:</strong> {timestamp}</p>
+  </div>
 
-        msg = MIMEMultipart('alternative')
-        msg['From'] = EMAIL_SENDER
-        msg['To'] = prof_email
-        msg['Cc'] = ADMIN_EMAIL
-        msg['Subject'] = f"📥 إيداع مذكرة للمراجعة — رقم {memo_number}"
-        msg.attach(MIMEText(email_body, 'html', 'utf-8'))
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-            server.send_message(msg)
+  <div class="action-box">
+    <p>⚠️ <strong>مطلوب منكم:</strong> الدخول إلى المنصة، مراجعة المذكرة المودعة، والموافقة عليها لتصبح <strong style="color:#10B981;">قابلة للمناقشة</strong>.</p>
+    <p>🔒 يمكنكم الاطلاع على الملف حصراً من خلال <strong>فضاء الأساتذة في المنصة</strong>.</p>
+    <p>📌 هذه النسخة هي التي ستُناقَش رسمياً ولا يمكن تغييرها إلا بموافقة الإدارة.</p>
+  </div>
+
+  <div style="text-align:center; margin:25px 0;">
+    <a href="https://memoires2026.streamlit.app" style="
+      display:inline-block;
+      background:#2F6F7E;
+      color:#ffffff !important;
+      padding:15px 35px;
+      border-radius:10px;
+      text-decoration:none;
+      font-size:1.1rem;
+      font-weight:bold;
+      letter-spacing:0.3px;
+      box-shadow:0 4px 12px rgba(47,111,126,0.4);">
+      🔗 الدخول إلى المنصة للمراجعة والموافقة
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>مسؤول الميدان: البروفيسور لخضر رفاف</p>
+    <p>جامعة محمد البشير الإبراهيمي - كلية الحقوق والعلوم السياسية</p>
+  </div>
+</div>
+</body></html>"""
+
+        # إرسال منفصل للأستاذ وللإدارة لتجنب تقسيم Gmail
+        for recipient in [prof_email, ADMIN_EMAIL]:
+            msg = MIMEMultipart('alternative')
+            msg['From'] = EMAIL_SENDER
+            msg['To'] = recipient
+            msg['Subject'] = f"📥 إيداع مذكرة للمراجعة — رقم {memo_number}"
+            msg.attach(MIMEText(email_body, 'html', 'utf-8'))
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+                server.send_message(msg)
+
         logger.info(f"✅ تم إرسال إيميل الإيداع للأستاذ {prof_name} + الإدارة")
         return True, "✅ تم إرسال إشعار للأستاذ المشرف والإدارة"
     except Exception as e:
@@ -1846,19 +1876,12 @@ elif st.session_state.user_type == "student":
                                             s1_lname, s1_fname = get_student_name_display(st.session_state.student1)
                                             student1_display = f"{s1_lname} {s1_fname}".strip()
                                             student2_display = ""
-                                            # جلب الطالب الثاني من عمود T في المذكرة
-                                            reg2_dep = normalize_text(memo_info.get("رقم تسجيل الطالب 2", ""))
-                                            if not reg2_dep or reg2_dep in ["", "nan"]:
-                                                # محاولة من العمود T مباشرة
-                                                memo_list_dep = memo_info.tolist() if hasattr(memo_info, 'tolist') else list(memo_info.values())
-                                                reg2_dep = normalize_text(memo_list_dep[19]) if len(memo_list_dep) > 19 else ""
-                                            if reg2_dep and reg2_dep not in ["", "nan"]:
-                                                df_st_dep = load_students()
-                                                df_st_dep['رقم التسجيل_norm'] = df_st_dep['رقم التسجيل'].astype(str).apply(normalize_text)
-                                                s2_row_dep = df_st_dep[df_st_dep["رقم التسجيل_norm"] == reg2_dep]
-                                                if not s2_row_dep.empty:
-                                                    s2_lname, s2_fname = get_student_name_display(s2_row_dep.iloc[0].to_dict())
-                                                    student2_display = f"{s2_lname} {s2_fname}".strip()
+                                            # جلب الطالب الثاني بنفس منطق load_student2_for_memo
+                                            current_reg_dep = normalize_text(st.session_state.student1.get('رقم التسجيل', ''))
+                                            s2_obj_dep = load_student2_for_memo(memo_info, current_reg_dep, load_students())
+                                            if s2_obj_dep:
+                                                s2_lname, s2_fname = get_student_name_display(s2_obj_dep)
+                                                student2_display = f"{s2_lname} {s2_fname}".strip()
                                             prof_name_dep = str(memo_info.get('الأستاذ','')).strip()
                                             email_ok, email_msg = send_deposit_email_to_professor(
                                                 prof_name_dep, note_num, memo_info['عنوان المذكرة'],
@@ -2095,8 +2118,13 @@ elif st.session_state.user_type == "professor":
                 agree_check = st.checkbox("✅ أوافق على هذا التصريح وأقرّ بصحته", key=f"agree_{memo_id}")
 
                 # الخطوة 3: التوقيع الإلكتروني
-                st.markdown("**الخطوة 3 — التوقيع الإلكتروني (اكتب اسمك الكامل):**")
-                signature = st.text_input("التوقيع", placeholder="اكتب اسمك الكامل كما هو رسمياً", key=f"sig_{memo_id}")
+                st.markdown("**الخطوة 3 — التوقيع الإلكتروني (اكتب اسمك الكامل بالضبط):**")
+                st.markdown(f"""
+                <div style="background:rgba(47,111,126,0.08); border:1px dashed #2F6F7E; border-radius:8px; padding:10px 15px; margin-bottom:8px;">
+                    <p style="color:#94A3B8; font-size:0.85rem; margin:0;">📌 الاسم المسجل في المنصة: <strong style="color:#FFD700;">{prof_name}</strong></p>
+                </div>
+                """, unsafe_allow_html=True)
+                signature = st.text_input("التوقيع", placeholder=f"اكتب: {prof_name}", key=f"sig_{memo_id}")
 
                 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -2105,17 +2133,13 @@ elif st.session_state.user_type == "professor":
                     if st.button("📋 متابعة للتأكيد النهائي", type="primary", use_container_width=True, key=f"pre_approve_{memo_id}"):
                         errors = []
                         if normalize_text(confirm_memo_num) != normalize_text(memo_id):
-                            errors.append("❌ رقم المذكرة غير مطابق")
+                            errors.append("❌ رقم المذكرة غير مطابق — تحقق من الرقم وأعد الكتابة")
                         if not agree_check:
-                            errors.append("❌ يجب الموافقة على التصريح")
+                            errors.append("❌ يجب الموافقة على التصريح أولاً")
                         if not signature.strip():
-                            errors.append("❌ التوقيع فارغ")
-                        elif signature.strip() not in prof_name:
-                            # تحقق مرن — على الأقل كلمة من الاسم
-                            prof_parts = prof_name.strip().split()
-                            sig_parts = signature.strip().split()
-                            if not any(p in prof_name for p in sig_parts):
-                                errors.append("❌ التوقيع لا يطابق اسم الأستاذ المسجل")
+                            errors.append("❌ حقل التوقيع فارغ")
+                        elif signature.strip() != prof_name.strip():
+                            errors.append(f"❌ التوقيع غير مطابق — يجب كتابة اسمك بالضبط: «{prof_name}»")
                         if errors:
                             for e in errors: st.error(e)
                         else:
