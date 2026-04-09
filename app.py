@@ -3004,9 +3004,9 @@ elif st.session_state.user_type == "admin":
                             defense_date = st.date_input("📆 تاريخ المناقشة", value=default_date, key=f"def_date_{selected_memo_def}")
                         with cb:
                             try:
-                                default_time = datetime.strptime(curr_time, "%H:%M").time() if curr_time not in ["","nan"] else time(9, 0)
+                                default_time = datetime.strptime(curr_time, "%H:%M").time() if curr_time not in ["","nan"] else datetime.strptime("09:00", "%H:%M").time()
                             except:
-                                default_time = time(9, 0)
+                                default_time = datetime.strptime("09:00", "%H:%M").time()
                             defense_time = st.time_input("🕐 التوقيت", value=default_time, key=f"def_time_{selected_memo_def}")
                         with cc:
                             defense_room = st.text_input("🏛️ القاعة", value=curr_room if curr_room not in ["","nan"] else "", key=f"def_room_{selected_memo_def}", placeholder="مثال: قاعة A01")
