@@ -2775,48 +2775,67 @@ elif st.session_state.user_type == "admin":
                 if ready_w.empty:
                     st.warning("⏳ لا توجد مذكرات قابلة للمناقشة بعد.")
                 else:
-                    st.info(f"📌 عدد المذكرات الجاهزة: **{len(ready_w)}**")
-                    jury_errors = []
-                    jury_data = {}
+                    st.info(f"📌 عدد المذكرات الجاهزة: **{len(ready_w)}** — عدّل مباشرة في الجدول ثم اضغط حفظ.")
 
-                    for _, row_w in ready_w.iterrows():
-                        mnum = str(row_w.get("رقم المذكرة","")).strip()
-                        supervisor_w = str(row_w.get("الأستاذ","")).strip()
-                        curr_p = str(row_w.get("AC","")).strip() if "AC" in row_w.index else ""
-                        curr_e1 = str(row_w.get("AD","")).strip() if "AD" in row_w.index else ""
-                        curr_e2 = str(row_w.get("AE","")).strip() if "AE" in row_w.index else ""
-                        if curr_p in ["nan",""]: curr_p = all_profs_w[0] if all_profs_w else ""
-                        if curr_e1 in ["nan",""]: curr_e1 = all_profs_w[0] if all_profs_w else ""
-                        if curr_e2 in ["nan",""]: curr_e2 = all_profs_w[0] if all_profs_w else ""
+                    # بناء DataFrame للتعديل
+                    jury_df = pd.DataFrame({
+                        "رقم المذكرة": ready_w["رقم المذكرة"].astype(str).tolist(),
+                        "عنوان المذكرة": ready_w["عنوان المذكرة"].astype(str).tolist(),
+                        "المشرف": ready_w["الأستاذ"].astype(str).tolist(),
+                        "الرئيس": [str(v).strip() if str(v).strip() not in ["","nan"] else (all_profs_w[0] if all_profs_w else "") for v in (ready_w["AC"].tolist() if "AC" in ready_w.columns else [""] * len(ready_w))],
+                        "المناقش 1": [str(v).strip() if str(v).strip() not in ["","nan"] else (all_profs_w[0] if all_profs_w else "") for v in (ready_w["AD"].tolist() if "AD" in ready_w.columns else [""] * len(ready_w))],
+                        "المناقش 2": [str(v).strip() if str(v).strip() not in ["","nan"] else (all_profs_w[0] if all_profs_w else "") for v in (ready_w["AE"].tolist() if "AE" in ready_w.columns else [""] * len(ready_w))],
+                    })
 
-                        with st.expander(f"📄 {mnum} — {row_w.get('عنوان المذكرة','')[:50]}...", expanded=False):
-                            st.markdown(f"👨‍🏫 **المشرف:** {supervisor_w}")
-                            cw1, cw2, cw3 = st.columns(3)
-                            with cw1:
-                                p_sel = st.selectbox("🏛️ الرئيس", all_profs_w, index=all_profs_w.index(curr_p) if curr_p in all_profs_w else 0, key=f"wp_{mnum}")
-                            with cw2:
-                                e1_sel = st.selectbox("📋 المناقش 1", all_profs_w, index=all_profs_w.index(curr_e1) if curr_e1 in all_profs_w else 0, key=f"we1_{mnum}")
-                            with cw3:
-                                e2_sel = st.selectbox("📋 المناقش 2", all_profs_w, index=all_profs_w.index(curr_e2) if curr_e2 in all_profs_w else 0, key=f"we2_{mnum}")
+                    edited_df = st.data_editor(
+                        jury_df,
+                        column_config={
+                            "رقم المذكرة": st.column_config.TextColumn("رقم المذكرة", disabled=True, width="small"),
+                            "عنوان المذكرة": st.column_config.TextColumn("عنوان المذكرة", disabled=True, width="large"),
+                            "المشرف": st.column_config.TextColumn("المشرف", disabled=True, width="medium"),
+                            "الرئيس": st.column_config.SelectboxColumn("🏛️ الرئيس", options=all_profs_w, width="medium"),
+                            "المناقش 1": st.column_config.SelectboxColumn("📋 المناقش 1", options=all_profs_w, width="medium"),
+                            "المناقش 2": st.column_config.SelectboxColumn("📋 المناقش 2", options=all_profs_w, width="medium"),
+                        },
+                        hide_index=True,
+                        use_container_width=True,
+                        height=min(400, 50 + len(jury_df) * 35),
+                        key="jury_editor"
+                    )
 
-                            members_w = [supervisor_w, p_sel, e1_sel, e2_sel]
-                            if len(set(members_w)) < 4:
-                                st.error("⚠️ أستاذ يشغل أكثر من صفة!")
-                                jury_errors.append(mnum)
-                            else:
-                                jury_data[mnum] = (p_sel, e1_sel, e2_sel)
+                    # تحقق من التعارضات
+                    conflicts = []
+                    for _, row_e in edited_df.iterrows():
+                        members_e = [str(row_e["المشرف"]).strip(), str(row_e["الرئيس"]).strip(), str(row_e["المناقش 1"]).strip(), str(row_e["المناقش 2"]).strip()]
+                        members_e = [m for m in members_e if m and m != "nan"]
+                        if len(set(members_e)) < len(members_e):
+                            conflicts.append(str(row_e["رقم المذكرة"]))
+
+                    if conflicts:
+                        st.error(f"⚠️ تعارض في المذكرات التالية (أستاذ يشغل أكثر من صفة): {', '.join(conflicts)}")
 
                     st.markdown("<br>", unsafe_allow_html=True)
                     if st.button("💾 حفظ جميع اللجان والمتابعة ←", type="primary", use_container_width=True, key="wizard_save_jury"):
-                        if jury_errors:
-                            st.error(f"❌ يوجد تعارض في اللجان: {', '.join(jury_errors)}")
+                        if conflicts:
+                            st.error(f"❌ يجب تصحيح التعارضات أولاً: {', '.join(conflicts)}")
                         else:
                             saved_ok = True
-                            for mnum, (p,e1,e2) in jury_data.items():
-                                ok, msg = save_jury(mnum, p, e1, e2)
-                                if not ok: st.error(f"خطأ في {mnum}: {msg}"); saved_ok = False; break
+                            progress_bar = st.progress(0)
+                            total = len(edited_df)
+                            for i, (_, row_e) in enumerate(edited_df.iterrows()):
+                                ok, msg = save_jury(
+                                    str(row_e["رقم المذكرة"]),
+                                    str(row_e["الرئيس"]),
+                                    str(row_e["المناقش 1"]),
+                                    str(row_e["المناقش 2"])
+                                )
+                                progress_bar.progress((i+1)/total)
+                                if not ok:
+                                    st.error(f"خطأ في {row_e['رقم المذكرة']}: {msg}")
+                                    saved_ok = False
+                                    break
                             if saved_ok:
-                                st.success(f"✅ تم حفظ {len(jury_data)} لجنة بنجاح")
+                                st.success(f"✅ تم حفظ {total} لجنة بنجاح")
                                 st.session_state['wizard_step'] = 2
                                 clear_cache_and_reload()
                                 time.sleep(1)
