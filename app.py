@@ -1150,15 +1150,14 @@ def load_rooms():
             spreadsheetId=MEMOS_SHEET_ID, range="القاعات!A1:C100"
         ).execute()
         values = result.get('values', [])
-        logger.info(f"DEBUG load_rooms values: {values[:5]}")
-        if not values: return pd.DataFrame(columns=["اسم القاعة","الطابق","ملاحظات"])
+        if not values: return pd.DataFrame(columns=["إسم القاعة","الطابق","ملاحظات"])
         headers = values[0]
         rows = values[1:]
         padded = [r + ['']*(len(headers)-len(r)) for r in rows]
         return pd.DataFrame(padded, columns=headers)
     except Exception as e:
         logger.error(f"خطأ في تحميل القاعات: {e}")
-        return pd.DataFrame(columns=["اسم القاعة","الطابق","ملاحظات"])
+        return pd.DataFrame(columns=["إسم القاعة","الطابق","ملاحظات"])
 
 def save_jury(memo_number, president, examiner1, examiner2):
     """حفظ أعضاء اللجنة في أعمدة AC AD AE"""
@@ -3084,7 +3083,7 @@ elif st.session_state.user_type == "admin":
             st.subheader("🎓 اللجان والبرنامج")
             df_m9 = load_memos()
             df_rooms = load_rooms()
-            rooms_list = df_rooms["اسم القاعة"].dropna().tolist() if "اسم القاعة" in df_rooms.columns else []
+            rooms_list = df_rooms["إسم القاعة"].dropna().tolist() if "إسم القاعة" in df_rooms.columns else []
 
             # قائمة الأساتذة للاختيار منها
             all_profs = sorted(df_prof_memos["الأستاذ"].dropna().unique().tolist())
