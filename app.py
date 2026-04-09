@@ -2731,10 +2731,267 @@ elif st.session_state.user_type == "admin":
                 if not v: st.error(r)
                 else: st.session_state.admin_user = r; st.session_state.logged_in = True; st.query_params['ut'] = 'admin'; st.query_params['un'] = encode_str(st.session_state.admin_user); st.rerun()
     else:
-        col1, col2 = st.columns([4, 1])
-        with col2:
-            if st.button("خروج"): logout()
-        st.header("📊 لوحة تحكم الإدارة")
+        # وضع Wizard برنامج المناقشات
+        if st.session_state.get('admin_mode') == 'defense_wizard':
+            # ======================================================
+            # WIZARD — برنامج المناقشات
+            # ======================================================
+            col_back_w, col_title_w = st.columns([1, 5])
+            with col_back_w:
+                if st.button("⬅️ رجوع للوحة التحكم"):
+                    st.session_state['admin_mode'] = None
+                    st.session_state.pop('wizard_step', None)
+                    st.session_state.pop('generated_schedule', None)
+                    st.rerun()
+            with col_title_w:
+                st.markdown("<h2 style='color:#FFD700;'>🎓 برنامج المناقشات</h2>", unsafe_allow_html=True)
+
+            # شريط التقدم
+            step = st.session_state.get('wizard_step', 1)
+            steps_labels = ["1️⃣ اللجان", "2️⃣ التوليد", "3️⃣ المراجعة", "4️⃣ النشر"]
+            cols_steps = st.columns(4)
+            for i, (col_s, label) in enumerate(zip(cols_steps, steps_labels)):
+                with col_s:
+                    active = i+1 == step
+                    done = i+1 < step
+                    color = "#FFD700" if active else ("#10B981" if done else "#475569")
+                    st.markdown(f"""
+                    <div style="text-align:center; padding:10px; border-radius:10px;
+                         background:{'rgba(255,215,0,0.15)' if active else ('rgba(16,185,129,0.1)' if done else 'rgba(71,85,105,0.1)')};
+                         border:2px solid {color};">
+                        <span style="color:{color}; font-weight:bold; font-size:0.95rem;">{label}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            df_mw = load_memos()
+            col_deposit_w = "حالة الإيداع"
+            ready_w = df_mw[df_mw[col_deposit_w].astype(str).str.strip() == "قابلة للمناقشة"] if col_deposit_w in df_mw.columns else pd.DataFrame()
+            all_profs_w = sorted(df_prof_memos["الأستاذ"].dropna().unique().tolist())
+
+            # ===================== STEP 1 — اللجان =====================
+            if step == 1:
+                st.markdown("### 👥 تحديد لجان المناقشة")
+                if ready_w.empty:
+                    st.warning("⏳ لا توجد مذكرات قابلة للمناقشة بعد.")
+                else:
+                    st.info(f"📌 عدد المذكرات الجاهزة: **{len(ready_w)}**")
+                    jury_errors = []
+                    jury_data = {}
+
+                    for _, row_w in ready_w.iterrows():
+                        mnum = str(row_w.get("رقم المذكرة","")).strip()
+                        supervisor_w = str(row_w.get("الأستاذ","")).strip()
+                        curr_p = str(row_w.get("AC","")).strip() if "AC" in row_w.index else ""
+                        curr_e1 = str(row_w.get("AD","")).strip() if "AD" in row_w.index else ""
+                        curr_e2 = str(row_w.get("AE","")).strip() if "AE" in row_w.index else ""
+                        if curr_p in ["nan",""]: curr_p = all_profs_w[0] if all_profs_w else ""
+                        if curr_e1 in ["nan",""]: curr_e1 = all_profs_w[0] if all_profs_w else ""
+                        if curr_e2 in ["nan",""]: curr_e2 = all_profs_w[0] if all_profs_w else ""
+
+                        with st.expander(f"📄 {mnum} — {row_w.get('عنوان المذكرة','')[:50]}...", expanded=False):
+                            st.markdown(f"👨‍🏫 **المشرف:** {supervisor_w}")
+                            cw1, cw2, cw3 = st.columns(3)
+                            with cw1:
+                                p_sel = st.selectbox("🏛️ الرئيس", all_profs_w, index=all_profs_w.index(curr_p) if curr_p in all_profs_w else 0, key=f"wp_{mnum}")
+                            with cw2:
+                                e1_sel = st.selectbox("📋 المناقش 1", all_profs_w, index=all_profs_w.index(curr_e1) if curr_e1 in all_profs_w else 0, key=f"we1_{mnum}")
+                            with cw3:
+                                e2_sel = st.selectbox("📋 المناقش 2", all_profs_w, index=all_profs_w.index(curr_e2) if curr_e2 in all_profs_w else 0, key=f"we2_{mnum}")
+
+                            members_w = [supervisor_w, p_sel, e1_sel, e2_sel]
+                            if len(set(members_w)) < 4:
+                                st.error("⚠️ أستاذ يشغل أكثر من صفة!")
+                                jury_errors.append(mnum)
+                            else:
+                                jury_data[mnum] = (p_sel, e1_sel, e2_sel)
+
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("💾 حفظ جميع اللجان والمتابعة ←", type="primary", use_container_width=True, key="wizard_save_jury"):
+                        if jury_errors:
+                            st.error(f"❌ يوجد تعارض في اللجان: {', '.join(jury_errors)}")
+                        else:
+                            saved_ok = True
+                            for mnum, (p,e1,e2) in jury_data.items():
+                                ok, msg = save_jury(mnum, p, e1, e2)
+                                if not ok: st.error(f"خطأ في {mnum}: {msg}"); saved_ok = False; break
+                            if saved_ok:
+                                st.success(f"✅ تم حفظ {len(jury_data)} لجنة بنجاح")
+                                st.session_state['wizard_step'] = 2
+                                clear_cache_and_reload()
+                                time.sleep(1)
+                                st.rerun()
+
+            # ===================== STEP 2 — التوليد =====================
+            elif step == 2:
+                st.markdown("### ⚡ توليد البرنامج التلقائي")
+                df_rooms_w = load_rooms()
+                rooms_list_w = df_rooms_w["إسم القاعة"].dropna().tolist() if "إسم القاعة" in df_rooms_w.columns else []
+
+                if not rooms_list_w:
+                    st.error("❌ لا توجد قاعات في شيت 'القاعات'.")
+                else:
+                    st.info(f"📌 القاعات المتاحة: **{', '.join(rooms_list_w)}**")
+                    csd1, csd2 = st.columns(2)
+                    with csd1:
+                        w_start = st.date_input("📅 تاريخ البداية", value=date(2026,5,24), key="w_start")
+                    with csd2:
+                        w_end = st.date_input("📅 تاريخ النهاية", value=date(2026,6,4), key="w_end")
+
+                    col_g1, col_g2 = st.columns(2)
+                    with col_g1:
+                        gen_btn = st.button("⚡ توليد البرنامج", type="primary", use_container_width=True, key="w_gen")
+                    with col_g2:
+                        regen_btn = st.button("🔄 اقتراح جديد", use_container_width=True, key="w_regen")
+
+                    if gen_btn or regen_btn:
+                        if regen_btn: clear_schedule_from_sheets()
+                        with st.spinner("⏳ جاري التوليد..."):
+                            ok, msg, df_sched = generate_schedule(rooms_list_w, str(w_start), str(w_end))
+                            if ok:
+                                st.session_state['generated_schedule'] = df_sched
+                                st.session_state['schedule_msg'] = msg
+                                st.rerun()
+                            else:
+                                st.error(msg)
+
+                    if 'generated_schedule' in st.session_state and st.session_state['generated_schedule'] is not None:
+                        df_show_w = st.session_state['generated_schedule']
+                        msg_w = st.session_state.get('schedule_msg','')
+                        for line in msg_w.split('\n'):
+                            if "✅" in line: st.success(line)
+                            elif "⚠️" in line: st.warning(line)
+
+                        st.dataframe(df_show_w, use_container_width=True, height=350)
+
+                        col_back2, col_next2 = st.columns(2)
+                        with col_back2:
+                            if st.button("⬅️ العودة للجان", use_container_width=True, key="w_back2"):
+                                st.session_state['wizard_step'] = 1; st.rerun()
+                        with col_next2:
+                            if st.button("✅ تأكيد البرنامج والمتابعة ←", type="primary", use_container_width=True, key="w_confirm_sched"):
+                                ok, msg = save_schedule_to_sheets(df_show_w)
+                                if ok:
+                                    st.success(msg)
+                                    st.session_state['wizard_step'] = 3
+                                    clear_cache_and_reload()
+                                    time.sleep(1)
+                                    st.rerun()
+                                else:
+                                    st.error(msg)
+                    else:
+                        col_back2b, _ = st.columns(2)
+                        with col_back2b:
+                            if st.button("⬅️ العودة للجان", use_container_width=True, key="w_back2b"):
+                                st.session_state['wizard_step'] = 1; st.rerun()
+
+            # ===================== STEP 3 — المراجعة =====================
+            elif step == 3:
+                st.markdown("### 📋 مراجعة البرنامج")
+                df_mw3 = load_memos()
+                col_deposit_w3 = "حالة الإيداع"
+                scheduled = df_mw3[
+                    (df_mw3.get(col_deposit_w3, pd.Series(dtype=str)).astype(str).str.strip() == "قابلة للمناقشة") &
+                    (df_mw3.get("تاريخ المناقشة", pd.Series(dtype=str)).astype(str).str.strip().isin(["","nan"]) == False)
+                ] if col_deposit_w3 in df_mw3.columns and "تاريخ المناقشة" in df_mw3.columns else pd.DataFrame()
+
+                if scheduled.empty:
+                    st.warning("لا يوجد برنامج محفوظ بعد.")
+                else:
+                    # عرض يومي
+                    days_in_sched = sorted(scheduled["تاريخ المناقشة"].astype(str).unique().tolist())
+                    today_str = str(date.today())
+                    view_mode = st.radio("عرض:", ["📅 يوم بيوم", "📋 الكل"], horizontal=True, key="w_view_mode")
+
+                    if view_mode == "📅 يوم بيوم":
+                        sel_day = st.selectbox("اختر اليوم:", days_in_sched, key="w_day_sel",
+                                               index=days_in_sched.index(today_str) if today_str in days_in_sched else 0)
+                        day_data = scheduled[scheduled["تاريخ المناقشة"].astype(str) == sel_day].sort_values("توقيت المناقشة")
+                        for _, dr in day_data.iterrows():
+                            st.markdown(f"""
+                            <div class="card" style="border-right:5px solid #2F6F7E; margin-bottom:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                                    <span style="color:#FFD700; font-size:1.3rem; font-weight:900;">🕐 {dr.get('توقيت المناقشة','')}</span>
+                                    <span style="background:#2F6F7E; color:white; padding:4px 12px; border-radius:20px; font-size:0.9rem;">🏛️ {dr.get('القاعة','')}</span>
+                                </div>
+                                <p style="margin:8px 0 4px 0;"><b>📄 {dr.get('رقم المذكرة','')}</b> — {str(dr.get('عنوان المذكرة',''))[:60]}</p>
+                                <p style="color:#94A3B8; font-size:0.9rem;">👤 {dr.get('الطالب الأول','')} {'| ' + str(dr.get('الطالب الثاني','')) if str(dr.get('الطالب الثاني','')).strip() not in ['','nan','--'] else ''}</p>
+                                <p style="color:#64748B; font-size:0.85rem;">👨‍🏫 {dr.get('الأستاذ','')} | 🏛️ {dr.get('AC','')} | {dr.get('AD','')} | {dr.get('AE','')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        disp_cols3 = [c for c in ["رقم المذكرة","عنوان المذكرة","تاريخ المناقشة","توقيت المناقشة","القاعة","الأستاذ","AC","AD","AE","الطالب الأول","الطالب الثاني"] if c in scheduled.columns]
+                        st.dataframe(scheduled[disp_cols3].sort_values(["تاريخ المناقشة","توقيت المناقشة"]), use_container_width=True, height=400)
+
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    col_back3, col_next3 = st.columns(2)
+                    with col_back3:
+                        if st.button("⬅️ العودة للتوليد", use_container_width=True, key="w_back3"):
+                            st.session_state['wizard_step'] = 2; st.rerun()
+                    with col_next3:
+                        if st.button("📢 المتابعة للنشر ←", type="primary", use_container_width=True, key="w_to_publish"):
+                            st.session_state['wizard_step'] = 4; st.rerun()
+
+            # ===================== STEP 4 — النشر =====================
+            elif step == 4:
+                st.markdown("### 📢 نشر البرنامج")
+                df_mw4 = load_memos()
+                col_deposit_w4 = "حالة الإيداع"
+                publishable = df_mw4[
+                    df_mw4.get(col_deposit_w4, pd.Series(dtype=str)).astype(str).str.strip() == "قابلة للمناقشة"
+                ] if col_deposit_w4 in df_mw4.columns else pd.DataFrame()
+
+                published = publishable[publishable.get("AF", pd.Series(dtype=str)).astype(str).str.strip() == "نعم"] if "AF" in publishable.columns else pd.DataFrame()
+                unpublished = publishable[publishable.get("AF", pd.Series(dtype=str)).astype(str).str.strip() != "نعم"] if "AF" in publishable.columns else publishable
+
+                col_pub_s1, col_pub_s2 = st.columns(2)
+                with col_pub_s1:
+                    st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color:#10B981;">{len(published)}</div><div class="kpi-label">منشورة</div></div>', unsafe_allow_html=True)
+                with col_pub_s2:
+                    st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color:#F59E0B;">{len(unpublished)}</div><div class="kpi-label">غير منشورة</div></div>', unsafe_allow_html=True)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.warning("⚠️ بعد النشر يرى الطالب والأستاذ موعد المناقشة وأعضاء اللجنة.")
+
+                if st.button("🚀 نشر جميع المذكرات دفعة واحدة", type="primary", use_container_width=True, key="w_pub_all"):
+                    ok, msg = publish_memos()
+                    if ok:
+                        st.success(msg); st.balloons()
+                        clear_cache_and_reload(); time.sleep(1); st.rerun()
+                    else: st.error(msg)
+
+                st.markdown("---")
+                st.markdown("**أو نشر مذكرة محددة:**")
+                if not unpublished.empty:
+                    pub_opts = unpublished["رقم المذكرة"].astype(str).tolist()
+                    pub_single = st.selectbox("اختر المذكرة:", pub_opts, key="w_pub_single_sel")
+                    if st.button("📤 نشر هذه المذكرة", use_container_width=True, key="w_pub_single_btn"):
+                        ok, msg = publish_memos([pub_single])
+                        if ok: st.success(msg); clear_cache_and_reload(); time.sleep(1); st.rerun()
+                        else: st.error(msg)
+                else:
+                    st.success("✅ جميع المذكرات منشورة!")
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("⬅️ العودة للمراجعة", use_container_width=True, key="w_back4"):
+                    st.session_state['wizard_step'] = 3; st.rerun()
+
+        else:
+            # ======================================================
+            # لوحة التحكم العادية
+            # ======================================================
+            col1, col2 = st.columns([4, 1])
+            with col2:
+                if st.button("خروج"): logout()
+            st.header("📊 لوحة تحكم الإدارة")
+
+            # زر الـ Wizard
+            if st.button("🎓 برنامج المناقشات", use_container_width=False, key="open_wizard"):
+                st.session_state['admin_mode'] = 'defense_wizard'
+                st.session_state['wizard_step'] = 1
+                st.rerun()
+
+            st.markdown("<br>", unsafe_allow_html=True)
         st_s = len(df_students); t_m = len(df_memos); r_m = len(df_memos[df_memos["تم التسجيل"].astype(str).str.strip() == "نعم"])
         a_m = t_m - r_m; t_p = len(df_prof_memos["الأستاذ"].unique())
         memo_col = df_students["رقم المذكرة"].astype(str).str.strip()
@@ -2744,7 +3001,7 @@ elif st.session_state.user_type == "admin":
         st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B981;">{r_m}</div><div class="kpi-label">مذكرات مسجلة</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{a_m}</div><div class="kpi-label">مذكرات متاحة</div></div><div class="kpi-card" style="border-color: #10B981;"><div class="kpi-value" style="color: #10B98E;">{reg_st}</div><div class="kpi-label">طلاب مسجلين</div></div><div class="kpi-card" style="border-color: #F59E0B;"><div class="kpi-value" style="color: #F59E0B;">{unreg_st}</div><div class="kpi-label">طلاب غير مسجلين</div></div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(["المذكرات", "الطلاب", "الأساتذة", "تقارير", "تحديث", "إدارة الطلبات", "📧 إرسال إيميلات", "📅 جدولة المناقشات", "🎓 اللجان والبرنامج"])
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["المذكرات", "الطلاب", "الأساتذة", "تقارير", "تحديث", "إدارة الطلبات", "📧 إرسال إيميلات", "📅 جدولة المناقشات"])
         
         with tab1:
             st.subheader("جدول المذكرات")
@@ -3078,154 +3335,6 @@ elif st.session_state.user_type == "admin":
                 else:
                     show_df = df_memos_fresh8
                 st.dataframe(show_df[available_cols], use_container_width=True, height=400)
-
-        with tab9:
-            st.subheader("🎓 اللجان والبرنامج")
-            df_m9 = load_memos()
-            df_rooms = load_rooms()
-            rooms_list = df_rooms["إسم القاعة"].dropna().tolist() if "إسم القاعة" in df_rooms.columns else []
-
-            # قائمة الأساتذة للاختيار منها
-            all_profs = sorted(df_prof_memos["الأستاذ"].dropna().unique().tolist())
-
-            # ---- القسم 1: إدخال اللجان ----
-            st.markdown("### 👥 القسم 1 — تحديد لجان المناقشة")
-            col_deposit9 = "حالة الإيداع"
-            if col_deposit9 in df_m9.columns:
-                ready_memos = df_m9[df_m9[col_deposit9].astype(str).str.strip() == "قابلة للمناقشة"]
-            else:
-                ready_memos = pd.DataFrame()
-
-            if ready_memos.empty:
-                st.info("⏳ لا توجد مذكرات قابلة للمناقشة بعد.")
-            else:
-                jury_memo_sel = st.selectbox("اختر المذكرة:", ready_memos["رقم المذكرة"].astype(str).tolist(), key="jury_memo_sel")
-                if jury_memo_sel:
-                    sel_jury = ready_memos[ready_memos["رقم المذكرة"].astype(str) == jury_memo_sel].iloc[0]
-                    supervisor_jury = str(sel_jury.get("الأستاذ","")).strip()
-                    curr_president = str(sel_jury.get("AC","")).strip() if "AC" in sel_jury.index else ""
-                    curr_exam1    = str(sel_jury.get("AD","")).strip() if "AD" in sel_jury.index else ""
-                    curr_exam2    = str(sel_jury.get("AE","")).strip() if "AE" in sel_jury.index else ""
-
-                    st.markdown(f"""
-                    <div class="card" style="border-top:3px solid #10B981;">
-                        <p>📄 <b>رقم المذكرة:</b> {jury_memo_sel}</p>
-                        <p>📑 <b>العنوان:</b> {sel_jury.get('عنوان المذكرة','')}</p>
-                        <p>👨‍🏫 <b>المشرف:</b> {supervisor_jury}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    cj1, cj2, cj3 = st.columns(3)
-                    with cj1:
-                        idx_p = all_profs.index(curr_president) if curr_president in all_profs else 0
-                        president_sel = st.selectbox("🏛️ الرئيس", all_profs, index=idx_p, key=f"pres_{jury_memo_sel}")
-                    with cj2:
-                        idx_e1 = all_profs.index(curr_exam1) if curr_exam1 in all_profs else 0
-                        exam1_sel = st.selectbox("📋 المناقش 1", all_profs, index=idx_e1, key=f"ex1_{jury_memo_sel}")
-                    with cj3:
-                        idx_e2 = all_profs.index(curr_exam2) if curr_exam2 in all_profs else 0
-                        exam2_sel = st.selectbox("📋 المناقش 2", all_profs, index=idx_e2, key=f"ex2_{jury_memo_sel}")
-
-                    if st.button("💾 حفظ اللجنة", type="primary", use_container_width=True, key=f"save_jury_{jury_memo_sel}"):
-                        # تحقق: لا يشغل أحد صفتين
-                        members_check = [supervisor_jury, president_sel, exam1_sel, exam2_sel]
-                        if len(set(members_check)) < len([m for m in members_check if m]):
-                            st.error("❌ لا يمكن لأستاذ أن يشغل أكثر من صفة في نفس المذكرة.")
-                        else:
-                            ok, msg = save_jury(jury_memo_sel, president_sel, exam1_sel, exam2_sel)
-                            if ok: st.success(msg); clear_cache_and_reload(); time.sleep(1); st.rerun()
-                            else: st.error(msg)
-
-            st.markdown("---")
-
-            # ---- القسم 2: توليد البرنامج ----
-            st.markdown("### 🗓️ القسم 2 — توليد البرنامج التلقائي")
-
-            if not rooms_list:
-                st.warning("⚠️ لا توجد قاعات في شيت 'القاعات'. أضفها أولاً ثم أعد تحميل الصفحة.")
-            else:
-                st.info(f"📌 القاعات المتاحة ({len(rooms_list)}): {', '.join(rooms_list)}")
-                cs1, cs2 = st.columns(2)
-                with cs1:
-                    sched_start = st.date_input("📅 تاريخ البداية", value=date(2026,5,24), key="sched_start")
-                with cs2:
-                    sched_end = st.date_input("📅 تاريخ النهاية", value=date(2026,6,4), key="sched_end")
-
-                col_gen1, col_gen2 = st.columns(2)
-                with col_gen1:
-                    if st.button("⚡ توليد البرنامج", type="primary", use_container_width=True, key="gen_schedule"):
-                        with st.spinner("⏳ جاري توليد البرنامج..."):
-                            ok, msg, df_sched = generate_schedule(rooms_list, str(sched_start), str(sched_end))
-                            if ok:
-                                st.session_state['generated_schedule'] = df_sched
-                                st.session_state['schedule_msg'] = msg
-                                st.rerun()
-                            else:
-                                st.error(msg)
-                with col_gen2:
-                    if st.button("🔄 اقتراح جديد", use_container_width=True, key="regen_schedule"):
-                        with st.spinner("⏳ جاري مسح البرنامج السابق وإعادة التوليد..."):
-                            clear_schedule_from_sheets()
-                            ok, msg, df_sched = generate_schedule(rooms_list, str(sched_start), str(sched_end))
-                            if ok:
-                                st.session_state['generated_schedule'] = df_sched
-                                st.session_state['schedule_msg'] = msg
-                                st.rerun()
-                            else:
-                                st.error(msg)
-
-                if 'generated_schedule' in st.session_state and st.session_state['generated_schedule'] is not None:
-                    df_show = st.session_state['generated_schedule']
-                    msg_show = st.session_state.get('schedule_msg','')
-                    for line in msg_show.split('\n'):
-                        if line.startswith("✅"): st.success(line)
-                        elif line.startswith("⚠️"): st.warning(line)
-
-                    st.dataframe(df_show, use_container_width=True, height=400)
-
-                    if st.button("💾 حفظ البرنامج في Sheets", type="primary", use_container_width=True, key="save_schedule"):
-                        with st.spinner("⏳ جاري الحفظ..."):
-                            ok, msg = save_schedule_to_sheets(df_show)
-                            if ok:
-                                st.success(msg)
-                                st.session_state.pop('generated_schedule', None)
-                                clear_cache_and_reload()
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                st.error(msg)
-
-            st.markdown("---")
-
-            # ---- القسم 3: النشر ----
-            st.markdown("### 📢 القسم 3 — نشر البرنامج للأساتذة والطلبة")
-            st.warning("⚠️ بعد النشر يرى الطالب والأستاذ موعد المناقشة وأعضاء اللجنة.")
-
-            col_pub1, col_pub2 = st.columns(2)
-            with col_pub1:
-                if st.button("🚀 نشر الكل دفعة واحدة", type="primary", use_container_width=True, key="publish_all"):
-                    ok, msg = publish_memos()
-                    if ok: st.success(msg); clear_cache_and_reload(); time.sleep(1); st.rerun()
-                    else: st.error(msg)
-
-            with col_pub2:
-                if "حالة الإيداع" in df_m9.columns:
-                    pub_ready = df_m9[df_m9["حالة الإيداع"].astype(str).str.strip() == "قابلة للمناقشة"]["رقم المذكرة"].astype(str).tolist()
-                else:
-                    pub_ready = []
-                if pub_ready:
-                    pub_sel = st.selectbox("اختر مذكرة للنشر المنفرد:", pub_ready, key="pub_single_sel")
-                    if st.button("📤 نشر هذه المذكرة", use_container_width=True, key="publish_single"):
-                        ok, msg = publish_memos([pub_sel])
-                        if ok: st.success(msg); clear_cache_and_reload(); time.sleep(1); st.rerun()
-                        else: st.error(msg)
-
-            # جدول حالة النشر
-            st.markdown("---")
-            st.markdown("#### 📋 حالة النشر")
-            if "AF" in df_m9.columns or "حالة الإيداع" in df_m9.columns:
-                disp_cols = [c for c in ["رقم المذكرة","عنوان المذكرة","الأستاذ","AC","AD","AE","AF","تاريخ المناقشة","توقيت المناقشة","القاعة"] if c in df_m9.columns]
-                st.dataframe(df_m9[disp_cols] if disp_cols else df_m9, use_container_width=True, height=350)
 
 st.markdown("---")
 st.markdown('<div style="text-align:center; color:#64748B; font-size:12px; padding:20px;"> إشراف مسؤول الميدان البروفيسور لخضر رفاف © </div>', unsafe_allow_html=True)
