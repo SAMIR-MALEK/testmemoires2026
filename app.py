@@ -1144,7 +1144,6 @@ def save_defense_schedule(memo_number, defense_date, defense_time, defense_room)
 # دوال اللجان والبرنامج والنشر
 # ============================================================
 
-@st.cache_data(ttl=60)
 def load_rooms():
     try:
         result = sheets_service.spreadsheets().values().get(
