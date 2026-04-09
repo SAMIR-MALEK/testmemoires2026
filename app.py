@@ -1159,6 +1159,53 @@ def load_rooms():
         logger.error(f"خطأ في تحميل القاعات: {e}")
         return pd.DataFrame(columns=["إسم القاعة","الطابق","ملاحظات"])
 
+def suggest_jury(ready_memos_df, all_profs_list):
+    """اقتراح لجان المناقشة تلقائياً مع توازن العبء"""
+    from collections import defaultdict
+
+    # عداد الأدوار لكل أستاذ
+    role_count = defaultdict(int)
+
+    result_rows = []
+    for _, memo in ready_memos_df.iterrows():
+        supervisor = str(memo.get("الأستاذ","")).strip()
+        memo_num = str(memo.get("رقم المذكرة","")).strip()
+
+        # الأساتذة المتاحون (غير المشرف)
+        available = [p for p in all_profs_list if p != supervisor]
+        if len(available) < 3:
+            # في حالة نقص شديد نكرر
+            available = all_profs_list
+
+        # ترتيب حسب العبء الأقل
+        available_sorted = sorted(available, key=lambda p: role_count[p])
+
+        president = available_sorted[0]
+        exam1 = available_sorted[1]
+        exam2 = available_sorted[2]
+
+        # تأكد من عدم التكرار
+        chosen = [president]
+        remaining = [p for p in available_sorted if p not in chosen]
+        exam1 = remaining[0]; chosen.append(exam1)
+        remaining = [p for p in available_sorted if p not in chosen]
+        exam2 = remaining[0]
+
+        role_count[president] += 1
+        role_count[exam1] += 1
+        role_count[exam2] += 1
+
+        result_rows.append({
+            "رقم المذكرة": memo_num,
+            "عنوان المذكرة": str(memo.get("عنوان المذكرة","")),
+            "المشرف": supervisor,
+            "الرئيس": president,
+            "المناقش 1": exam1,
+            "المناقش 2": exam2,
+        })
+
+    return pd.DataFrame(result_rows)
+
 def save_jury(memo_number, president, examiner1, examiner2):
     """حفظ أعضاء اللجنة في أعمدة AC AD AE"""
     try:
@@ -2777,19 +2824,35 @@ elif st.session_state.user_type == "admin":
                 else:
                     st.info(f"📌 عدد المذكرات الجاهزة: **{len(ready_w)}** — عدّل مباشرة في الجدول ثم اضغط حفظ.")
 
+                    # زر الاقتراح التلقائي
+                    col_sug, col_reset = st.columns([2, 1])
+                    with col_sug:
+                        if st.button("🤖 اقتراح لجان تلقائياً", use_container_width=True, key="auto_suggest"):
+                            suggested = suggest_jury(ready_w, all_profs_w)
+                            st.session_state['jury_suggestion'] = suggested
+                            st.rerun()
+                    with col_reset:
+                        if st.button("🔄 مسح الاقتراح", use_container_width=True, key="clear_suggest"):
+                            st.session_state.pop('jury_suggestion', None)
+                            st.rerun()
+
                     # بناء DataFrame للتعديل
-                    jury_df = pd.DataFrame({
-                        "رقم المذكرة": ready_w["رقم المذكرة"].astype(str).tolist(),
-                        "عنوان المذكرة": ready_w["عنوان المذكرة"].astype(str).tolist(),
-                        "المشرف": ready_w["الأستاذ"].astype(str).tolist(),
-                        "الرئيس": [str(v).strip() if str(v).strip() not in ["","nan"] else (all_profs_w[0] if all_profs_w else "") for v in (ready_w["AC"].tolist() if "AC" in ready_w.columns else [""] * len(ready_w))],
-                        "المناقش 1": [str(v).strip() if str(v).strip() not in ["","nan"] else (all_profs_w[0] if all_profs_w else "") for v in (ready_w["AD"].tolist() if "AD" in ready_w.columns else [""] * len(ready_w))],
-                        "المناقش 2": [str(v).strip() if str(v).strip() not in ["","nan"] else (all_profs_w[0] if all_profs_w else "") for v in (ready_w["AE"].tolist() if "AE" in ready_w.columns else [""] * len(ready_w))],
-                    })
+                    if 'jury_suggestion' in st.session_state:
+                        base_df = st.session_state['jury_suggestion']
+                        st.success("✅ تم توليد اقتراح اللجان — يمكنك تعديل أي خلية قبل الحفظ.")
+                    else:
+                        base_df = pd.DataFrame({
+                            "رقم المذكرة": ready_w["رقم المذكرة"].astype(str).tolist(),
+                            "عنوان المذكرة": ready_w["عنوان المذكرة"].astype(str).tolist(),
+                            "المشرف": ready_w["الأستاذ"].astype(str).tolist(),
+                            "الرئيس": [str(v).strip() if str(v).strip() not in ["","nan"] else (all_profs_w[0] if all_profs_w else "") for v in (ready_w["AC"].tolist() if "AC" in ready_w.columns else [""] * len(ready_w))],
+                            "المناقش 1": [str(v).strip() if str(v).strip() not in ["","nan"] else (all_profs_w[0] if all_profs_w else "") for v in (ready_w["AD"].tolist() if "AD" in ready_w.columns else [""] * len(ready_w))],
+                            "المناقش 2": [str(v).strip() if str(v).strip() not in ["","nan"] else (all_profs_w[0] if all_profs_w else "") for v in (ready_w["AE"].tolist() if "AE" in ready_w.columns else [""] * len(ready_w))],
+                        })
+                    jury_df = base_df
 
                     edited_df = st.data_editor(
-                        jury_df,
-                        column_config={
+                        jury_df,                        column_config={
                             "رقم المذكرة": st.column_config.TextColumn("رقم المذكرة", disabled=True, width="small"),
                             "عنوان المذكرة": st.column_config.TextColumn("عنوان المذكرة", disabled=True, width="large"),
                             "المشرف": st.column_config.TextColumn("المشرف", disabled=True, width="medium"),
