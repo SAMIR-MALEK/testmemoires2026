@@ -1150,6 +1150,7 @@ def load_rooms():
             spreadsheetId=MEMOS_SHEET_ID, range="القاعات!A1:C100"
         ).execute()
         values = result.get('values', [])
+        logger.info(f"DEBUG load_rooms values: {values[:5]}")
         if not values: return pd.DataFrame(columns=["اسم القاعة","الطابق","ملاحظات"])
         headers = values[0]
         rows = values[1:]
