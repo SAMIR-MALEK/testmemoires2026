@@ -365,9 +365,23 @@ def _email_style():
 def send_deposit_email_to_professor(prof_name, memo_number, memo_title, student1_name, student2_name=None):
     try:
         df_profs = load_prof_memos()
-        prof_rows = df_profs[df_profs["الأستاذ"].astype(str).str.strip()==prof_name.strip()]
+        # البحث بـ اسم الأستاذ + رقم المذكرة
+        prof_rows = df_profs[
+            (df_profs["الأستاذ"].astype(str).str.strip()==prof_name.strip()) &
+            (df_profs["رقم المذكرة"].astype(str).apply(normalize_text)==normalize_text(memo_number))
+        ]
+        # إن لم يُوجد بالرقم، نبحث بالاسم فقط ونأخذ الصف الذي فيه إيميل
+        if prof_rows.empty:
+            all_prof_rows = df_profs[df_profs["الأستاذ"].astype(str).str.strip()==prof_name.strip()]
+            prof_rows = all_prof_rows
         if prof_rows.empty: return False, f"الأستاذ غير موجود في قاعدة البيانات: {prof_name}"
-        prof_email = get_email_smart(prof_rows.iloc[0])
+        # البحث في كل صفوف الأستاذ حتى نجد إيميلاً
+        prof_email = ""
+        for _, prow in prof_rows.iterrows():
+            email_candidate = get_email_smart(prow)
+            if email_candidate and "@" in email_candidate:
+                prof_email = email_candidate
+                break
         if not prof_email: return False, f"البريد غير متوفر للأستاذ: {prof_name}"
         students_html = f"<p>👤 <strong>الطالب الأول:</strong> {student1_name}</p>"
         if student2_name and student2_name.strip() and student2_name != student1_name:
@@ -1173,29 +1187,6 @@ elif st.session_state.user_type == "student":
                                         s2_obj_dep = load_student2_for_memo(memo_info, normalize_text(st.session_state.student1.get('رقم التسجيل','')), load_students())
                                         if s2_obj_dep:
                                             s2l,s2f = get_student_name_display(s2_obj_dep); s2_display=f"{s2l} {s2f}".strip()
-                                        # ── تشخيص إرسال الإيميل ──
-                                        df_profs_debug = load_prof_memos()
-                                        prof_rows_debug = df_profs_debug[df_profs_debug["الأستاذ"].astype(str).str.strip()==prof_name_m.strip()]
-                                        st.write("🔍 اسم الأستاذ المبحوث:", prof_name_m)
-                                        st.write("🔍 عدد الصفوف الموجودة:", len(prof_rows_debug))
-                                        if not prof_rows_debug.empty:
-                                            st.write("🔍 أعمدة شيت الأساتذة:", df_profs_debug.columns.tolist())
-                                            row_debug = prof_rows_debug.iloc[0]
-                                            st.write("🔍 قيم الصف كاملاً:", row_debug.tolist())
-                                            # البحث عن الإيميل
-                                            found_email = ""
-                                            for col in df_profs_debug.columns:
-                                                val = str(row_debug[col]).strip()
-                                                if "@" in val and val != "nan":
-                                                    found_email = val
-                                                    st.write(f"✅ الإيميل موجود في العمود [{col}]: {val}")
-                                                    break
-                                            if not found_email:
-                                                st.error("❌ لا يوجد @ في أي خلية من هذا الصف")
-                                        else:
-                                            st.error(f"❌ الأستاذ '{prof_name_m}' غير موجود في شيت الأساتذة")
-                                            st.write("🔍 الأساتذة الموجودون:", df_profs_debug["الأستاذ"].tolist()[:10])
-                                        # ── نهاية التشخيص ──
                                         email_ok, email_msg = send_deposit_email_to_professor(prof_name_m, note_num, memo_info['عنوان المذكرة'], s1_display, s2_display)
                                         st.success("✅ تم إيداع مذكرتك! سيراجعها المشرف قريباً.")
                                         if email_ok: st.info("📧 تم إرسال إشعار للمشرف والإدارة.")
