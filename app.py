@@ -61,6 +61,8 @@ html, body, [class*="css"] { font-family: 'Cairo', sans-serif !important; direct
 .block-container { padding: 2rem; background-color: #1A2A3D; border-radius: 16px; margin:auto; }
 h1, h2, h3, h4 { font-weight: 700; margin-bottom: 1rem; color: #ffffff !important; }
 label, p, span { color: #ffffff !important; }
+.stMarkdown div { color: #ffffff; }
+.stMarkdown p { color: #ffffff !important; }
 h1 { text-align: center; }
 .stTextInput label, .stSelectbox label { color: #ffffff !important; font-weight: 600; }
 .stButton>button { background-color: #2F6F7E !important; color: #ffffff !important; font-size: 16px; font-weight: 600; padding: 14px 32px; border: none !important; border-radius: 12px !important; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.3s ease; width: 100%; text-align: center; }
@@ -1291,7 +1293,7 @@ elif st.session_state.user_type == "professor":
 
             dep_color={"مودعة":"#F59E0B","قابلة للمناقشة":"#10B981","مرفوضة":"#EF4444"}.get(deposit_status,"#ffffff")
             dep_label={"مودعة":"📤 مودعة","قابلة للمناقشة":"🟢 معتمدة","مرفوضة":"🔴 معادة"}.get(deposit_status,"⏳ لم تودَع")
-            st.markdown(f"""<div style="background:linear-gradient(135deg,#0F2942,#1A3A5C);border-radius:16px;padding:20px 24px;margin-bottom:22px;border:1px solid rgba(47,111,126,0.3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;"><div><div style="font-size:2.4rem;font-weight:900;color:#FFD700!important;">{current_memo['رقم المذكرة']}</div><div style="font-size:1.05rem;font-weight:700;color:#ffffff!important;margin:3px 0;">{current_memo['عنوان المذكرة']}</div><div style="font-size:0.83rem;color:#ffffff!important;">{current_memo['التخصص']} | نسبة الإنجاز: {prog_int}%</div></div><div style="background:rgba(0,0,0,0.25);color:#ffffff!important;padding:7px 16px;border-radius:20px;font-weight:700;font-size:0.88rem;border:1px solid {dep_color};">{dep_label}</div></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div style="background:linear-gradient(135deg,#0F2942,#1A3A5C);border-radius:16px;padding:20px 24px;margin-bottom:22px;border:1px solid rgba(47,111,126,0.3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;"><div><p style="font-size:2.4rem;font-weight:900;color:#FFD700;margin:0;line-height:1;">{current_memo['رقم المذكرة']}</p><p style="font-size:1.05rem;font-weight:700;color:#ffffff;margin:4px 0;">{current_memo['عنوان المذكرة']}</p><p style="font-size:0.83rem;color:#ffffff;margin:0;">{current_memo['التخصص']} | نسبة الإنجاز: {prog_int}%</p></div><div style="background:rgba(0,0,0,0.25);color:#ffffff;padding:7px 16px;border-radius:20px;font-weight:700;font-size:0.88rem;border:1px solid {dep_color};">{dep_label}</div></div>""", unsafe_allow_html=True)
 
             cards_html = f"""<div class="student-card"><h4 style="color:#FFD700;margin-top:0;">الطالب الأول</h4><p style="font-size:1.1rem;font-weight:700;margin:9px 0 3px;">{student_info['s1_name']}</p><p style="color:#E2E8F0;font-size:0.83rem;">رقم التسجيل: {student_info['s1_reg'] or '—'}</p><div style="background:rgba(16,185,129,0.07);border-radius:8px;padding:7px;margin-top:10px;color:#10B981;font-size:0.83rem;">📧 {student_info['s1_email'] or 'غير متوفر'}</div></div>"""
             if student_info['s2_name']:
