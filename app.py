@@ -65,11 +65,18 @@ h1 { text-align: center; }
 .stTextInput label, .stSelectbox label { color: #ffffff !important; font-weight: 600; }
 .stButton>button { background-color: #2F6F7E !important; color: #ffffff !important; font-size: 16px; font-weight: 600; padding: 14px 32px; border: none !important; border-radius: 12px !important; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.3s ease; width: 100%; text-align: center; }
 .stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
+div[data-testid="stFormSubmitButton"] button { background-color: #2F6F7E !important; color: #ffffff !important; font-size: 16px; font-weight: 600; border: none !important; border-radius: 12px !important; width: 100%; }
+div[data-testid="stFormSubmitButton"] button:hover { background-color: #285E6B !important; }
+div[data-testid="stFormSubmitButton"] button p { color: #ffffff !important; }
+.stButton>button p { color: #ffffff !important; }
+input[type="text"], input[type="password"] { background-color: #1E3A5C !important; color: #ffffff !important; border: 1px solid #2F6F7E !important; border-radius: 8px !important; }
+input[type="text"]::placeholder, input[type="password"]::placeholder { color: #94A3B8 !important; }
+.stTextInput input { background-color: #1E3A5C !important; color: #ffffff !important; border: 1px solid rgba(47,111,126,0.5) !important; }
 .card { background: rgba(30,41,59,0.95); border:1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 30px; margin-bottom: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); border-top: 3px solid #2F6F7E; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; margin-bottom: 2rem; }
 .kpi-card { background: linear-gradient(145deg,#1E293B,#0F172A); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 2rem 1rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
 .kpi-value { font-size: 2.2rem; font-weight: 900; color: #FFD700; margin: 10px 0; }
-.kpi-label { font-size: 1rem; color: #E2E8F0 !important; font-weight: 600; }
+.kpi-label { font-size: 1rem; color: #ffffff !important; font-weight: 600; }
 .alert-card { background: linear-gradient(90deg,#8B4513,#A0522D); border: 1px solid #CD853F; color: white; padding: 22px; border-radius: 12px; text-align: center; font-weight: bold; }
 .progress-container { background-color: #0F172A; border-radius: 99px; padding: 5px; margin: 14px 0; overflow: hidden; }
 .progress-bar { height: 22px; border-radius: 99px; background: linear-gradient(90deg,#2F6F7E,#285E6B,#FFD700); box-shadow: 0 0 15px rgba(47,111,126,0.5); }
@@ -103,11 +110,11 @@ h1 { text-align: center; }
 .notif-title { font-size:1.02rem; font-weight:700; margin-bottom:5px; }
 .notif-title-waiting { color:#F59E0B!important; } .notif-title-approved { color:#10B981!important; }
 .notif-title-rejected { color:#EF4444!important; } .notif-title-scheduled { color:#818CF8!important; }
-.notif-desc { color:#E2E8F0!important; font-size:0.86rem; line-height:1.7; }
+.notif-desc { color:#ffffff!important; font-size:0.86rem; line-height:1.7; }
 .defense-schedule-card { background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(99,102,241,0.04)); border:2px solid rgba(99,102,241,0.38); border-radius:18px; padding:24px; margin:18px 0; }
 .defense-info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-top:12px; }
 .defense-info-item { background:rgba(255,255,255,0.05); border-radius:10px; padding:13px; text-align:center; }
-.defense-info-label { font-size:0.73rem; color:#CBD5E1!important; margin-bottom:4px; }
+.defense-info-label { font-size:0.73rem; color:#E2E8F0!important; margin-bottom:4px; }
 .defense-info-value { font-size:1.05rem; font-weight:700; color:#818CF8!important; }
 .jury-card { background:linear-gradient(145deg,#0F1E30,#162840); border:1px solid rgba(255,255,255,0.07); border-radius:18px; padding:24px; margin:18px 0; }
 .jury-header { background:linear-gradient(135deg,#1E3A5F,#2F6F7E); border-radius:11px; padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px; }
@@ -125,25 +132,25 @@ h1 { text-align: center; }
 .role-president { background:rgba(255,215,0,0.1); color:#FFD700!important; border:1px solid rgba(255,215,0,0.28); }
 .role-supervisor { background:rgba(47,111,126,0.14); color:#2F9EA0!important; border:1px solid rgba(47,111,126,0.28); }
 .role-examiner { background:rgba(148,163,184,0.08); color:#E2E8F0!important; border:1px solid rgba(148,163,184,0.18); }
-.jury-member-name { font-size:0.9rem; font-weight:700; color:#F1F5F9!important; line-height:1.4; }
+.jury-member-name { font-size:0.9rem; font-weight:700; color:#ffffff!important; line-height:1.4; }
 .prof-deposit-alert { background:linear-gradient(135deg,#0D2010,#0F2020); border:2px solid rgba(16,185,129,0.42); border-radius:18px; margin-bottom:22px; overflow:hidden; box-shadow:0 8px 28px rgba(16,185,129,0.1); }
 .prof-deposit-alert-header { background:linear-gradient(135deg,rgba(16,185,129,0.17),rgba(16,185,129,0.04)); padding:17px 21px; display:flex; align-items:center; gap:13px; border-bottom:1px solid rgba(16,185,129,0.17); }
 .prof-deposit-alert-icon { font-size:1.9rem; }
 .prof-deposit-alert-title { font-size:1.1rem; font-weight:800; color:#10B981!important; margin:0; }
-.prof-deposit-alert-sub { font-size:0.8rem; color:rgba(255,255,255,0.85)!important; margin:0; }
+.prof-deposit-alert-sub { font-size:0.8rem; color:#ffffff!important; margin:0; }
 .prof-deposit-list { padding:13px 19px; }
 .prof-deposit-item { background:rgba(255,255,255,0.03); border:1px solid rgba(16,185,129,0.17); border-radius:11px; padding:13px 17px; margin-bottom:9px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:7px; transition:background 0.2s; }
 .prof-deposit-item:hover { background:rgba(16,185,129,0.07); }
 .prof-deposit-memo-num { font-size:1.2rem; font-weight:900; color:#FFD700!important; }
 .prof-deposit-memo-title { font-size:0.86rem; color:#E2E8F0!important; margin-top:2px; }
-.prof-deposit-memo-date { font-size:0.76rem; color:#CBD5E1!important; margin-top:3px; }
+.prof-deposit-memo-date { font-size:0.76rem; color:#E2E8F0!important; margin-top:3px; }
 .declaration-card { background:linear-gradient(145deg,#0A1628,#0F1E30); border:1px solid rgba(255,255,255,0.08); border-radius:20px; overflow:hidden; margin:17px 0; }
 .declaration-card-header { background:linear-gradient(135deg,#1E3A5F,#0F2942); padding:19px 24px; border-bottom:1px solid rgba(255,255,255,0.07); }
 .declaration-card-title { font-size:1.15rem; font-weight:800; color:#FFD700!important; margin:0 0 3px; }
 .declaration-card-sub { font-size:0.8rem; color:rgba(255,255,255,0.8)!important; margin:0; }
 .declaration-card-body { padding:22px 24px; }
 .declaration-step-label { font-size:0.8rem; font-weight:600; color:#CBD5E1!important; margin-bottom:7px; letter-spacing:0.3px; }
-.declaration-preview { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-right:4px solid #2F6F7E; border-radius:9px; padding:13px 15px; font-size:0.85rem; color:#CBD5E1!important; line-height:1.9; font-style:italic; }
+.declaration-preview { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-right:4px solid #2F6F7E; border-radius:9px; padding:13px 15px; font-size:0.85rem; color:#ffffff!important; line-height:1.9; font-style:italic; }
 .declaration-preview strong { color:#FFD700!important; font-style:normal; }
 </style>
 """, unsafe_allow_html=True)
@@ -1282,7 +1289,7 @@ elif st.session_state.user_type == "professor":
             try: prog_int=int(prog_val) if prog_val else 0
             except: prog_int=0
 
-            dep_color={"مودعة":"#F59E0B","قابلة للمناقشة":"#10B981","مرفوضة":"#EF4444"}.get(deposit_status,"#475569")
+            dep_color={"مودعة":"#F59E0B","قابلة للمناقشة":"#10B981","مرفوضة":"#EF4444"}.get(deposit_status,"#94A3B8")
             dep_label={"مودعة":"📤 مودعة","قابلة للمناقشة":"🟢 معتمدة","مرفوضة":"🔴 معادة"}.get(deposit_status,"⏳ لم تودَع")
             st.markdown(f"""<div style="background:linear-gradient(135deg,#0F2942,#1A3A5C);border-radius:16px;padding:20px 24px;margin-bottom:22px;border:1px solid rgba(47,111,126,0.3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;"><div><div style="font-size:2.4rem;font-weight:900;color:#2F6F7E!important;">{current_memo['رقم المذكرة']}</div><div style="font-size:1.05rem;font-weight:700;color:#F1F5F9!important;margin:3px 0;">{current_memo['عنوان المذكرة']}</div><div style="font-size:0.83rem;color:#CBD5E1!important;">{current_memo['التخصص']} | نسبة الإنجاز: {prog_int}%</div></div><div style="background:rgba(0,0,0,0.2);color:{dep_color};padding:7px 16px;border-radius:20px;font-weight:700;font-size:0.88rem;border:1px solid {dep_color};">{dep_label}</div></div>""", unsafe_allow_html=True)
 
@@ -1304,7 +1311,7 @@ elif st.session_state.user_type == "professor":
             st.markdown("<h3 style='text-align:center;margin-bottom:16px;'>📥 حالة إيداع المذكرة</h3>", unsafe_allow_html=True)
 
             if not deposit_status or deposit_status in ["nan",""]:
-                st.markdown("""<div style="background:rgba(100,116,139,0.08);border:1px solid #334155;border-radius:14px;padding:22px;text-align:center;"><div style="font-size:2.3rem;">⏳</div><p style="color:#CBD5E1!important;font-size:0.95rem;margin:7px 0;">لم يودع الطالب المذكرة بعد.</p></div>""", unsafe_allow_html=True)
+                st.markdown("""<div style="background:rgba(47,111,126,0.08);border:1px solid rgba(47,111,126,0.3);border-radius:14px;padding:22px;text-align:center;"><div style="font-size:2.3rem;">⏳</div><p style="color:#CBD5E1!important;font-size:0.95rem;margin:7px 0;">لم يودع الطالب المذكرة بعد.</p></div>""", unsafe_allow_html=True)
 
             elif deposit_status == "مودعة":
                 st.markdown(f"""<div style="background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(245,158,11,0.04));border:2px solid rgba(245,158,11,0.42);border-radius:16px;padding:20px;margin-bottom:16px;"><h4 style="color:#F59E0B!important;margin:0 0 5px;">📥 مذكرة بانتظار مراجعتك</h4><p style="color:#E2E8F0!important;margin:0;font-size:0.88rem;">تاريخ الإيداع: <strong style="color:#FFD700;">{deposit_date if deposit_date and deposit_date!='nan' else '—'}</strong></p></div>""", unsafe_allow_html=True)
