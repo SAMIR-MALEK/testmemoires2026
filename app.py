@@ -65,15 +65,15 @@ label, p, span { color: #ffffff !important; }
 .stMarkdown p { color: #ffffff !important; }
 h1 { text-align: center; }
 .stTextInput label, .stSelectbox label { color: #ffffff !important; font-weight: 600; }
+    .stTextInput input, .stTextInput textarea { background-color: #ffffff !important; color: #1A2A3D !important; border: 1px solid #2F6F7E !important; border-radius: 8px !important; font-family: 'Cairo', sans-serif !important; font-size: 15px !important; }
+    .stTextInput input::placeholder { color: #94A3B8 !important; }
+    input[type="password"] { background-color: #ffffff !important; color: #1A2A3D !important; border: 1px solid #2F6F7E !important; border-radius: 8px !important; }
 .stButton>button { background-color: #2F6F7E !important; color: #ffffff !important; font-size: 16px; font-weight: 600; padding: 14px 32px; border: none !important; border-radius: 12px !important; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.3s ease; width: 100%; text-align: center; }
 .stButton>button:hover { background-color: #285E6B !important; transform: translateY(-2px); }
 div[data-testid="stFormSubmitButton"] button { background-color: #2F6F7E !important; color: #ffffff !important; font-size: 16px; font-weight: 600; border: none !important; border-radius: 12px !important; width: 100%; }
 div[data-testid="stFormSubmitButton"] button:hover { background-color: #285E6B !important; }
 div[data-testid="stFormSubmitButton"] button p { color: #ffffff !important; }
 .stButton>button p { color: #ffffff !important; }
-input[type="text"], input[type="password"] { background-color: #1E3A5C !important; color: #ffffff !important; border: 1px solid #2F6F7E !important; border-radius: 8px !important; }
-input[type="text"]::placeholder, input[type="password"]::placeholder { color: #94A3B8 !important; }
-.stTextInput input { background-color: #1E3A5C !important; color: #ffffff !important; border: 1px solid rgba(47,111,126,0.5) !important; }
 .card { background: rgba(30,41,59,0.95); border:1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 30px; margin-bottom: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); border-top: 3px solid #2F6F7E; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; margin-bottom: 2rem; }
 .kpi-card { background: linear-gradient(145deg,#1E293B,#0F172A); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 2rem 1rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
