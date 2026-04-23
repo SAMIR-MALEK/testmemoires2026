@@ -356,9 +356,9 @@ def send_deposit_email_to_professor(prof_name, memo_number, memo_title, student1
     try:
         df_profs = load_prof_memos()
         prof_rows = df_profs[df_profs["الأستاذ"].astype(str).str.strip()==prof_name.strip()]
-        if prof_rows.empty: return False, "لم يُعثر على بريد الأستاذ"
+        if prof_rows.empty: return False, f"الأستاذ غير موجود في قاعدة البيانات: {prof_name}"
         prof_email = get_email_smart(prof_rows.iloc[0])
-        if not prof_email: return False, "البريد غير متوفر"
+        if not prof_email: return False, f"البريد غير متوفر للأستاذ: {prof_name}"
         students_html = f"<p>👤 <strong>الطالب الأول:</strong> {student1_name}</p>"
         if student2_name and student2_name.strip() and student2_name != student1_name:
             students_html += f"<p>👤 <strong>الطالب الثاني:</strong> {student2_name}</p>"
@@ -1163,9 +1163,10 @@ elif st.session_state.user_type == "student":
                                         s2_obj_dep = load_student2_for_memo(memo_info, normalize_text(st.session_state.student1.get('رقم التسجيل','')), load_students())
                                         if s2_obj_dep:
                                             s2l,s2f = get_student_name_display(s2_obj_dep); s2_display=f"{s2l} {s2f}".strip()
-                                        email_ok,_ = send_deposit_email_to_professor(prof_name_m, note_num, memo_info['عنوان المذكرة'], s1_display, s2_display)
+                                        email_ok, email_msg = send_deposit_email_to_professor(prof_name_m, note_num, memo_info['عنوان المذكرة'], s1_display, s2_display)
                                         st.success("✅ تم إيداع مذكرتك! سيراجعها المشرف قريباً.")
                                         if email_ok: st.info("📧 تم إرسال إشعار للمشرف والإدارة.")
+                                        else: st.warning(f"⚠️ فشل إرسال الإيميل للمشرف: {email_msg}")
                                         st.balloons(); clear_cache_and_reload(); time_module.sleep(2); st.rerun()
                                     else: st.error(m)
                                 else: st.error(msg)
