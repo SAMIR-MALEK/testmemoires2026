@@ -95,9 +95,15 @@ input[type="text"]::placeholder, input[type="password"]::placeholder { color: #9
 .status-available { background:rgba(16,185,129,0.15); color:#10B981; border:1px solid rgba(16,185,129,0.3); }
 .status-unavailable { background:rgba(239,68,68,0.15); color:#EF4444; border:1px solid rgba(239,68,68,0.3); }
 .status-pending { background:rgba(245,158,11,0.15); color:#F59E0B; border:1px solid rgba(245,158,11,0.3); }
-[data-testid="stFileUploader"] { background:rgba(30,41,59,0.8)!important; border:2px dashed #2F6F7E!important; border-radius:16px!important; padding:18px!important; }
-[data-testid="stFileUploader"] label { color:#ffffff!important; font-weight:600!important; }
-[data-testid="stFileUploaderDropzoneInstructions"] span,[data-testid="stFileUploaderDropzoneInstructions"] p,[data-testid="stFileUploaderDropzoneInstructions"] small { color:#E2E8F0!important; }
+[data-testid="stFileUploader"] { background:rgba(15,41,66,0.9)!important; border:2px dashed #2F6F7E!important; border-radius:16px!important; padding:18px!important; }
+[data-testid="stFileUploader"] label { color:#ffffff!important; font-weight:700!important; font-size:1rem!important; }
+[data-testid="stFileUploaderDropzoneInstructions"] span,[data-testid="stFileUploaderDropzoneInstructions"] p,[data-testid="stFileUploaderDropzoneInstructions"] small { color:#E2E8F0!important; font-size:0.9rem!important; }
+[data-testid="stFileUploaderDropzone"] { background:rgba(47,111,126,0.08)!important; border-radius:10px!important; }
+[data-testid="stFileUploader"] button { background-color:#2F6F7E!important; color:#ffffff!important; border-radius:8px!important; border:none!important; font-weight:600!important; }
+[data-testid="stFileUploader"] button:hover { background-color:#285E6B!important; }
+[data-testid="stFileUploader"] button p { color:#ffffff!important; }
+[data-testid="stFileUploader"] section { background:rgba(15,41,66,0.6)!important; border-radius:10px!important; }
+[data-testid="stFileUploader"] section p, [data-testid="stFileUploader"] section span, [data-testid="stFileUploader"] section small { color:#E2E8F0!important; }
 .deposit-hero { background:linear-gradient(135deg,#0F2942,#1A3A5C,#0F2942); border:2px solid #2F6F7E; border-radius:22px; padding:30px 34px; margin-bottom:22px; position:relative; overflow:hidden; }
 .deposit-hero::before { content:''; position:absolute; top:-60px; left:-60px; width:240px; height:240px; background:radial-gradient(circle,rgba(47,111,126,0.16) 0%,transparent 70%); pointer-events:none; }
 .deposit-hero-icon { font-size:3rem; display:block; margin-bottom:10px; }
@@ -1143,7 +1149,7 @@ elif st.session_state.user_type == "student":
                 if uploaded_pdf:
                     pdf_bytes = uploaded_pdf.read(); size_mb = len(pdf_bytes)/(1024*1024); uploaded_pdf.seek(0)
                     st.info(f"📊 حجم الملف: {size_mb:.1f} MB")
-                    if size_mb > 50: st.error("❌ الحجم يتجاوز 50 MB")
+                    if size_mb > 50: st.error("❌ الحجم يتجاوز 10 MB")
                     else:
                         if st.button("📤 إيداع المذكرة الآن", type="primary", use_container_width=True):
                             with st.spinner("⏳ جاري رفع الملف..."):
