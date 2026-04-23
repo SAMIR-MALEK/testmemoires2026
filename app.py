@@ -262,20 +262,30 @@ def get_student_name_display(student_dict):
 
 def get_email_smart(row):
     if isinstance(row, dict):
-        for key in ["الإيميل","البريد المهني","البريد الإلكتروني","email","Email","E-mail"]:
-            val = str(row.get(key,"")).strip()
+        priority_keys = ["الإيميل", "البريد المهني", "البريد الإلكتروني", "email", "Email", "E-mail"]
+        for key in priority_keys:
+            val = str(row.get(key, "")).strip()
             if "@" in val and val != "nan": return val
         for val in row.values():
             v = str(val).strip()
             if "@" in v and v != "nan": return v
         return ""
     try:
-        for col in ["الإيميل","البريد المهني","البريد الإلكتروني","email","Email","E-mail"]:
-            if col in row.index:
+        # البحث في المواضع 9 إلى 12 (كما في الكود الأصلي)
+        values_list = row.tolist()
+        for i in range(9, 13):
+            if i < len(values_list):
+                val = str(values_list[i]).strip()
+                if "@" in val and val != "nan": return val
+        # البحث بالاسم
+        for col in row.index:
+            clean_col = str(col).strip()
+            if clean_col in ["الإيميل", "البريد المهني", "البريد الإلكتروني", "email", "Email", "E-mail"]:
                 val = str(row[col]).strip()
                 if "@" in val and val != "nan": return val
         return ""
-    except: return ""
+    except:
+        return ""
 
 def load_student2_for_memo(memo_row, current_student_reg, df_students):
     memo_list = memo_row.tolist() if hasattr(memo_row,'tolist') else list(memo_row.values())
