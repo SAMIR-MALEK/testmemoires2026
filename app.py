@@ -262,7 +262,7 @@ def get_student_name_display(student_dict):
 
 def get_email_smart(row):
     if isinstance(row, dict):
-        for key in ["البريد المهني","البريد الإلكتروني","email","Email","E-mail"]:
+        for key in ["الإيميل","البريد المهني","البريد الإلكتروني","email","Email","E-mail"]:
             val = str(row.get(key,"")).strip()
             if "@" in val and val != "nan": return val
         for val in row.values():
@@ -270,7 +270,7 @@ def get_email_smart(row):
             if "@" in v and v != "nan": return v
         return ""
     try:
-        for col in ["البريد المهني","البريد الإلكتروني","email","Email","E-mail"]:
+        for col in ["الإيميل","البريد المهني","البريد الإلكتروني","email","Email","E-mail"]:
             if col in row.index:
                 val = str(row[col]).strip()
                 if "@" in val and val != "nan": return val
