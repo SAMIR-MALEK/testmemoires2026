@@ -149,7 +149,7 @@ input[type="text"]::placeholder, input[type="password"]::placeholder { color: #9
 .declaration-card-title { font-size:1.15rem; font-weight:800; color:#FFD700!important; margin:0 0 3px; }
 .declaration-card-sub { font-size:0.8rem; color:rgba(255,255,255,0.8)!important; margin:0; }
 .declaration-card-body { padding:22px 24px; }
-.declaration-step-label { font-size:0.8rem; font-weight:600; color:#CBD5E1!important; margin-bottom:7px; letter-spacing:0.3px; }
+.declaration-step-label { font-size:0.8rem; font-weight:600; color:#ffffff!important; margin-bottom:7px; letter-spacing:0.3px; }
 .declaration-preview { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-right:4px solid #2F6F7E; border-radius:9px; padding:13px 15px; font-size:0.85rem; color:#ffffff!important; line-height:1.9; font-style:italic; }
 .declaration-preview strong { color:#FFD700!important; font-style:normal; }
 </style>
@@ -934,7 +934,7 @@ def logout():
 # ================================================================
 if st.session_state.user_type is None:
     render_countdown_banner()
-    st.markdown("<p style='text-align:center;color:#CBD5E1;font-size:1.05rem;'>جامعة محمد البشير الإبراهيمي — كلية الحقوق والعلوم السياسية</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;color:#ffffff;font-size:1.05rem;'>جامعة محمد البشير الإبراهيمي — كلية الحقوق والعلوم السياسية</p>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align:center;font-size:2rem;margin-bottom:2rem;'>📘 منصة مذكرات الماستر</h1>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
     for col, icon, title, desc, utype, btn_label in [
@@ -943,7 +943,7 @@ if st.session_state.user_type is None:
         (col3,"⚙️","فضاء الإدارة","لوحة التحكم الكاملة، برنامج المناقشات","admin","دخول الإدارة"),
     ]:
         with col:
-            st.markdown(f"""<div class="card" style="text-align:center;min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-size:2.8rem;margin-bottom:10px;">{icon}</div><h3 style="margin:0 0 7px;">{title}</h3><p style="color:#CBD5E1!important;font-size:0.83rem;">{desc}</p></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="card" style="text-align:center;min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-size:2.8rem;margin-bottom:10px;">{icon}</div><h3 style="margin:0 0 7px;">{title}</h3><p style="color:#ffffff!important;font-size:0.83rem;">{desc}</p></div>""", unsafe_allow_html=True)
             if st.button(btn_label, key=f"btn_{utype}", use_container_width=True):
                 st.session_state.user_type=utype; st.rerun()
 
@@ -1191,10 +1191,10 @@ elif st.session_state.user_type == "student":
                 session_html = f"<p>📅 <b>موعد الجلسة القادمة:</b> {session_date}</p>" if session_date and str(session_date) not in ["","nan"] else ""
                 st.markdown(f"""<div class="card" style="border-top:3px solid #FFD700;"><h3>✅ مذكرتك المسجلة</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {prof_name_m}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p>{session_html}</div>""", unsafe_allow_html=True)
                 s1_ln,s1_fn=get_student_name_display(s1); s1_email=get_email_smart(s1)
-                st.markdown(f"""<div class="card"><h4 style="color:#2F6F7E;">👤 الطالب الأول</h4><p><b>اللقب:</b> {s1_ln}</p><p><b>الإسم:</b> {s1_fn}</p><p><b>رقم التسجيل:</b> {s1.get('رقم التسجيل','')}</p><p><b>البريد:</b> {s1_email}</p></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="card"><h4 style="color:#FFD700;">👤 الطالب الأول</h4><p><b>اللقب:</b> {s1_ln}</p><p><b>الإسم:</b> {s1_fn}</p><p><b>رقم التسجيل:</b> {s1.get('رقم التسجيل','')}</p><p><b>البريد:</b> {s1_email}</p></div>""", unsafe_allow_html=True)
                 if s2:
                     s2_ln,s2_fn=get_student_name_display(s2); s2_email=get_email_smart(s2)
-                    st.markdown(f"""<div class="card"><h4 style="color:#2F6F7E;">👤 الطالب الثاني</h4><p><b>اللقب:</b> {s2_ln}</p><p><b>الإسم:</b> {s2_fn}</p><p><b>رقم التسجيل:</b> {s2.get('رقم التسجيل','')}</p><p><b>البريد:</b> {s2_email}</p></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div class="card"><h4 style="color:#FFD700;">👤 الطالب الثاني</h4><p><b>اللقب:</b> {s2_ln}</p><p><b>الإسم:</b> {s2_fn}</p><p><b>رقم التسجيل:</b> {s2.get('رقم التسجيل','')}</p><p><b>البريد:</b> {s2_email}</p></div>""", unsafe_allow_html=True)
 
             with tab_track:
                 st.subheader("📂 حالة ملف التخرج")
@@ -1311,7 +1311,7 @@ elif st.session_state.user_type == "professor":
             st.markdown("<h3 style='text-align:center;margin-bottom:16px;'>📥 حالة إيداع المذكرة</h3>", unsafe_allow_html=True)
 
             if not deposit_status or deposit_status in ["nan",""]:
-                st.markdown("""<div style="background:rgba(47,111,126,0.08);border:1px solid rgba(47,111,126,0.3);border-radius:14px;padding:22px;text-align:center;"><div style="font-size:2.3rem;">⏳</div><p style="color:#CBD5E1!important;font-size:0.95rem;margin:7px 0;">لم يودع الطالب المذكرة بعد.</p></div>""", unsafe_allow_html=True)
+                st.markdown("""<div style="background:rgba(47,111,126,0.08);border:1px solid rgba(47,111,126,0.3);border-radius:14px;padding:22px;text-align:center;"><div style="font-size:2.3rem;">⏳</div><p style="color:#ffffff!important;font-size:0.95rem;margin:7px 0;">لم يودع الطالب المذكرة بعد.</p></div>""", unsafe_allow_html=True)
 
             elif deposit_status == "مودعة":
                 st.markdown(f"""<div style="background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(245,158,11,0.04));border:2px solid rgba(245,158,11,0.42);border-radius:16px;padding:20px;margin-bottom:16px;"><h4 style="color:#F59E0B!important;margin:0 0 5px;">📥 مذكرة بانتظار مراجعتك</h4><p style="color:#E2E8F0!important;margin:0;font-size:0.88rem;">تاريخ الإيداع: <strong style="color:#FFD700;">{deposit_date if deposit_date and deposit_date!='nan' else '—'}</strong></p></div>""", unsafe_allow_html=True)
@@ -1342,7 +1342,7 @@ elif st.session_state.user_type == "professor":
                     st.markdown(f"""<div class="declaration-step-label" style="margin-top:14px;">② نص التصريح الذي سيُحفظ</div><div class="declaration-preview">أنا الأستاذ <strong>{prof_name}</strong>، أصرّح بأن المذكرة رقم <strong>{memo_id}</strong>، عدد الصفحات: <strong>{page_count}</strong>، {declaration_text_base}</div>""", unsafe_allow_html=True)
                     st.markdown('<div class="declaration-step-label" style="margin-top:14px;">③ الإقرار والتوقيع الإلكتروني</div>', unsafe_allow_html=True)
                     agree_check = st.checkbox("✅ أقرّ بصحة هذا التصريح وأتحمل مسؤوليته",key=f"agree_{memo_id}")
-                    st.markdown(f"""<div style="background:rgba(47,111,126,0.07);border:1px dashed #2F6F7E;border-radius:8px;padding:8px 13px;margin:7px 0 5px;"><p style="color:#CBD5E1!important;font-size:0.78rem;margin:0;">الاسم المسجل: <strong style="color:#FFD700;">{prof_name}</strong></p></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background:rgba(47,111,126,0.07);border:1px dashed #2F6F7E;border-radius:8px;padding:8px 13px;margin:7px 0 5px;"><p style="color:#E2E8F0!important;font-size:0.78rem;margin:0;">الاسم المسجل: <strong style="color:#FFD700;">{prof_name}</strong></p></div>""", unsafe_allow_html=True)
                     signature = st.text_input("التوقيع — اكتب اسمك الكامل بالضبط",placeholder=f"اكتب: {prof_name}",key=f"sig_{memo_id}")
                     st.markdown("</div></div>", unsafe_allow_html=True)
                     col_ok,col_cancel=st.columns(2)
@@ -1486,7 +1486,7 @@ elif st.session_state.user_type == "professor":
                             try: prog_i=int(prog_v) if prog_v else 0
                             except: prog_i=0
                             s_info=get_student_info_from_memo(memo,df_students)
-                            st.markdown(f"""<div class="card" style="border-right:5px solid {dep_color_m};"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><h4 style="margin:0;">{memo['رقم المذكرة']}</h4><span style="background:rgba(0,0,0,0.2);color:{dep_color_m};padding:3px 9px;border-radius:12px;font-size:0.78rem;font-weight:700;">{dep_label_m}</span></div><p style="font-size:0.88rem;color:#E2E8F0;margin-bottom:9px;">{str(memo['عنوان المذكرة'])[:48]}...</p><p style="font-size:0.88rem;">{s_info['s1_name']}</p>{f"<p style='font-size:0.88rem;color:#E2E8F0;'>{s_info['s2_name']}</p>" if s_info['s2_name'] else ""}<div class="progress-container"><div class="progress-bar" style="width:{prog_i}%;"></div></div><p style="text-align:left;font-size:0.73rem;color:#CBD5E1;">{prog_i}%</p></div>""", unsafe_allow_html=True)
+                            st.markdown(f"""<div class="card" style="border-right:5px solid {dep_color_m};"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><h4 style="margin:0;color:#FFD700!important;">{memo['رقم المذكرة']}</h4><span style="background:rgba(0,0,0,0.25);color:#ffffff;padding:3px 9px;border-radius:12px;font-size:0.78rem;font-weight:700;border:1px solid {dep_color_m};">{dep_label_m}</span></div><p style="font-size:0.9rem;color:#ffffff!important;font-weight:600;margin-bottom:5px;">{str(memo['عنوان المذكرة'])[:55]}</p><p style="font-size:0.82rem;color:#E2E8F0!important;">{memo['التخصص']} | {prog_i}%</p><p style="font-size:0.9rem;color:#ffffff!important;">{s_info['s1_name']}</p>{f"<p style='font-size:0.88rem;color:#ffffff!important;'>{s_info['s2_name']}</p>" if s_info['s2_name'] else ""}<div class="progress-container"><div class="progress-bar" style="width:{prog_i}%;"></div></div></div>""", unsafe_allow_html=True)
                             if st.button(f"👉 فتح {memo['رقم المذكرة']}",key=f"open_{memo['رقم المذكرة']}",use_container_width=True):
                                 st.session_state.selected_memo_id=memo['رقم المذكرة']; st.session_state.prof_action=None; st.rerun()
                 else: st.info("لا توجد مذكرات مسجلة.")
@@ -1702,7 +1702,7 @@ elif st.session_state.user_type == "admin":
                     st.info("⏳ لا توجد مذكرات معتمدة للمناقشة.")
                 else:
                     already_sched=len(defense_ready[defense_ready.get("تاريخ المناقشة",pd.Series(dtype=str)).astype(str).str.strip().isin(["","nan"])==False]) if "تاريخ المناقشة" in defense_ready.columns else 0
-                    with c3: st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color:#2F6F7E;">{already_sched}</div><div class="kpi-label">📅 مجدولة</div></div>', unsafe_allow_html=True)
+                    with c3: st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color:#FFD700;">{already_sched}</div><div class="kpi-label">📅 مجدولة</div></div>', unsafe_allow_html=True)
                     st.markdown("### 🟢 تحديد موعد المناقشة")
                     memo_options=defense_ready["رقم المذكرة"].astype(str).tolist()
                     selected_memo_def=st.selectbox("اختر المذكرة:",memo_options,key="admin_defense_select")
@@ -1754,4 +1754,4 @@ elif st.session_state.user_type == "admin":
                 st.dataframe(show_df[display_cols],use_container_width=True,height=400)
 
 st.markdown("---")
-st.markdown('<div style="text-align:center;color:#CBD5E1;font-size:11px;padding:16px;">إشراف مسؤول الميدان البروفيسور لخضر رفاف ©</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center;color:#ffffff;font-size:11px;padding:16px;">إشراف مسؤول الميدان البروفيسور لخضر رفاف ©</div>', unsafe_allow_html=True)
