@@ -1692,6 +1692,161 @@ elif st.session_state.user_type == "admin":
                     ok,msg=sync_student_registration_numbers()
                     if ok: st.success(msg); clear_cache_and_reload(); st.rerun()
                     else: st.info(msg)
+        with tab8:
+            st.subheader("🎓 اقتراح لجان المناقشة")
+            st.info("يتم اقتراح لجان عادلة لكل المذكرات المسجلة. يمكنك تعديل الجدول قبل الحفظ.")
+
+            df_memos_jury = load_memos()
+            df_profs_jury = load_prof_memos()
+
+            # المذكرات المسجلة فقط
+            registered_memos = df_memos_jury[df_memos_jury["تم التسجيل"].astype(str).str.strip() == "نعم"].copy()
+
+            if registered_memos.empty:
+                st.warning("لا توجد مذكرات مسجلة بعد.")
+            else:
+                # قائمة كل الأساتذة
+                all_profs = sorted(df_profs_jury["الأستاذ"].dropna().unique().tolist())
+                all_profs = [p for p in all_profs if p.strip() and p.strip().lower() != "nan"]
+
+                if st.button("🤖 اقتراح لجان تلقائياً وعادلاً", type="primary", use_container_width=True, key="suggest_jury_btn"):
+                    from collections import defaultdict
+                    role_count = defaultdict(int)
+                    rows_jury = []
+
+                    for _, memo in registered_memos.iterrows():
+                        supervisor = str(memo.get("الأستاذ", "")).strip()
+                        memo_num = str(memo.get("رقم المذكرة", "")).strip()
+
+                        # الأساتذة المتاحون (غير المشرف)
+                        available = [p for p in all_profs if p != supervisor]
+                        if len(available) < 3:
+                            available = [p for p in all_profs if p != supervisor]
+                            if len(available) < 2:
+                                available = all_profs
+
+                        # ترتيب حسب العبء الأقل
+                        available_sorted = sorted(available, key=lambda p: role_count[p])
+
+                        # اختيار 3 أعضاء مختلفين
+                        chosen = []
+                        for candidate in available_sorted:
+                            if candidate not in chosen and candidate != supervisor:
+                                chosen.append(candidate)
+                            if len(chosen) == 3:
+                                break
+
+                        # في حالة نقص نكمل
+                        while len(chosen) < 3:
+                            for p in all_profs:
+                                if p not in chosen:
+                                    chosen.append(p)
+                                    break
+                            else:
+                                chosen.append(all_profs[0] if all_profs else "—")
+
+                        president = chosen[0]
+                        exam1 = chosen[1]
+                        exam2 = chosen[2]
+
+                        role_count[president] += 1
+                        role_count[exam1] += 1
+                        role_count[exam2] += 1
+
+                        rows_jury.append({
+                            "رقم المذكرة": memo_num,
+                            "عنوان المذكرة": str(memo.get("عنوان المذكرة", ""))[:50],
+                            "المشرف": supervisor,
+                            "الرئيس": president,
+                            "المناقش 1": exam1,
+                            "المناقش 2": exam2,
+                        })
+
+                    st.session_state["jury_suggestion"] = rows_jury
+                    st.success(f"✅ تم اقتراح لجان لـ {len(rows_jury)} مذكرة")
+                    st.rerun()
+
+                # عرض الجدول إن وُجد
+                if "jury_suggestion" in st.session_state and st.session_state["jury_suggestion"]:
+                    df_jury = pd.DataFrame(st.session_state["jury_suggestion"])
+
+                    # جدول قابل للتعديل
+                    edited_jury = st.data_editor(
+                        df_jury,
+                        column_config={
+                            "رقم المذكرة": st.column_config.TextColumn("رقم المذكرة", disabled=True, width="small"),
+                            "عنوان المذكرة": st.column_config.TextColumn("عنوان المذكرة", disabled=True, width="large"),
+                            "المشرف": st.column_config.TextColumn("المشرف", disabled=True, width="medium"),
+                            "الرئيس": st.column_config.SelectboxColumn("🏛️ الرئيس", options=all_profs, width="medium"),
+                            "المناقش 1": st.column_config.SelectboxColumn("📋 المناقش 1", options=all_profs, width="medium"),
+                            "المناقش 2": st.column_config.SelectboxColumn("📋 المناقش 2", options=all_profs, width="medium"),
+                        },
+                        hide_index=True,
+                        use_container_width=True,
+                        height=min(500, 60 + len(df_jury) * 38),
+                        key="jury_editor"
+                    )
+
+                    # تحقق من التعارضات
+                    conflicts = []
+                    for _, row_j in edited_jury.iterrows():
+                        members = [str(row_j["المشرف"]).strip(), str(row_j["الرئيس"]).strip(),
+                                   str(row_j["المناقش 1"]).strip(), str(row_j["المناقش 2"]).strip()]
+                        members = [m for m in members if m and m != "nan"]
+                        if len(set(members)) < len(members):
+                            conflicts.append(str(row_j["رقم المذكرة"]))
+
+                    if conflicts:
+                        st.error(f"⚠️ تعارض (عضو مكرر) في المذكرات: {', '.join(conflicts)}")
+
+                    # إحصائيات توزيع الأدوار
+                    with st.expander("📊 توزيع الأدوار على الأساتذة"):
+                        from collections import Counter
+                        role_stats = Counter()
+                        for _, row_j in edited_jury.iterrows():
+                            role_stats[str(row_j["الرئيس"])] += 1
+                            role_stats[str(row_j["المناقش 1"])] += 1
+                            role_stats[str(row_j["المناقش 2"])] += 1
+                        stats_df = pd.DataFrame(list(role_stats.items()), columns=["الأستاذ", "عدد الأدوار"]).sort_values("عدد الأدوار", ascending=False)
+                        st.dataframe(stats_df, use_container_width=True, hide_index=True)
+
+                    col_save, col_clear = st.columns(2)
+                    with col_save:
+                        if st.button("💾 حفظ اللجان في الشيت", type="primary", use_container_width=True, key="save_jury_btn"):
+                            if conflicts:
+                                st.error("❌ يجب تصحيح التعارضات أولاً")
+                            else:
+                                df_memos_save = load_memos()
+                                updates_jury = []
+                                saved_count = 0
+                                for _, row_j in edited_jury.iterrows():
+                                    memo_num_j = normalize_text(str(row_j["رقم المذكرة"]))
+                                    memo_row_j = df_memos_save[df_memos_save["رقم المذكرة"].astype(str).apply(normalize_text) == memo_num_j]
+                                    if memo_row_j.empty: continue
+                                    row_idx_j = memo_row_j.index[0] + 2
+                                    updates_jury += [
+                                        {"range": f"Feuille 1!AC{row_idx_j}", "values": [[str(row_j["الرئيس"])]]},
+                                        {"range": f"Feuille 1!AD{row_idx_j}", "values": [[str(row_j["المناقش 1"])]]},
+                                        {"range": f"Feuille 1!AE{row_idx_j}", "values": [[str(row_j["المناقش 2"])]]},
+                                    ]
+                                    saved_count += 1
+                                if updates_jury:
+                                    sheets_service.spreadsheets().values().batchUpdate(
+                                        spreadsheetId=MEMOS_SHEET_ID,
+                                        body={"valueInputOption": "USER_ENTERED", "data": updates_jury}
+                                    ).execute()
+                                    clear_cache_and_reload()
+                                    st.success(f"✅ تم حفظ لجان {saved_count} مذكرة في الشيت (أعمدة AC AD AE)")
+                                    st.session_state.pop("jury_suggestion", None)
+                                    time.sleep(1)
+                                    st.rerun()
+                                else:
+                                    st.warning("لا يوجد شيء للحفظ")
+                    with col_clear:
+                        if st.button("🗑️ مسح الاقتراح", use_container_width=True, key="clear_jury_btn"):
+                            st.session_state.pop("jury_suggestion", None)
+                            st.rerun()
+
             st.markdown("---")
             if st.button("تحديث من Google Sheets"):
                 clear_cache_and_reload(); st.success("✅ تم التحديث"); st.rerun()
