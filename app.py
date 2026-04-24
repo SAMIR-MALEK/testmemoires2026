@@ -1713,15 +1713,59 @@ elif st.session_state.user_type == "admin":
                     import random
                     from collections import defaultdict
 
-                    # ── الخوارزمية الذكية العشوائية ──
-                    # 1. نخلط ترتيب المذكرات عشوائياً
-                    # 2. نتتبع عبء كل أستاذ (عدد الأدوار)
-                    # 3. لكل مذكرة: نختار من الأساتذة الأقل عبئاً
-                    #    مع إضافة عشوائية تمنع التكرار الأبجدي
-                    # 4. نضمن عدم تكرار أي عضو في نفس المذكرة
+                    # ══════════════════════════════════════════════
+                    # الخوارزمية الذكية المجمّعة
+                    # ══════════════════════════════════════════════
+                    # قراءة مجموعة كل أستاذ من العمود O في شيت الأساتذة
+                    # 1=يمين  2=يسار  3=حياد
+                    prof_group = {}
+                    for _, prow in df_profs_jury.iterrows():
+                        pname = str(prow.get("الأستاذ", "")).strip()
+                        grp = str(prow.get("المجموعة", "3")).strip()
+                        if pname and pname.lower() != "nan":
+                            # نأخذ آخر قيمة غير فارغة لنفس الأستاذ
+                            if grp in ["1", "2", "3"]:
+                                prof_group[pname] = grp
+                            elif pname not in prof_group:
+                                prof_group[pname] = "3"  # افتراضي: حياد
 
-                    role_count = defaultdict(int)
+                    right_profs   = [p for p in all_profs if prof_group.get(p) == "1"]
+                    left_profs    = [p for p in all_profs if prof_group.get(p) == "2"]
+                    neutral_profs = [p for p in all_profs if prof_group.get(p) == "3"]
+                    unknown_profs = [p for p in all_profs if p not in prof_group]
+                    # المجهولون → حياد
+                    neutral_profs = neutral_profs + unknown_profs
+
+                    # عدادات العبء
+                    load_right   = defaultdict(int)  # عبء اليمين
+                    load_left    = defaultdict(int)   # عبء اليسار
+                    load_n_right = defaultdict(int)   # عبء الحياد مع اليمين
+                    load_n_left  = defaultdict(int)   # عبء الحياد مع اليسار
+
+                    def weighted_pick(pool, load_dict, exclude, count):
+                        """
+                        اختيار عشوائي موزون:
+                        - الأقل عبئاً له وزن أعلى (1/(load+1))
+                        - لكن العشوائية تمنع الحتمية
+                        - exclude: لا نختار منهم
+                        """
+                        candidates = [p for p in pool if p not in exclude]
+                        if not candidates:
+                            return []
+                        weights = [1.0 / (load_dict[p] + 1) for p in candidates]
+                        chosen = []
+                        remaining = candidates[:]
+                        rem_weights = weights[:]
+                        while len(chosen) < count and remaining:
+                            picked = random.choices(remaining, weights=rem_weights, k=1)[0]
+                            chosen.append(picked)
+                            idx = remaining.index(picked)
+                            remaining.pop(idx)
+                            rem_weights.pop(idx)
+                        return chosen
+
                     rows_jury = []
+                    warnings_jury = []
 
                     # خلط عشوائي للمذكرات
                     memos_list = [row for _, row in registered_memos.iterrows()]
@@ -1729,69 +1773,123 @@ elif st.session_state.user_type == "admin":
 
                     for memo in memos_list:
                         supervisor = str(memo.get("الأستاذ", "")).strip()
-                        memo_num = str(memo.get("رقم المذكرة", "")).strip()
+                        memo_num   = str(memo.get("رقم المذكرة", "")).strip()
+                        sup_group  = prof_group.get(supervisor, "3")
 
-                        # الأساتذة المتاحون (غير المشرف)
-                        available = [p for p in all_profs if p != supervisor]
+                        exclude_set = {supervisor}
 
-                        if len(available) < 3:
-                            available = [p for p in all_profs if p != supervisor]
+                        if sup_group == "1":
+                            # مذكرة يمين → بركة: يمين + حياد
+                            base_pool    = [p for p in right_profs if p != supervisor]
+                            neutral_pool = neutral_profs[:]
+                            load_base    = load_right
+                            load_neutral = load_n_right
+                            side_key     = "right"
+                        elif sup_group == "2":
+                            # مذكرة يسار → بركة: يسار + حياد
+                            base_pool    = [p for p in left_profs if p != supervisor]
+                            neutral_pool = neutral_profs[:]
+                            load_base    = load_left
+                            load_neutral = load_n_left
+                            side_key     = "left"
+                        else:
+                            # مذكرة حياد → بركة: الكل
+                            base_pool    = [p for p in all_profs if p != supervisor]
+                            neutral_pool = []
+                            load_base    = load_right  # نستخدم عداد عام
+                            load_neutral = defaultdict(int)
+                            side_key     = "neutral"
 
-                        # تجميع الأساتذة في مجموعات حسب العبء
-                        # ثم خلط كل مجموعة عشوائياً — هذا يضمن العدالة والعشوائية
-                        min_load = min(role_count[p] for p in available)
-                        max_load = min_load + 1  # نسمح بفارق 1 فقط لضمان العدالة
-
-                        # الأساتذة الأقل عبئاً (مع هامش 1)
-                        low_load = [p for p in available if role_count[p] <= max_load]
-                        high_load = [p for p in available if role_count[p] > max_load]
-
-                        # خلط عشوائي داخل كل مجموعة
-                        random.shuffle(low_load)
-                        random.shuffle(high_load)
-
-                        # القائمة النهائية: الأقل عبئاً أولاً (مخلوطة)، ثم الأكثر
-                        pool = low_load + high_load
-
-                        # اختيار 3 أعضاء مختلفين
+                        # ── الاختيار الذكي ──
+                        # نحدد كم نحتاج من كل بركة بشكل عشوائي ذكي:
+                        # إذا base_pool كافية → نأخذ 2 base + 1 neutral أو 3 base
+                        # القرار نفسه عشوائي موزون
                         chosen = []
-                        for candidate in pool:
-                            if candidate not in chosen and candidate != supervisor:
-                                chosen.append(candidate)
-                            if len(chosen) == 3:
-                                break
 
-                        # احتياطي إن نقص العدد
-                        all_shuffled = all_profs[:]
-                        random.shuffle(all_shuffled)
-                        for p in all_shuffled:
-                            if len(chosen) >= 3:
-                                break
-                            if p not in chosen:
-                                chosen.append(p)
+                        if side_key == "neutral":
+                            # حياد: نختار 3 من الكل عشوائياً
+                            chosen = weighted_pick(base_pool, load_base, exclude_set, 3)
+                        else:
+                            # يمين أو يسار:
+                            # قرار عشوائي: كم نأخذ من الحياد (0, 1, أو 2)
+                            # لكن موزون: إذا الحياد أقل عبئاً → وزن أعلى
+                            n_neutral_available = len([p for p in neutral_pool if p not in exclude_set])
+                            n_base_available    = len([p for p in base_pool if p not in exclude_set])
 
-                        president = chosen[0]
-                        exam1 = chosen[1]
-                        exam2 = chosen[2] if len(chosen) > 2 else chosen[0]
+                            # حساب نسبة الحياد المطلوبة بشكل عشوائي
+                            if n_neutral_available == 0:
+                                n_from_neutral = 0
+                            elif n_base_available == 0:
+                                n_from_neutral = min(3, n_neutral_available)
+                            else:
+                                # عشوائي: 0, 1, أو 2 حياديين
+                                choices_n = [0, 1, 2]
+                                w_choices = [2.0, 3.0, 1.5]  # 1 حيادي هو الأكثر احتمالاً
+                                n_from_neutral = random.choices(choices_n, weights=w_choices, k=1)[0]
+                                n_from_neutral = min(n_from_neutral, n_neutral_available, 2)
 
-                        role_count[president] += 1
-                        role_count[exam1] += 1
-                        role_count[exam2] += 1
+                            n_from_base = 3 - n_from_neutral
+
+                            # اختيار من البركة الأساسية
+                            base_chosen = weighted_pick(base_pool, load_base, exclude_set, n_from_base)
+                            chosen.extend(base_chosen)
+                            exclude_set.update(base_chosen)
+
+                            # اختيار من الحياد
+                            neutral_chosen = weighted_pick(neutral_pool, load_neutral, exclude_set, n_from_neutral)
+                            chosen.extend(neutral_chosen)
+                            exclude_set.update(neutral_chosen)
+
+                            # تكملة إن نقص
+                            if len(chosen) < 3:
+                                fallback = weighted_pick(base_pool + neutral_pool, load_base, exclude_set, 3 - len(chosen))
+                                chosen.extend(fallback)
+
+                        # تأكيد 3 أعضاء
+                        if len(chosen) < 3:
+                            fallback_all = [p for p in all_profs if p not in exclude_set]
+                            random.shuffle(fallback_all)
+                            chosen.extend(fallback_all[:3 - len(chosen)])
+                            if len(chosen) < 3:
+                                warnings_jury.append(f"⚠️ مذكرة {memo_num}: لم يكتمل عدد اللجنة")
+
+                        president = chosen[0] if len(chosen) > 0 else "—"
+                        exam1     = chosen[1] if len(chosen) > 1 else "—"
+                        exam2     = chosen[2] if len(chosen) > 2 else "—"
+
+                        # تحديث العدادات
+                        for member in [president, exam1, exam2]:
+                            if member == "—": continue
+                            m_group = prof_group.get(member, "3")
+                            if m_group == "1":
+                                load_right[member] += 1
+                            elif m_group == "2":
+                                load_left[member] += 1
+                            else:
+                                if side_key == "right":
+                                    load_n_right[member] += 1
+                                elif side_key == "left":
+                                    load_n_left[member] += 1
+                                else:
+                                    load_right[member] += 1
 
                         rows_jury.append({
                             "رقم المذكرة": memo_num,
                             "عنوان المذكرة": str(memo.get("عنوان المذكرة", ""))[:50],
                             "المشرف": supervisor,
+                            "مجموعة المشرف": {"1":"يمين","2":"يسار","3":"حياد"}.get(sup_group, "؟"),
                             "الرئيس": president,
                             "المناقش 1": exam1,
                             "المناقش 2": exam2,
                         })
 
-                    # إعادة ترتيب النتائج بحسب رقم المذكرة للعرض
+                    # ترتيب حسب رقم المذكرة
                     rows_jury.sort(key=lambda x: normalize_text(x["رقم المذكرة"]))
 
                     st.session_state["jury_suggestion"] = rows_jury
-                    st.success(f"✅ تم اقتراح لجان لـ {len(rows_jury)} مذكرة بشكل عشوائي وعادل")
+                    for w in warnings_jury:
+                        st.warning(w)
+                    st.success(f"✅ تم اقتراح لجان لـ {len(rows_jury)} مذكرة | يمين:{len(right_profs)} يسار:{len(left_profs)} حياد:{len(neutral_profs)}")
                     st.rerun()
 
                 # عرض الجدول إن وُجد
@@ -1805,6 +1903,7 @@ elif st.session_state.user_type == "admin":
                             "رقم المذكرة": st.column_config.TextColumn("رقم المذكرة", disabled=True, width="small"),
                             "عنوان المذكرة": st.column_config.TextColumn("عنوان المذكرة", disabled=True, width="large"),
                             "المشرف": st.column_config.TextColumn("المشرف", disabled=True, width="medium"),
+                            "مجموعة المشرف": st.column_config.TextColumn("المجموعة", disabled=True, width="small"),
                             "الرئيس": st.column_config.SelectboxColumn("🏛️ الرئيس", options=all_profs, width="medium"),
                             "المناقش 1": st.column_config.SelectboxColumn("📋 المناقش 1", options=all_profs, width="medium"),
                             "المناقش 2": st.column_config.SelectboxColumn("📋 المناقش 2", options=all_profs, width="medium"),
@@ -1819,7 +1918,7 @@ elif st.session_state.user_type == "admin":
                     conflicts = []
                     for _, row_j in edited_jury.iterrows():
                         members = [str(row_j["المشرف"]).strip(), str(row_j["الرئيس"]).strip(),
-                                   str(row_j["المناقش 1"]).strip(), str(row_j["المناقش 2"]).strip()]
+                                   str(row_j.get("المناقش 1","")).strip(), str(row_j.get("المناقش 2","")).strip()]
                         members = [m for m in members if m and m != "nan"]
                         if len(set(members)) < len(members):
                             conflicts.append(str(row_j["رقم المذكرة"]))
