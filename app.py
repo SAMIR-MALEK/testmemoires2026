@@ -1710,44 +1710,69 @@ elif st.session_state.user_type == "admin":
                 all_profs = [p for p in all_profs if p.strip() and p.strip().lower() != "nan"]
 
                 if st.button("🤖 اقتراح لجان تلقائياً وعادلاً", type="primary", use_container_width=True, key="suggest_jury_btn"):
+                    import random
                     from collections import defaultdict
+
+                    # ── الخوارزمية الذكية العشوائية ──
+                    # 1. نخلط ترتيب المذكرات عشوائياً
+                    # 2. نتتبع عبء كل أستاذ (عدد الأدوار)
+                    # 3. لكل مذكرة: نختار من الأساتذة الأقل عبئاً
+                    #    مع إضافة عشوائية تمنع التكرار الأبجدي
+                    # 4. نضمن عدم تكرار أي عضو في نفس المذكرة
+
                     role_count = defaultdict(int)
                     rows_jury = []
 
-                    for _, memo in registered_memos.iterrows():
+                    # خلط عشوائي للمذكرات
+                    memos_list = [row for _, row in registered_memos.iterrows()]
+                    random.shuffle(memos_list)
+
+                    for memo in memos_list:
                         supervisor = str(memo.get("الأستاذ", "")).strip()
                         memo_num = str(memo.get("رقم المذكرة", "")).strip()
 
                         # الأساتذة المتاحون (غير المشرف)
                         available = [p for p in all_profs if p != supervisor]
+
                         if len(available) < 3:
                             available = [p for p in all_profs if p != supervisor]
-                            if len(available) < 2:
-                                available = all_profs
 
-                        # ترتيب حسب العبء الأقل
-                        available_sorted = sorted(available, key=lambda p: role_count[p])
+                        # تجميع الأساتذة في مجموعات حسب العبء
+                        # ثم خلط كل مجموعة عشوائياً — هذا يضمن العدالة والعشوائية
+                        min_load = min(role_count[p] for p in available)
+                        max_load = min_load + 1  # نسمح بفارق 1 فقط لضمان العدالة
+
+                        # الأساتذة الأقل عبئاً (مع هامش 1)
+                        low_load = [p for p in available if role_count[p] <= max_load]
+                        high_load = [p for p in available if role_count[p] > max_load]
+
+                        # خلط عشوائي داخل كل مجموعة
+                        random.shuffle(low_load)
+                        random.shuffle(high_load)
+
+                        # القائمة النهائية: الأقل عبئاً أولاً (مخلوطة)، ثم الأكثر
+                        pool = low_load + high_load
 
                         # اختيار 3 أعضاء مختلفين
                         chosen = []
-                        for candidate in available_sorted:
+                        for candidate in pool:
                             if candidate not in chosen and candidate != supervisor:
                                 chosen.append(candidate)
                             if len(chosen) == 3:
                                 break
 
-                        # في حالة نقص نكمل
-                        while len(chosen) < 3:
-                            for p in all_profs:
-                                if p not in chosen:
-                                    chosen.append(p)
-                                    break
-                            else:
-                                chosen.append(all_profs[0] if all_profs else "—")
+                        # احتياطي إن نقص العدد
+                        all_shuffled = all_profs[:]
+                        random.shuffle(all_shuffled)
+                        for p in all_shuffled:
+                            if len(chosen) >= 3:
+                                break
+                            if p not in chosen:
+                                chosen.append(p)
 
                         president = chosen[0]
                         exam1 = chosen[1]
-                        exam2 = chosen[2]
+                        exam2 = chosen[2] if len(chosen) > 2 else chosen[0]
 
                         role_count[president] += 1
                         role_count[exam1] += 1
@@ -1762,8 +1787,11 @@ elif st.session_state.user_type == "admin":
                             "المناقش 2": exam2,
                         })
 
+                    # إعادة ترتيب النتائج بحسب رقم المذكرة للعرض
+                    rows_jury.sort(key=lambda x: normalize_text(x["رقم المذكرة"]))
+
                     st.session_state["jury_suggestion"] = rows_jury
-                    st.success(f"✅ تم اقتراح لجان لـ {len(rows_jury)} مذكرة")
+                    st.success(f"✅ تم اقتراح لجان لـ {len(rows_jury)} مذكرة بشكل عشوائي وعادل")
                     st.rerun()
 
                 # عرض الجدول إن وُجد
