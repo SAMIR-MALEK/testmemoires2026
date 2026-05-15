@@ -1006,17 +1006,17 @@ def build_conflict_matrix(df_memos):
     for i in range(len(rows_list)):
         _, row_i = rows_list[i]
         m_i = str(row_i["رقم المذكرة"])
-        profs_i = set(filter(None, [str(row_i.get("الأستاذ","")).strip(),str(row_i.get("AA","")).strip(),str(row_i.get("AB","")).strip(),str(row_i.get("AC","")).strip()])) - {"","nan","—"}
+        profs_i = set(filter(None, [str(row_i.get("الأستاذ","")).strip(),str(row_i.get("الرئيس","")).strip(),str(row_i.get("المناقش1","")).strip(),str(row_i.get("المناقش2","")).strip()])) - {"","nan","—"}
         for j in range(i+1, len(rows_list)):
             _, row_j = rows_list[j]
             m_j = str(row_j["رقم المذكرة"])
-            profs_j = set(filter(None,[str(row_j.get("الأستاذ","")).strip(),str(row_j.get("AA","")).strip(),str(row_j.get("AB","")).strip(),str(row_j.get("AC","")).strip()])) - {"","nan","—"}
+            profs_j = set(filter(None,[str(row_j.get("الأستاذ","")).strip(),str(row_j.get("الرئيس","")).strip(),str(row_j.get("المناقش1","")).strip(),str(row_j.get("المناقش2","")).strip()])) - {"","nan","—"}
             if profs_i & profs_j:
                 conflicts[m_i].add(m_j); conflicts[m_j].add(m_i)
     return memo_list, conflicts
 
 def get_memo_profs(row):
-    return set(filter(None,[str(row.get("الأستاذ","")).strip(),str(row.get("AA","")).strip(),str(row.get("AB","")).strip(),str(row.get("AC","")).strip()])) - {"","nan","—"}
+    return set(filter(None,[str(row.get("الأستاذ","")).strip(),str(row.get("الرئيس","")).strip(),str(row.get("المناقش1","")).strip(),str(row.get("المناقش2","")).strip()])) - {"","nan","—"}
 
 def greedy_schedule(memo_list, conflicts, days, slots, rooms):
     import random
@@ -1096,7 +1096,7 @@ def schedule_to_rows(schedule, df_memos):
         r = {"رقم المذكرة": memo, "العنوان": str(row.get("عنوان المذكرة",""))[:40] if hasattr(row,"get") else ""}
         if slot: r.update({"اليوم":slot[0],"التوقيت":slot[1],"القاعة":slot[2]})
         else: r.update({"اليوم":"غير مجدول","التوقيت":"","القاعة":""})
-        for k,c in [("المشرف","الأستاذ"),("الرئيس","AA"),("المناقش1","AB"),("المناقش2","AC")]:
+        for k,c in [("المشرف","الأستاذ"),("الرئيس","الرئيس"),("المناقش1","المناقش1"),("المناقش2","المناقش2")]:
             r[k] = str(row.get(c,"")).strip() if hasattr(row,"get") else ""
         r["رابط الملف"] = str(row.get("رابط الملف","")).strip() if hasattr(row,"get") else ""
         rows.append(r)
@@ -2287,9 +2287,9 @@ elif st.session_state.user_type == "admin":
                     v = str(val).strip()
                     return v not in ["","nan","None","—"]
                 has_sup  = filled(row.get("الأستاذ",""))
-                has_pres = filled(row.get("AA",""))
-                has_ex1  = filled(row.get("AB",""))
-                has_ex2  = filled(row.get("AC",""))
+                has_pres = filled(row.get("الرئيس",""))
+                has_ex1  = filled(row.get("المناقش1",""))
+                has_ex2  = filled(row.get("المناقش2",""))
                 return approved and has_sup and has_pres and has_ex1 and has_ex2
             ready_mask = df_memos_j.apply(_is_ready, axis=1)
             ready_memos_j = df_memos_j[ready_mask].copy()
@@ -2522,7 +2522,7 @@ elif st.session_state.user_type == "admin":
                                             for mf,sf in final_j.items():
                                                 if not sf: continue
                                                 rf = memo_map_prev.get(mf,{})
-                                                for ck,rk in [("الأستاذ","مشرف"),("AA","رئيس لجنة"),("AB","مناقش 1"),("AC","مناقش 2")]:
+                                                for ck,rk in [("الأستاذ","مشرف"),("الرئيس","رئيس لجنة"),("المناقش1","مناقش 1"),("المناقش2","مناقش 2")]:
                                                     pf = str(rf.get(ck,"")).strip() if hasattr(rf,"get") else ""
                                                     if not pf or pf in ["","nan","—"]: continue
                                                     prof_prog_prev.setdefault(pf,[]).append({"المذكرة":mf,"اليوم":sf[0],"التوقيت":sf[1],"القاعة":sf[2],"الصفة":rk})
@@ -2547,7 +2547,7 @@ elif st.session_state.user_type == "admin":
                                                     if not sf: continue
                                                     rf=memo_map_fin.get(mf,{})
                                                     lnk_f=str(rf.get("رابط الملف","")).strip() if hasattr(rf,"get") else ""
-                                                    for ck,rk in [("الأستاذ","مشرف"),("AA","رئيس لجنة"),("AB","مناقش 1"),("AC","مناقش 2")]:
+                                                    for ck,rk in [("الأستاذ","مشرف"),("الرئيس","رئيس لجنة"),("المناقش1","مناقش 1"),("المناقش2","مناقش 2")]:
                                                         pf=str(rf.get(ck,"")).strip() if hasattr(rf,"get") else ""
                                                         if not pf or pf in ["","nan","—"]: continue
                                                         prof_prog.setdefault(pf,[]).append({"رقم المذكرة":mf,"اليوم":sf[0],"التوقيت":sf[1],"القاعة":sf[2],"الصفة":rk,"رابط الملف":lnk_f})
