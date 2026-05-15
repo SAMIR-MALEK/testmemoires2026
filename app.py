@@ -160,6 +160,20 @@ div[data-testid="stFormSubmitButton"] button p { color: #ffffff !important; }
 .declaration-step-label { font-size:0.8rem; font-weight:600; color:#ffffff!important; margin-bottom:7px; letter-spacing:0.3px; }
 .declaration-preview { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-right:4px solid #2F6F7E; border-radius:9px; padding:13px 15px; font-size:0.85rem; color:#ffffff!important; line-height:1.9; font-style:italic; }
 .declaration-preview strong { color:#FFD700!important; font-style:normal; }
+.quick-memo-btn {
+    background: linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.05));
+    border: 1.5px solid rgba(245,158,11,0.4);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+.quick-memo-btn:hover {
+    background: linear-gradient(135deg,rgba(245,158,11,0.22),rgba(245,158,11,0.1));
+    border-color: rgba(245,158,11,0.7);
+    transform: translateY(-2px);
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -271,13 +285,11 @@ def get_email_smart(row):
             if "@" in v and v != "nan": return v
         return ""
     try:
-        # البحث في المواضع 9 إلى 12 (كما في الكود الأصلي)
         values_list = row.tolist()
         for i in range(9, 13):
             if i < len(values_list):
                 val = str(values_list[i]).strip()
                 if "@" in val and val != "nan": return val
-        # البحث بالاسم
         for col in row.index:
             clean_col = str(col).strip()
             if clean_col in ["الإيميل", "البريد المهني", "البريد الإلكتروني", "email", "Email", "E-mail"]:
@@ -362,32 +374,114 @@ def clear_cache_and_reload(): st.cache_data.clear()
 def _email_style():
     return """<style>body{font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;direction:rtl;text-align:right;}.container{background:#fff;padding:28px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.1);max-width:600px;margin:auto;}.header{background:linear-gradient(135deg,#0F2942,#2F6F7E);color:#fff;padding:20px;border-radius:8px;text-align:center;margin-bottom:18px;}.header h2{margin:0;font-size:1.3rem;}.info-box{background:#f0f9ff;padding:14px;border-right:4px solid #2F6F7E;margin:12px 0;border-radius:6px;}.action-box{background:#fff8e1;padding:14px;border-right:4px solid #F59E0B;margin:12px 0;border-radius:6px;}.success-box{background:#f0fdf4;padding:14px;border-right:4px solid #10B981;margin:12px 0;border-radius:6px;}.warning-box{background:#fff1f2;padding:14px;border-right:4px solid #EF4444;margin:12px 0;border-radius:6px;}.reject-box{background:#fff1f2;padding:14px;border-right:4px solid #EF4444;margin:12px 0;border-radius:6px;}.platform-btn{display:inline-block;background:#2F6F7E;color:#fff!important;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:10px;}.footer{text-align:center;color:#888;font-size:12px;margin-top:24px;border-top:1px solid #eee;padding-top:12px;}p{color:#333;line-height:1.8;}</style>"""
 
+
+# ================================================================
+# ✅ التعديل 2: دالة إرسال إيميل الإيداع مع بيانات الدخول
+# ================================================================
 def send_deposit_email_to_professor(prof_name, memo_number, memo_title, student1_name, student2_name=None):
     try:
         df_profs = load_prof_memos()
-        # البحث بـ اسم الأستاذ + رقم المذكرة
         prof_rows = df_profs[
             (df_profs["الأستاذ"].astype(str).str.strip()==prof_name.strip()) &
             (df_profs["رقم المذكرة"].astype(str).apply(normalize_text)==normalize_text(memo_number))
         ]
-        # إن لم يُوجد بالرقم، نبحث بالاسم فقط ونأخذ الصف الذي فيه إيميل
         if prof_rows.empty:
             all_prof_rows = df_profs[df_profs["الأستاذ"].astype(str).str.strip()==prof_name.strip()]
             prof_rows = all_prof_rows
         if prof_rows.empty: return False, f"الأستاذ غير موجود في قاعدة البيانات: {prof_name}"
-        # البحث في كل صفوف الأستاذ حتى نجد إيميلاً
+
         prof_email = ""
+        prof_username = ""
+        prof_password_val = ""
+
         for _, prow in prof_rows.iterrows():
+            # البريد الإلكتروني
             email_candidate = get_email_smart(prow)
             if email_candidate and "@" in email_candidate:
                 prof_email = email_candidate
+
+            # اسم المستخدم — من شيت الأساتذة فقط
+            for col in ["إسم المستخدم", "اسم المستخدم", "Identifiant"]:
+                if col in prow.index:
+                    val = str(prow.get(col, "")).strip()
+                    if val and val.lower() != "nan":
+                        prof_username = val; break
+
+            # كلمة المرور — من شيت الأساتذة فقط
+            for col in ["كلمة المرور", "كلمة السر", "Password"]:
+                if col in prow.index:
+                    val = str(prow.get(col, "")).strip()
+                    if val and val.lower() != "nan":
+                        prof_password_val = val; break
+
+            if prof_email and prof_username and prof_password_val:
                 break
+
         if not prof_email: return False, f"البريد غير متوفر للأستاذ: {prof_name}"
+
         students_html = f"<p>👤 <strong>الطالب الأول:</strong> {student1_name}</p>"
         if student2_name and student2_name.strip() and student2_name != student1_name:
             students_html += f"<p>👤 <strong>الطالب الثاني:</strong> {student2_name}</p>"
+
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
-        body = f"""<html dir="rtl"><head><meta charset="UTF-8">{_email_style()}</head><body><div class="container"><div class="header"><h2>📥 إيداع مذكرة — للإطلاع والمراجعة</h2><p style="color:rgba(255,255,255,0.8);margin:5px 0 0;font-size:0.88rem;">جامعة محمد البشير الإبراهيمي — كلية الحقوق</p></div><p>الأستاذ(ة) الفاضل(ة) <strong>{prof_name}</strong>،</p><p>نحيطكم علماً بأن الطالب(ين) أودعوا نسختهم النهائية من المذكرة رقم <strong>{memo_number}</strong> عبر منصة مذكرات الماستر بتاريخ <strong>{timestamp}</strong>.</p><div class="info-box"><p>📄 <strong>رقم المذكرة:</strong> {memo_number}</p><p>📑 <strong>العنوان:</strong> {memo_title}</p>{students_html}</div><div class="action-box"><p>يُرجى الدخول إلى المنصة للاطلاع على المذكرة المودعة، ثم اتخاذ قرار الموافقة أو الإعادة مع الملاحظات.</p></div><div style="text-align:center;margin:20px 0;"><a href="https://memoires2026.streamlit.app" class="platform-btn">🔗 الدخول إلى منصة المذكرات</a></div><div class="footer"><p>مسؤول الميدان: البروفيسور لخضر رفاف</p><p>جامعة محمد البشير الإبراهيمي</p></div></div></body></html>"""
+
+        # بناء صندوق بيانات الدخول
+        login_html = ""
+        if prof_username or prof_password_val:
+            login_html = f"""
+            <div style="background:#f0fdf4;padding:16px;border-right:4px solid #10B981;margin:14px 0;border-radius:6px;">
+                <p style="margin:0 0 10px;font-weight:800;color:#065f46;font-size:1rem;">
+                    🔐 تذكير ببيانات الدخول إلى المنصة
+                </p>
+                <p style="margin:6px 0;color:#333;">
+                    👤 <strong>اسم المستخدم:</strong>&nbsp;
+                    <span style="font-family:monospace;background:#dbeafe;padding:3px 10px;border-radius:5px;
+                          font-size:1rem;color:#1e3a5f;font-weight:700;letter-spacing:0.5px;">
+                        {prof_username if prof_username else '—'}
+                    </span>
+                </p>
+                <p style="margin:6px 0;color:#333;">
+                    🔑 <strong>كلمة المرور:</strong>&nbsp;
+                    <span style="font-family:monospace;background:#dbeafe;padding:3px 10px;border-radius:5px;
+                          font-size:1rem;color:#1e3a5f;font-weight:700;letter-spacing:0.5px;">
+                        {prof_password_val if prof_password_val else '—'}
+                    </span>
+                </p>
+            </div>"""
+
+        body = f"""<html dir="rtl"><head><meta charset="UTF-8">{_email_style()}</head><body>
+        <div class="container">
+            <div class="header">
+                <h2>📥 إيداع مذكرة — للإطلاع والمراجعة</h2>
+                <p style="color:rgba(255,255,255,0.8);margin:5px 0 0;font-size:0.88rem;">
+                    جامعة محمد البشير الإبراهيمي — كلية الحقوق
+                </p>
+            </div>
+            <p>الأستاذ(ة) الفاضل(ة) <strong>{prof_name}</strong>،</p>
+            <p>نحيطكم علماً بأن الطالب(ين) أودعوا نسختهم النهائية من المذكرة رقم
+                <strong>{memo_number}</strong> عبر منصة مذكرات الماستر بتاريخ <strong>{timestamp}</strong>.
+            </p>
+            <div class="info-box">
+                <p>📄 <strong>رقم المذكرة:</strong> {memo_number}</p>
+                <p>📑 <strong>العنوان:</strong> {memo_title}</p>
+                {students_html}
+            </div>
+            <div class="action-box">
+                <p>يُرجى الدخول إلى المنصة للاطلاع على المذكرة المودعة،
+                ثم اتخاذ قرار الموافقة أو الإعادة مع الملاحظات.</p>
+            </div>
+            {login_html}
+            <div style="text-align:center;margin:20px 0;">
+                <a href="https://memoires2026.streamlit.app" class="platform-btn">
+                    🔗 الدخول إلى منصة المذكرات
+                </a>
+            </div>
+            <div class="footer">
+                <p>مسؤول الميدان: البروفيسور لخضر رفاف</p>
+                <p>جامعة محمد البشير الإبراهيمي</p>
+            </div>
+        </div></body></html>"""
+
         for recipient in [prof_email, ADMIN_EMAIL]:
             msg = MIMEMultipart('alternative')
             msg['From']=EMAIL_SENDER; msg['To']=recipient
@@ -397,6 +491,7 @@ def send_deposit_email_to_professor(prof_name, memo_number, memo_title, student1
                 server.starttls(); server.login(EMAIL_SENDER, EMAIL_PASSWORD); server.send_message(msg)
         return True, "✅ تم إرسال الإشعار"
     except Exception as e: return False, f"❌ {str(e)}"
+
 
 def send_approval_email_to_students(memo_number, memo_title, prof_name, student1_data, student2_data=None):
     try:
@@ -898,6 +993,186 @@ def decode_str(s):
     try: return base64.urlsafe_b64decode(s.encode()).decode()
     except: return ""
 
+
+# ================================================================
+# 🎓 خوارزمية جدولة المناقشات
+# ================================================================
+
+def build_conflict_matrix(df_memos):
+    memos = df_memos[df_memos["تم التسجيل"].astype(str).str.strip()=="نعم"].copy()
+    memo_list = memos["رقم المذكرة"].astype(str).tolist()
+    conflicts = {m: set() for m in memo_list}
+    rows_list = list(memos.iterrows())
+    for i in range(len(rows_list)):
+        _, row_i = rows_list[i]
+        m_i = str(row_i["رقم المذكرة"])
+        profs_i = set(filter(None, [str(row_i.get("الأستاذ","")).strip(),str(row_i.get("AC","")).strip(),str(row_i.get("AD","")).strip(),str(row_i.get("AE","")).strip()])) - {"","nan","—"}
+        for j in range(i+1, len(rows_list)):
+            _, row_j = rows_list[j]
+            m_j = str(row_j["رقم المذكرة"])
+            profs_j = set(filter(None,[str(row_j.get("الأستاذ","")).strip(),str(row_j.get("AC","")).strip(),str(row_j.get("AD","")).strip(),str(row_j.get("AE","")).strip()])) - {"","nan","—"}
+            if profs_i & profs_j:
+                conflicts[m_i].add(m_j); conflicts[m_j].add(m_i)
+    return memo_list, conflicts
+
+def get_memo_profs(row):
+    return set(filter(None,[str(row.get("الأستاذ","")).strip(),str(row.get("AC","")).strip(),str(row.get("AD","")).strip(),str(row.get("AE","")).strip()])) - {"","nan","—"}
+
+def greedy_schedule(memo_list, conflicts, days, slots, rooms):
+    import random
+    all_slots = [(d,s,r) for d in days for s in slots for r in rooms]
+    sorted_memos = sorted(memo_list, key=lambda m: len(conflicts.get(m,set())), reverse=True)
+    schedule = {}
+    for memo in sorted_memos:
+        placed = False
+        candidates = [sl for sl in all_slots if sl not in schedule.values()]
+        random.shuffle(candidates)
+        for (day,slot,room) in candidates:
+            conflict_found = any(
+                ov[0]==day and ov[1]==slot and other in conflicts.get(memo,set())
+                for other,ov in schedule.items() if ov
+            )
+            if not conflict_found:
+                schedule[memo] = (day,slot,room); placed = True; break
+        if not placed: schedule[memo] = None
+    return schedule
+
+def calc_idle_penalty(schedule, df_memos, slot_list):
+    memo_rows = {str(r["رقم المذكرة"]): r for _,r in df_memos[df_memos["تم التسجيل"].astype(str).str.strip()=="نعم"].iterrows()}
+    prof_day_slots = {}
+    for memo,slot in schedule.items():
+        if not slot or memo not in memo_rows: continue
+        profs = get_memo_profs(memo_rows[memo])
+        day,s,_ = slot
+        slot_idx = slot_list.index(s) if s in slot_list else 0
+        for prof in profs:
+            if prof not in prof_day_slots: prof_day_slots[prof] = {}
+            if day not in prof_day_slots[prof]: prof_day_slots[prof][day] = []
+            prof_day_slots[prof][day].append(slot_idx)
+    penalty = 0
+    for prof,days_d in prof_day_slots.items():
+        for day,idxs in days_d.items():
+            if len(idxs)>1:
+                penalty += max(idxs) - min(idxs) - len(idxs) + 1
+    return penalty
+
+def calc_score(schedule, df_memos, conflicts, slot_list=None):
+    placed = {k:v for k,v in schedule.items() if v}
+    unplaced = [k for k,v in schedule.items() if not v]
+    placement = len(placed)/len(schedule)*60 if schedule else 0
+    idle = calc_idle_penalty(schedule, df_memos, slot_list or []) if slot_list else 0
+    score = min(100, round(placement + max(0,20-idle) + max(0,20-len(unplaced)), 1))
+    return score, len(unplaced), idle
+
+def simulated_annealing(schedule, df_memos, conflicts, days, slots, rooms, iterations=600):
+    import random, math
+    all_slots = [(d,s,r) for d in days for s in slots for r in rooms]
+    slot_list = slots
+    current = dict(schedule)
+    best = dict(current)
+    best_score,_,_ = calc_score(best, df_memos, conflicts, slot_list)
+    T = 10.0
+    for _ in range(iterations):
+        memo = random.choice(list(current.keys()))
+        old_slot = current[memo]
+        candidates = [sl for sl in all_slots if sl != old_slot and sl not in [v for k,v in current.items() if k!=memo and v]]
+        candidates = [sl for sl in candidates if not any(ov and ov[0]==sl[0] and ov[1]==sl[1] and other in conflicts.get(memo,set()) for other,ov in current.items() if other!=memo)]
+        if not candidates: continue
+        new_slot = random.choice(candidates)
+        current[memo] = new_slot
+        new_score,_,_ = calc_score(current, df_memos, conflicts, slot_list)
+        cur_score,_,_ = calc_score({**current, memo:old_slot}, df_memos, conflicts, slot_list)
+        if new_score > cur_score or random.random() < math.exp((new_score-cur_score)/T):
+            if new_score > best_score: best=dict(current); best_score=new_score
+        else: current[memo] = old_slot
+        T *= 0.97
+    return best, best_score
+
+def schedule_to_rows(schedule, df_memos):
+    memo_rows = {str(r["رقم المذكرة"]): r for _,r in df_memos.iterrows()}
+    rows = []
+    for memo,slot in schedule.items():
+        row = memo_rows.get(memo, pd.Series())
+        r = {"رقم المذكرة": memo, "العنوان": str(row.get("عنوان المذكرة",""))[:40] if hasattr(row,"get") else ""}
+        if slot: r.update({"اليوم":slot[0],"التوقيت":slot[1],"القاعة":slot[2]})
+        else: r.update({"اليوم":"غير مجدول","التوقيت":"","القاعة":""})
+        for k,c in [("المشرف","الأستاذ"),("الرئيس","AC"),("المناقش1","AD"),("المناقش2","AE")]:
+            r[k] = str(row.get(c,"")).strip() if hasattr(row,"get") else ""
+        r["رابط الملف"] = str(row.get("رابط الملف","")).strip() if hasattr(row,"get") else ""
+        rows.append(r)
+    return rows
+
+def save_full_schedule_to_sheets(schedule, df_memos):
+    try:
+        updates = []
+        for i,(_, row) in enumerate(df_memos.iterrows()):
+            memo = str(row["رقم المذكرة"])
+            slot = schedule.get(memo)
+            if not slot: continue
+            row_idx = i+2
+            updates += [
+                {"range":f"Feuille 1!Y{row_idx}","values":[[slot[0]]]},
+                {"range":f"Feuille 1!Z{row_idx}","values":[[slot[1]]]},
+                {"range":f"Feuille 1!AA{row_idx}","values":[[slot[2]]]},
+                {"range":f"Feuille 1!AF{row_idx}","values":[["نعم"]]},
+            ]
+        if updates:
+            sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID,body={"valueInputOption":"USER_ENTERED","data":updates}).execute()
+            clear_cache_and_reload()
+            return True, f"✅ تم حفظ {len(updates)//4} مذكرة"
+        return False, "لا شيء"
+    except Exception as e: return False, f"❌ {str(e)}"
+
+def send_prof_schedule_email(prof_name, items, df_profs):
+    try:
+        rows = df_profs[df_profs["الأستاذ"].astype(str).str.strip()==prof_name.strip()]
+        if rows.empty: return False,"غير موجود"
+        email = get_email_smart(rows.iloc[0])
+        if not email or "@" not in email: return False,"لا بريد"
+        by_day = {}
+        for it in sorted(items, key=lambda x:(x["اليوم"],x["التوقيت"])):
+            by_day.setdefault(it["اليوم"],[]).append(it)
+        rows_html = ""
+        for day,its in sorted(by_day.items()):
+            rows_html += f'<tr style="background:#e8f4f8;"><td colspan="4" style="padding:8px;font-weight:900;color:#1e3a5f;">📅 {day}</td></tr>'
+            for it in its:
+                lnk = f'<a href="{it["رابط الملف"]}" style="color:#2F6F7E;">📄</a>' if it.get("رابط الملف","") not in ["","nan"] else "—"
+                rows_html += f'<tr><td style="padding:8px;border-bottom:1px solid #eee;">{it["التوقيت"]}</td><td style="padding:8px;border-bottom:1px solid #eee;">{it["القاعة"]}</td><td style="padding:8px;border-bottom:1px solid #eee;">{it["رقم المذكرة"]}</td><td style="padding:8px;border-bottom:1px solid #eee;">{it["الصفة"]} {lnk}</td></tr>'
+        body = f'''<html dir="rtl"><head><meta charset="UTF-8"><style>body{{font-family:Arial;direction:rtl;background:#f4f4f4;padding:20px}}.c{{background:#fff;padding:28px;border-radius:12px;max-width:700px;margin:auto}}.h{{background:linear-gradient(135deg,#0F2942,#2F6F7E);color:#fff;padding:20px;border-radius:8px;text-align:center;margin-bottom:18px}}table{{width:100%;border-collapse:collapse}}th{{background:#2F6F7E;color:#fff;padding:10px;text-align:right}}</style></head><body><div class="c"><div class="h"><h2>📋 برنامج مناقشاتك</h2><p style="opacity:.9">جامعة محمد البشير الإبراهيمي</p></div><p>الأستاذ(ة) <strong>{prof_name}</strong>، فيما يلي برنامج مناقشاتك: <strong>{len(items)} مناقشة</strong> في <strong>{len(by_day)} يوم</strong>.</p><table><thead><tr><th>التوقيت</th><th>القاعة</th><th>المذكرة</th><th>صفتك</th></tr></thead><tbody>{rows_html}</tbody></table><p style="background:#fff8e1;padding:12px;border-right:4px solid #F59E0B;border-radius:6px;margin-top:16px;">⚠️ يُرجى الحضور قبل الموعد بـ 15 دقيقة.</p><div style="text-align:center;margin:16px 0"><a href="https://memoires2026.streamlit.app" style="background:#2F6F7E;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">🔗 الدخول للمنصة</a></div><div style="text-align:center;color:#888;font-size:12px;margin-top:20px;border-top:1px solid #eee;padding-top:12px"><p>مسؤول الميدان: البروفيسور لخضر رفاف</p></div></div></body></html>'''
+        msg = MIMEMultipart("alternative"); msg["From"]=EMAIL_SENDER; msg["To"]=email
+        msg["Subject"]=f"📋 برنامج مناقشاتك — {len(items)} مناقشة في {len(by_day)} يوم"
+        msg.attach(MIMEText(body,"html","utf-8"))
+        with smtplib.SMTP(SMTP_SERVER,SMTP_PORT) as s: s.starttls(); s.login(EMAIL_SENDER,EMAIL_PASSWORD); s.send_message(msg)
+        return True, f"✅ {email}"
+    except Exception as e: return False, f"❌ {str(e)}"
+
+def send_student_schedule_email(student_data, memo_num, defense_date, defense_time, defense_room):
+    try:
+        email = get_email_smart(student_data)
+        if not email or "@" not in email: return False,"لا بريد"
+        ln,fn = get_student_name_display(student_data); name=f"{ln} {fn}".strip()
+        body = f'''<html dir="rtl"><head><meta charset="UTF-8"><style>body{{font-family:Arial;direction:rtl;background:#f4f4f4;padding:20px}}.c{{background:#fff;padding:28px;border-radius:12px;max-width:600px;margin:auto}}.h{{background:linear-gradient(135deg,#0F2942,#2F6F7E);color:#fff;padding:20px;border-radius:8px;text-align:center}}.s{{background:#f0fdf4;padding:14px;border-right:4px solid #10B981;margin:12px 0;border-radius:6px}}</style></head><body><div class="c"><div class="h"><h2>📅 موعد مناقشتك</h2></div><p>تحية طيبة، <strong>{name}</strong>،</p><p>تم تحديد موعد مناقشة مذكرتك رقم <strong>{memo_num}</strong>.</p><div class="s"><p>📆 <strong>التاريخ:</strong> {defense_date}</p><p>🕐 <strong>التوقيت:</strong> {defense_time}</p><p>🏛️ <strong>القاعة:</strong> {defense_room}</p></div><p style="background:#fff8e1;padding:12px;border-right:4px solid #F59E0B;border-radius:6px">⚠️ يُرجى الحضور قبل الموعد بـ 15 دقيقة مع جميع الوثائق.</p><div style="text-align:center;margin:16px 0"><a href="https://memoires2026.streamlit.app" style="background:#2F6F7E;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">🔗 متابعة على المنصة</a></div><div style="text-align:center;color:#888;font-size:12px;margin-top:20px;border-top:1px solid #eee;padding-top:12px"><p>جامعة محمد البشير الإبراهيمي</p></div></div></body></html>'''
+        msg = MIMEMultipart("alternative"); msg["From"]=EMAIL_SENDER; msg["To"]=email
+        msg["Subject"]=f"📅 موعد مناقشتك — {defense_date} الساعة {defense_time}"
+        msg.attach(MIMEText(body,"html","utf-8"))
+        with smtplib.SMTP(SMTP_SERVER,SMTP_PORT) as s: s.starttls(); s.login(EMAIL_SENDER,EMAIL_PASSWORD); s.send_message(msg)
+        return True, f"✅ {email}"
+    except Exception as e: return False, f"❌ {str(e)}"
+
+def save_member_observations(memo_number, prof_name, role, observations):
+    col_map={"مشرف":"AB","رئيس":"AG","مناقش1":"AH","مناقش2":"AI"}
+    col=col_map.get(role,"AG")
+    try:
+        df_m=load_memos()
+        row=df_m[df_m["رقم المذكرة"].astype(str).apply(normalize_text)==normalize_text(memo_number)]
+        if row.empty: return False,"❌ غير موجودة"
+        row_idx=row.index[0]+2
+        ts=datetime.now().strftime("%Y-%m-%d %H:%M")
+        obs_full=f"[{prof_name}—{role}][{ts}]: {observations}"
+        sheets_service.spreadsheets().values().update(spreadsheetId=MEMOS_SHEET_ID,range=f"Feuille 1!{col}{row_idx}",valueInputOption="USER_ENTERED",body={"values":[[obs_full]]}).execute()
+        clear_cache_and_reload(); return True,"✅ تم حفظ الملاحظات"
+    except Exception as e: return False,f"❌ {str(e)}"
+
 df_students = load_students(); df_memos = load_memos(); df_prof_memos = load_prof_memos(); df_requests = load_requests()
 if df_students.empty or df_memos.empty or df_prof_memos.empty:
     st.error("❌ خطأ في تحميل البيانات."); st.stop()
@@ -1160,50 +1435,66 @@ elif st.session_state.user_type == "student":
             is_published   = str(memo_info.get("AF","")).strip()=="نعم" if "AF" in memo_info.index else False
             prof_name_m    = str(memo_info.get("الأستاذ","")).strip()
 
-            # ── Hero الإيداع ──
             if deposit_status == "مرفوضة":
                 rejection_raw = str(memo_info.get("توقيع المشرف","")).strip()
                 reason_display = rejection_raw.split("السبب:")[-1].strip() if "السبب:" in rejection_raw else "يرجى مراجعة المشرف."
                 st.markdown(f"""<div class="notif-card notif-card-rejected"><div class="notif-icon">🔴</div><div><div class="notif-title notif-title-rejected">المذكرة بحاجة لمراجعة</div><div class="notif-desc"><strong>ملاحظات المشرف:</strong><br>{reason_display}</div></div></div>""", unsafe_allow_html=True)
 
             if deposit_status in ["", "nan", "مرفوضة"] or not deposit_status:
-                days_left = get_days_remaining()
-                st.markdown(f"""<div class="deposit-hero"><span class="deposit-hero-icon">📤</span><div class="deposit-hero-title">يمكنك الآن إيداع مذكرتك النهائية</div><div class="deposit-hero-sub" style="color:#E2E8F0!important;">آخر أجل: <strong style="color:#FFD700;">14 ماي 2026</strong> — تبقى <strong style="color:{'#EF4444' if days_left<=7 else '#FFD700'};">{days_left} يوم</strong><br>ارفع نسخة PDF من مذكرتك. سيراجعها المشرف ويوافق أو يرسل ملاحظاته.</div></div>""", unsafe_allow_html=True)
-                uploaded_pdf = st.file_uploader("📁 اختر ملف المذكرة (PDF فقط)", type=["pdf"], key="upload_pdf")
-                if uploaded_pdf:
-                    pdf_bytes = uploaded_pdf.read(); size_mb = len(pdf_bytes)/(1024*1024); uploaded_pdf.seek(0)
-                    st.info(f"📊 حجم الملف: {size_mb:.1f} MB")
-                    if size_mb > 50: st.error("❌ الحجم يتجاوز 10 MB")
-                    else:
-                        if st.button("📤 إيداع المذكرة الآن", type="primary", use_container_width=True):
-                            with st.spinner("⏳ جاري رفع الملف..."):
-                                ok, link, msg = upload_memo_to_drive(pdf_bytes, note_num, memo_info['عنوان المذكرة'])
-                                if ok:
-                                    s, m = save_memo_deposit(note_num, link)
-                                    if s:
-                                        s1_ln,s1_fn = get_student_name_display(st.session_state.student1)
-                                        s1_display = f"{s1_ln} {s1_fn}".strip()
-                                        s2_display = ""
-                                        s2_obj_dep = load_student2_for_memo(memo_info, normalize_text(st.session_state.student1.get('رقم التسجيل','')), load_students())
-                                        if s2_obj_dep:
-                                            s2l,s2f = get_student_name_display(s2_obj_dep); s2_display=f"{s2l} {s2f}".strip()
-                                        email_ok, email_msg = send_deposit_email_to_professor(prof_name_m, note_num, memo_info['عنوان المذكرة'], s1_display, s2_display)
-                                        st.success("✅ تم إيداع مذكرتك! سيراجعها المشرف قريباً.")
-                                        if email_ok: st.info("📧 تم إرسال إشعار للمشرف والإدارة.")
-                                        else: st.warning(f"⚠️ فشل إرسال الإيميل للمشرف: {email_msg}")
-                                        st.balloons(); clear_cache_and_reload(); time_module.sleep(2); st.rerun()
-                                    else: st.error(m)
-                                else: st.error(msg)
+                deadline_passed = datetime.now() > DEPOSIT_DEADLINE
+                if deadline_passed:
+                    st.markdown("""
+                    <div style="background:linear-gradient(135deg,#1a0a0a,#2d0f0f);border:2px solid rgba(239,68,68,0.5);
+                                border-radius:18px;padding:28px 32px;margin-bottom:18px;text-align:center;">
+                        <div style="font-size:2.8rem;margin-bottom:12px;">🔒</div>
+                        <div style="font-size:1.2rem;font-weight:900;color:#EF4444;margin-bottom:8px;">
+                            انتهى أجل إيداع المذكرات
+                        </div>
+                        <div style="font-size:0.9rem;color:#E2E8F0;line-height:1.7;">
+                            انتهى الأجل الرسمي لإيداع المذكرات في
+                            <strong style="color:#FFD700;">14 ماي 2026 الساعة 23:59</strong>
+                            <br>لم يعد بإمكانك إيداع أي ملف عبر المنصة.
+                            <br><br>
+                            <span style="color:#F59E0B;">للاستفسار أو في حالة الضرورة القصوى، راجع الإدارة مباشرة.</span>
+                        </div>
+                    </div>""", unsafe_allow_html=True)
+                else:
+                    days_left = get_days_remaining()
+                    st.markdown(f"""<div class="deposit-hero"><span class="deposit-hero-icon">📤</span><div class="deposit-hero-title">يمكنك الآن إيداع مذكرتك النهائية</div><div class="deposit-hero-sub" style="color:#E2E8F0!important;">آخر أجل: <strong style="color:#FFD700;">14 ماي 2026</strong> — تبقى <strong style="color:{'#EF4444' if days_left<=7 else '#FFD700'};">{days_left} يوم</strong><br>ارفع نسخة PDF من مذكرتك. سيراجعها المشرف ويوافق أو يرسل ملاحظاته.</div></div>""", unsafe_allow_html=True)
+                    uploaded_pdf = st.file_uploader("📁 اختر ملف المذكرة (PDF فقط)", type=["pdf"], key="upload_pdf")
+                    if uploaded_pdf:
+                        pdf_bytes = uploaded_pdf.read(); size_mb = len(pdf_bytes)/(1024*1024); uploaded_pdf.seek(0)
+                        st.info(f"📊 حجم الملف: {size_mb:.1f} MB")
+                        if size_mb > 50: st.error("❌ الحجم يتجاوز 10 MB")
+                        else:
+                            if st.button("📤 إيداع المذكرة الآن", type="primary", use_container_width=True):
+                                with st.spinner("⏳ جاري رفع الملف..."):
+                                    ok, link, msg = upload_memo_to_drive(pdf_bytes, note_num, memo_info['عنوان المذكرة'])
+                                    if ok:
+                                        s, m = save_memo_deposit(note_num, link)
+                                        if s:
+                                            s1_ln,s1_fn = get_student_name_display(st.session_state.student1)
+                                            s1_display = f"{s1_ln} {s1_fn}".strip()
+                                            s2_display = ""
+                                            s2_obj_dep = load_student2_for_memo(memo_info, normalize_text(st.session_state.student1.get('رقم التسجيل','')), load_students())
+                                            if s2_obj_dep:
+                                                s2l,s2f = get_student_name_display(s2_obj_dep); s2_display=f"{s2l} {s2f}".strip()
+                                            email_ok, email_msg = send_deposit_email_to_professor(prof_name_m, note_num, memo_info['عنوان المذكرة'], s1_display, s2_display)
+                                            st.success("✅ تم إيداع مذكرتك! سيراجعها المشرف قريباً.")
+                                            if email_ok: st.info("📧 تم إرسال إشعار للمشرف والإدارة.")
+                                            else: st.warning(f"⚠️ فشل إرسال الإيميل للمشرف: {email_msg}")
+                                            st.balloons(); clear_cache_and_reload(); time_module.sleep(2); st.rerun()
+                                        else: st.error(m)
+                                    else: st.error(msg)
             elif deposit_status == "مودعة":
                 st.markdown("""<div class="notif-card notif-card-waiting"><div class="notif-icon">🟡</div><div><div class="notif-title notif-title-waiting">مذكرتك مودعة — في انتظار مراجعة المشرف</div><div class="notif-desc">تم استلام ملفك. سيراجعه المشرف ويوافق أو يرسل ملاحظاته. ستتلقى إشعاراً فور اتخاذ القرار.</div></div></div>""", unsafe_allow_html=True)
                 if deposit_date and deposit_date not in ["","nan"]: st.caption(f"📅 تاريخ الإيداع: {deposit_date}")
                 if deposit_link and deposit_link not in ["","nan"]: st.markdown(f"📎 [عرض الملف المودع]({deposit_link})")
-                st.markdown("""<div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:11px 15px;margin-top:9px;"><p style="color:#EF4444!important;margin:0;font-size:0.86rem;">⛔ الإيداع نهائي. للتصحيح تواصل مع الإدارة مباشرة.</p></div>""", unsafe_allow_html=True)
+                st.markdown("""<div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:11px 15px;margin-top:9px;"><p style="color:#EF4444!important;margin:0;font-size:0.86rem;">⛔ لقد قمت بإيداع مذكرتك؛ لا يمكنك إيداع نسخة أخرى.</p></div>""", unsafe_allow_html=True)
             elif deposit_status == "قابلة للمناقشة":
                 st.markdown("""<div class="notif-card notif-card-approved"><div class="notif-icon">🟢</div><div><div class="notif-title notif-title-approved">مذكرتك معتمدة — قابلة للمناقشة ✓</div><div class="notif-desc">وافق المشرف على مذكرتك رسمياً. ستتلقى إشعاراً من الإدارة بموعد المناقشة قريباً.</div></div></div>""", unsafe_allow_html=True)
                 if deposit_link and deposit_link not in ["","nan"]: st.markdown(f"📎 [عرض الملف المودع]({deposit_link})")
 
-            # موعد المناقشة
             if is_published and def_date_m and def_date_m not in ["","nan"]:
                 st.markdown(f"""<div class="defense-schedule-card"><h4 style="color:#818CF8!important;margin:0 0 6px;">📅 موعد مناقشتك</h4><div class="defense-info-grid"><div class="defense-info-item"><div class="defense-info-label">📆 التاريخ</div><div class="defense-info-value">{def_date_m}</div></div><div class="defense-info-item"><div class="defense-info-label">🕐 التوقيت</div><div class="defense-info-value">{def_time_m if def_time_m and def_time_m!='nan' else '—'}</div></div><div class="defense-info-item"><div class="defense-info-label">🏛️ القاعة</div><div class="defense-info-value">{def_room_m if def_room_m and def_room_m!='nan' else '—'}</div></div></div></div>""", unsafe_allow_html=True)
                 president_s = str(memo_info.get("AC","")).strip() if "AC" in memo_info.index else ""
@@ -1368,22 +1659,19 @@ elif st.session_state.user_type == "professor":
                     s2_name_ap=str(current_memo.get("الطالب الثاني","")).strip()
                     students_str_ap=s1_name_ap
                     if s2_name_ap and s2_name_ap not in ["","nan","--"]: students_str_ap+=f" و {s2_name_ap}"
-                    declaration_text_base = f"بعنوان «{current_memo.get('عنوان المذكرة','')}» للطالب(ين) {students_str_ap}، هي النسخة النهائية المودعة وهي التي ستُعرض على لجنة المناقشة ولن يُقبل أي تعديل بعد هذا التصريح."
-                    st.markdown("""<div class="declaration-card"><div class="declaration-card-header"><div class="declaration-card-title">📋 التصريح الرسمي بالموافقة</div><div class="declaration-card-sub">يُرجى إكمال جميع الخطوات. هذا التصريح موثق ولا يمكن التراجع عنه.</div></div><div class="declaration-card-body">""", unsafe_allow_html=True)
+                    st.markdown("""<div class="declaration-card"><div class="declaration-card-header"><div class="declaration-card-title">📋 التصريح الرسمي بالموافقة</div><div class="declaration-card-sub">يُرجى إدخال عدد الصفحات ثم الضغط على تأكيد الموافقة.</div></div><div class="declaration-card-body">""", unsafe_allow_html=True)
                     st.markdown('<div class="declaration-step-label">① عدد صفحات المذكرة (دليل على اطلاعك الكامل)</div>', unsafe_allow_html=True)
                     page_count = st.number_input("عدد الصفحات",min_value=0,max_value=999,value=0,step=1,key=f"pages_{memo_id}")
-                    st.markdown(f"""<div class="declaration-step-label" style="margin-top:14px;">② نص التصريح الذي سيُحفظ</div><div class="declaration-preview">أنا الأستاذ <strong>{prof_name}</strong>، أصرّح بأن المذكرة رقم <strong>{memo_id}</strong>، عدد الصفحات: <strong>{page_count}</strong>، {declaration_text_base}</div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div class="declaration-step-label" style="margin-top:14px;">② نص التصريح الذي سيُحفظ</div><div class="declaration-preview">أنا الأستاذ <strong>{prof_name}</strong>، أصرّح للطالب(ين) {students_str_ap} بإيداع المذكرة رقم {memo_id} عدد الصفحات: <strong>{page_count}</strong> بعنوان «{current_memo.get('عنوان المذكرة','')}»، وأصرح بأن النسخة المودعة هي التي ستُعرض على لجنة المناقشة.</div>""", unsafe_allow_html=True)
                     st.markdown('<div class="declaration-step-label" style="margin-top:14px;">③ الإقرار والتوقيع الإلكتروني</div>', unsafe_allow_html=True)
-                    agree_check = st.checkbox("✅ أقرّ بصحة هذا التصريح وأتحمل مسؤوليته",key=f"agree_{memo_id}")
-                    st.markdown(f"""<div style="background:rgba(47,111,126,0.07);border:1px dashed #2F6F7E;border-radius:8px;padding:8px 13px;margin:7px 0 5px;"><p style="color:#E2E8F0!important;font-size:0.78rem;margin:0;">الاسم المسجل: <strong style="color:#FFD700;">{prof_name}</strong></p></div>""", unsafe_allow_html=True)
-                    signature = st.text_input("التوقيع — اكتب اسمك الكامل بالضبط",placeholder=f"اكتب: {prof_name}",key=f"sig_{memo_id}")
+                    st.markdown(f"""<div style="background:rgba(47,111,126,0.07);border-radius:8px;padding:8px 13px;margin:7px 0 5px;"><p style="color:#E2E8F0!important;font-size:0.78rem;margin:0;">سيتم توثيق موافقتك باسم: <strong style="color:#FFD700;">{prof_name}</strong></p></div>""", unsafe_allow_html=True)
+                    signature = prof_name
                     st.markdown("</div></div>", unsafe_allow_html=True)
                     col_ok,col_cancel=st.columns(2)
                     with col_ok:
                         if not st.session_state.get(f"confirm_step_{memo_id}",False):
                             if st.button("📋 متابعة للتأكيد النهائي",type="primary",use_container_width=True,key=f"pre_approve_{memo_id}"):
                                 errs=[]
-                                if not agree_check: errs.append("❌ يجب الإقرار أولاً")
                                 if page_count < 60: errs.append("❌ عدد الصفحات يجب أن يكون 60 على الأقل")
                                 if not signature.strip(): errs.append("❌ التوقيع فارغ")
                                 elif signature.strip()!=prof_name.strip(): errs.append(f"❌ التوقيع غير مطابق — اكتب: «{prof_name}»")
@@ -1395,13 +1683,13 @@ elif st.session_state.user_type == "professor":
                                     st.session_state[f"pages_value_{memo_id}"]=page_count
                                     st.rerun()
                         else:
-                            st.markdown("""<div style="background:rgba(239,68,68,0.09);border:2px solid #EF4444;border-radius:13px;padding:18px;text-align:center;margin-bottom:13px;"><div style="font-size:1.7rem;">⚠️</div><h4 style="color:#EF4444!important;margin:7px 0;">تأكيد نهائي — لا رجعة فيه</h4><p style="color:#E2E8F0!important;font-size:0.86rem;">ستُحفظ موافقتك وتُرسل الإشعارات للطلبة والإدارة.</p></div>""", unsafe_allow_html=True)
+                            st.markdown("""<div style="background:rgba(239,68,68,0.09);border:2px solid #EF4444;border-radius:13px;padding:18px;text-align:center;margin-bottom:13px;"><div style="font-size:1.7rem;">⚠️</div><h4 style="color:#EF4444!important;margin:7px 0;">تأكيد نهائي</h4><p style="color:#E2E8F0!important;font-size:0.86rem;">ستُحفظ موافقتك وتُرسل الإشعارات للطلبة.</p></div>""", unsafe_allow_html=True)
                             if st.button("✅ نعم، أوافق نهائياً",type="primary",use_container_width=True,key=f"final_approve_{memo_id}"):
                                 sig_saved=st.session_state.get(f"sig_value_{memo_id}","")
                                 pages_saved=st.session_state.get(f"pages_value_{memo_id}",page_count)
                                 with st.spinner("⏳ جاري حفظ التصريح..."):
                                     timestamp_ap=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                    full_declaration=f"تصريح: {prof_name} | توقيع: {sig_saved} | {timestamp_ap} | أنا الأستاذ {prof_name}، أصرّح بأن المذكرة رقم {memo_id} عدد الصفحات: {pages_saved} {declaration_text_base}"
+                                    full_declaration=f"تصريح: {prof_name} | {timestamp_ap} | أنا الأستاذ {prof_name}، أصرّح للطالب(ين) {students_str_ap} بإيداع المذكرة رقم {memo_id} عدد الصفحات: {pages_saved} بعنوان «{current_memo.get('عنوان المذكرة','')}»، وأصرح بأن النسخة المودعة هي التي ستُعرض على لجنة المناقشة."
                                     save_approval_declaration(memo_id, prof_name, sig_saved, full_declaration)
                                     ok,msg=approve_memo_for_defense(memo_id)
                                     if ok:
@@ -1427,7 +1715,7 @@ elif st.session_state.user_type == "professor":
                             st.session_state['prof_action']=None; st.session_state.pop(f"confirm_step_{memo_id}",None); st.rerun()
 
                 elif st.session_state.get('prof_action') == 'reject':
-                    st.markdown("""<div style="background:rgba(239,68,68,0.07);border:2px solid rgba(239,68,68,0.32);border-radius:15px;padding:20px;margin-bottom:14px;"><h4 style="color:#EF4444!important;margin:0 0 9px;">🔴 إعادة المذكرة للمراجعة</h4><p style="color:#E2E8F0!important;font-size:0.86rem;margin:0;">سيتم إعادة فتح الإيداع للطالب وإرسال ملاحظاتك بالبريد الإلكتروني وعلى المنصة.</p></div>""", unsafe_allow_html=True)
+                    st.markdown("""<div style="background:rgba(239,68,68,0.07);border:2px solid rgba(239,68,68,0.32);border-radius:15px;padding:20px;margin-bottom:14px;"><h4 style="color:#EF4444!important;margin:0 0 9px;">🔴 إعادة المذكرة للمراجعة</h4><p style="color:#E2E8F0!important;font-size:0.86rem;margin:0;">سيتم إرسال ملاحظاتك للطالب وفتح الإيداع مجدداً.</p></div>""", unsafe_allow_html=True)
                     rejection_reason=st.text_area("📋 سبب الإعادة وملاحظاتك التفصيلية:",height=140,placeholder="اكتب ملاحظاتك بدقة...",key=f"rej_reason_{memo_id}")
                     cr1,cr2=st.columns(2)
                     with cr1:
@@ -1454,7 +1742,7 @@ elif st.session_state.user_type == "professor":
                             st.session_state['prof_action']=None; st.rerun()
 
                 elif st.session_state.get('prof_action') == 'notes':
-                    st.markdown("""<div style="background:rgba(99,102,241,0.08);border:2px solid rgba(99,102,241,0.32);border-radius:15px;padding:20px;margin-bottom:14px;"><h4 style="color:#818CF8!important;margin:0 0 9px;">💬 إرسال ملاحظات للطالب</h4><p style="color:#E2E8F0!important;font-size:0.86rem;margin:0;">ستُرسل ملاحظاتك للطالب عبر الإيميل وتظهر على منصته. تبقى حالة الإيداع كما هي.</p></div>""", unsafe_allow_html=True)
+                    st.markdown("""<div style="background:rgba(99,102,241,0.08);border:2px solid rgba(99,102,241,0.32);border-radius:15px;padding:20px;margin-bottom:14px;"><h4 style="color:#818CF8!important;margin:0 0 9px;">💬 إرسال ملاحظات للطالب</h4><p style="color:#E2E8F0!important;font-size:0.86rem;margin:0;">ستُرسل ملاحظاتك للطالب. تبقى حالة الإيداع كما هي.</p></div>""", unsafe_allow_html=True)
                     notes_text=st.text_area("📝 ملاحظاتك:",height=130,placeholder="اكتب ملاحظاتك هنا...",key=f"notes_txt_{memo_id}")
                     cn1,cn2=st.columns(2)
                     with cn1:
@@ -1482,7 +1770,11 @@ elif st.session_state.user_type == "professor":
                 st.markdown(f"""<div style="background:rgba(16,185,129,0.09);border:2px solid #10B981;border-radius:15px;padding:20px;text-align:center;"><div style="font-size:2.3rem;">🟢</div><h4 style="color:#10B981!important;margin:9px 0;">المذكرة معتمدة — قابلة للمناقشة</h4><p style="color:#E2E8F0!important;">تم التصريح رسمياً وأُرسلت الإشعارات للطلبة.</p>{f'<a href="{deposit_link}" target="_blank" style="color:#10B981;font-size:0.88rem;">📄 عرض المذكرة المودعة</a>' if deposit_link and deposit_link!='nan' else ''}</div>""", unsafe_allow_html=True)
 
             st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.07);margin:20px 0;'>", unsafe_allow_html=True)
+
         else:
+            # ================================================================
+            # الصفحة الرئيسية لفضاء الأستاذ
+            # ================================================================
             c1,c2=st.columns([4,1])
             with c2:
                 if st.button("خروج"): logout()
@@ -1492,18 +1784,71 @@ elif st.session_state.user_type == "professor":
             total=len(prof_memos); registered=len(prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip()=="نعم"]); available=total-registered; is_exhausted=registered>=4
             col_dep="حالة الإيداع"
             deposited_memos_pr=prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip()=="نعم"]
+
+            # ================================================================
+            # ✅ التعديل 1: بطاقات المذكرات المودعة قابلة للنقر المباشر
+            # ================================================================
             if col_dep in deposited_memos_pr.columns:
                 pending_deposit=deposited_memos_pr[deposited_memos_pr[col_dep].astype(str).str.strip()=="مودعة"]
                 if not pending_deposit.empty:
                     items_html=""
                     for _,dep_memo in pending_deposit.iterrows():
                         dep_date=str(dep_memo.get("تاريخ إيداع المذكرة","")).strip()
-                        items_html+=f"""<div class="prof-deposit-item"><div><div class="prof-deposit-memo-num">{dep_memo['رقم المذكرة']}</div><div class="prof-deposit-memo-title">{str(dep_memo['عنوان المذكرة'])[:52]}{'...' if len(str(dep_memo['عنوان المذكرة']))>52 else ''}</div><div class="prof-deposit-memo-date">📅 {dep_date if dep_date and dep_date!='nan' else '—'}</div></div><div style="background:rgba(245,158,11,0.1);color:#F59E0B;padding:4px 12px;border-radius:20px;font-size:0.78rem;font-weight:700;border:1px solid rgba(245,158,11,0.28);">⏳ بانتظار مراجعتك</div></div>"""
-                    st.markdown(f"""<div class="prof-deposit-alert"><div class="prof-deposit-alert-header"><div class="prof-deposit-alert-icon">📥</div><div><div class="prof-deposit-alert-title">لديك {len(pending_deposit)} مذكرة مودعة تنتظر مراجعتك</div><div class="prof-deposit-alert-sub">يرجى مراجعة كل مذكرة والموافقة عليها أو إعادتها مع الملاحظات</div></div></div><div class="prof-deposit-list">{items_html}</div></div>""", unsafe_allow_html=True)
+                        items_html+=f"""<div class="prof-deposit-item">
+                            <div>
+                                <div class="prof-deposit-memo-num">{dep_memo['رقم المذكرة']}</div>
+                                <div class="prof-deposit-memo-title">{str(dep_memo['عنوان المذكرة'])[:52]}{'...' if len(str(dep_memo['عنوان المذكرة']))>52 else ''}</div>
+                                <div class="prof-deposit-memo-date">📅 {dep_date if dep_date and dep_date!='nan' else '—'}</div>
+                            </div>
+                            <div style="background:rgba(245,158,11,0.1);color:#F59E0B;padding:4px 12px;border-radius:20px;font-size:0.78rem;font-weight:700;border:1px solid rgba(245,158,11,0.28);">⏳ بانتظار مراجعتك</div>
+                        </div>"""
+
+                    st.markdown(f"""<div class="prof-deposit-alert">
+                        <div class="prof-deposit-alert-header">
+                            <div class="prof-deposit-alert-icon">📥</div>
+                            <div>
+                                <div class="prof-deposit-alert-title">لديك {len(pending_deposit)} مذكرة مودعة — اضغط للمراجعة المباشرة</div>
+                                <div class="prof-deposit-alert-sub">اضغط على زر المذكرة المعنية للانتقال إليها مباشرةً.</div>
+                            </div>
+                        </div>
+                        <div class="prof-deposit-list">{items_html}</div>
+                    </div>""", unsafe_allow_html=True)
+
+                    # أزرار النقر المباشر — واحد لكل مذكرة مودعة
+                    for _,dep_memo in pending_deposit.iterrows():
+                        memo_num_btn   = str(dep_memo['رقم المذكرة'])
+                        memo_title_btn = str(dep_memo['عنوان المذكرة'])
+                        dep_date_btn   = str(dep_memo.get("تاريخ إيداع المذكرة","")).strip()
+                        col_info, col_btn = st.columns([3, 1])
+                        with col_info:
+                            st.markdown(f"""
+                            <div style="background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(245,158,11,0.04));
+                                        border:1.5px solid rgba(245,158,11,0.38);border-radius:12px;
+                                        padding:12px 16px;margin-bottom:6px;">
+                                <span style="font-size:1.3rem;font-weight:900;color:#FFD700;">{memo_num_btn}</span>
+                                &nbsp;—&nbsp;
+                                <span style="color:#E2E8F0;font-size:0.88rem;">
+                                    {memo_title_btn[:45]}{'...' if len(memo_title_btn)>45 else ''}
+                                </span>
+                                <div style="font-size:0.76rem;color:#F59E0B;margin-top:4px;">
+                                    📅 {dep_date_btn if dep_date_btn and dep_date_btn!='nan' else '—'}
+                                </div>
+                            </div>""", unsafe_allow_html=True)
+                        with col_btn:
+                            if st.button(
+                                f"📂 مراجعة ←",
+                                key=f"quick_open_{memo_num_btn}",
+                                use_container_width=True
+                            ):
+                                st.session_state.selected_memo_id = memo_num_btn
+                                st.session_state.prof_action = None
+                                st.rerun()
+
             st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
             st.markdown(f'<div class="kpi-card"><div class="kpi-value">{total}</div><div class="kpi-label">إجمالي المذكرات</div></div><div class="kpi-card" style="border-top:3px solid #10B981;"><div class="kpi-value" style="color:#10B981;">{registered}</div><div class="kpi-label">مسجلة</div></div><div class="kpi-card" style="border-top:3px solid #F59E0B;"><div class="kpi-value" style="color:#F59E0B;">{available}</div><div class="kpi-label">متاحة</div></div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
             if is_exhausted: st.markdown('<div class="alert-card">لقد استنفذت العناوين الأربعة المخصصة لك.</div>', unsafe_allow_html=True)
+
             tab1,tab2,tab5=st.tabs(["المذكرات المسجلة","📅 جلسة إشراف","🎓 لجان المناقشة"])
             with tab1:
                 st.subheader("المذكرات المسجلة")
@@ -1523,6 +1868,7 @@ elif st.session_state.user_type == "professor":
                             if st.button(f"👉 فتح {memo['رقم المذكرة']}",key=f"open_{memo['رقم المذكرة']}",use_container_width=True):
                                 st.session_state.selected_memo_id=memo['رقم المذكرة']; st.session_state.prof_action=None; st.rerun()
                 else: st.info("لا توجد مذكرات مسجلة.")
+
             with tab2:
                 st.subheader("📅 جدولة جلسة إشراف")
                 with st.form("session_form"):
@@ -1543,10 +1889,9 @@ elif st.session_state.user_type == "professor":
                                 ok3,_=send_session_emails(students,details,prof_name)
                                 if ok1: st.success(f"✅ تم نشر الجلسة وإشعار {len(students)} طالب")
                                 else: st.error("خطأ في الحفظ")
-            # تاب كلمات السر محذوف
-            # تاب المذكرات المتاحة محذوف
+
             with tab5:
-                st.subheader("🎓 لجان المناقشة")
+                st.subheader("🎓 لجان المناقشة وبرنامجك")
                 df_m_jury=load_memos(); jury_memos=pd.DataFrame()
                 if not df_m_jury.empty:
                     masks=[]
@@ -1561,11 +1906,25 @@ elif st.session_state.user_type == "professor":
                 if jury_memos.empty:
                     st.info("⏳ لا توجد مذكرات منشورة تخصك كعضو لجنة.")
                 else:
+                    # ملخص برنامج الأستاذ
+                    has_date = jury_memos["تاريخ المناقشة"].astype(str).str.strip().apply(lambda x: x not in ["","nan"]) if "تاريخ المناقشة" in jury_memos.columns else pd.Series([False]*len(jury_memos))
+                    scheduled_count = has_date.sum()
+                    if scheduled_count > 0:
+                        sched_memos = jury_memos[has_date]
+                        days_set = set(sched_memos["تاريخ المناقشة"].astype(str).str.strip().tolist())
+                        st.markdown(f'''<div style="background:linear-gradient(135deg,#0F2942,#1A3A5C);border-radius:14px;padding:16px 20px;margin-bottom:18px;border:1px solid rgba(99,102,241,0.4);">
+                            <div style="font-size:1rem;font-weight:800;color:#818CF8;margin-bottom:6px;">📅 برنامجك المعتمد</div>
+                            <div style="color:#E2E8F0;font-size:0.88rem;">{scheduled_count} مناقشة في {len(days_set)} يوم</div>
+                        </div>''', unsafe_allow_html=True)
                     for _,jm in jury_memos.iterrows():
                         jmid=str(jm.get("رقم المذكرة","")).strip(); role=jm.get('صفتي','')
                         dep_link_j=str(jm.get("رابط الملف","")).strip()
-                        def_date_j=str(jm.get("تاريخ المناقشة","")).strip(); def_time_j=str(jm.get("توقيت المناقشة","")).strip(); def_room_j=str(jm.get("القاعة","")).strip()
-                        with st.expander(f"📄 {jmid} — صفتك: {role}",expanded=False):
+                        def_date_j=str(jm.get("تاريخ المناقشة","")).strip()
+                        def_time_j=str(jm.get("توقيت المناقشة","")).strip()
+                        def_room_j=str(jm.get("القاعة","")).strip()
+                        has_schedule = def_date_j and def_date_j not in ["","nan"]
+                        exp_label = f"{'📅' if has_schedule else '⏳'} {jmid} — {role} {'| '+def_date_j+' '+def_time_j if has_schedule else '| موعد لم يُحدد بعد'}"
+                        with st.expander(exp_label, expanded=False):
                             president_j=str(jm.get("AC","")).strip() if "AC" in jm.index else ""
                             exam1_j=str(jm.get("AD","")).strip() if "AD" in jm.index else ""
                             exam2_j=str(jm.get("AE","")).strip() if "AE" in jm.index else ""
@@ -1575,17 +1934,27 @@ elif st.session_state.user_type == "professor":
                             if exam1_j and exam1_j!='nan': mem_html+=f"""<div class="jury-member-card"><div class="jury-member-avatar avatar-examiner">📋</div><div class="jury-member-role role-examiner">مناقش 1</div><div class="jury-member-name">{exam1_j}</div></div>"""
                             if exam2_j and exam2_j not in ['','nan']: mem_html+=f"""<div class="jury-member-card"><div class="jury-member-avatar avatar-examiner">📋</div><div class="jury-member-role role-examiner">مناقش 2</div><div class="jury-member-name">{exam2_j}</div></div>"""
                             defense_html=""
-                            if def_date_j and def_date_j!='nan': defense_html=f"""<div class="defense-info-grid"><div class="defense-info-item"><div class="defense-info-label">📆 التاريخ</div><div class="defense-info-value">{def_date_j}</div></div><div class="defense-info-item"><div class="defense-info-label">🕐 التوقيت</div><div class="defense-info-value">{def_time_j}</div></div><div class="defense-info-item"><div class="defense-info-label">🏛️ القاعة</div><div class="defense-info-value">{def_room_j}</div></div></div>"""
+                            if has_schedule:
+                                defense_html=f"""<div class="defense-schedule-card"><h4 style="color:#818CF8!important;margin:0 0 8px;">📅 موعد المناقشة</h4><div class="defense-info-grid"><div class="defense-info-item"><div class="defense-info-label">📆 التاريخ</div><div class="defense-info-value">{def_date_j}</div></div><div class="defense-info-item"><div class="defense-info-label">🕐 التوقيت</div><div class="defense-info-value">{def_time_j if def_time_j and def_time_j!='nan' else '—'}</div></div><div class="defense-info-item"><div class="defense-info-label">🏛️ القاعة</div><div class="defense-info-value">{def_room_j if def_room_j and def_room_j!='nan' else '—'}</div></div></div></div>"""
                             st.markdown(f"""<div class="jury-card"><div class="jury-header"><div class="jury-header-icon">⚖️</div><div><div class="jury-header-title">لجنة مناقشة رقم {jmid}</div><div class="jury-header-sub" style="color:rgba(255,255,255,0.85)!important;">{str(jm.get('عنوان المذكرة',''))[:58]}</div></div></div><div class="jury-members-grid">{mem_html}</div>{defense_html}</div>""", unsafe_allow_html=True)
                             if dep_link_j and dep_link_j!="nan":
-                                st.markdown(f"""<div style="text-align:center;margin:10px 0;"><a href="{dep_link_j}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#1E3A5F,#2F6F7E);color:#ffffff;padding:12px 28px;border-radius:11px;text-decoration:none;font-size:0.95rem;font-weight:700;box-shadow:0 6px 14px rgba(47,111,126,0.35);">📄 الاطلاع على المذكرة المودعة</a></div>""", unsafe_allow_html=True)
-                            notes_col={"رئيس":"AG","مشرف":"AG","مناقش1":"AH","مناقش2":"AI"}.get(role,"AG")
+                                st.markdown(f'''<div style="text-align:center;margin:10px 0 16px;">
+                                    <a href="{dep_link_j}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#1E3A5F,#2F6F7E);color:#ffffff;padding:12px 28px;border-radius:11px;text-decoration:none;font-size:0.95rem;font-weight:700;box-shadow:0 6px 14px rgba(47,111,126,0.35);">
+                                        📄 معاينة المذكرة
+                                    </a>
+                                </div>''', unsafe_allow_html=True)
+                            st.markdown("---")
+                            st.markdown("**📝 ملاحظاتك على المذكرة** *(للإدارة فقط)*")
+                            notes_col_map={"مشرف":"AB","رئيس":"AG","مناقش1":"AH","مناقش2":"AI"}
+                            notes_col=notes_col_map.get(role,"AG")
                             curr_notes=str(jm.get(notes_col,"")).strip() if notes_col in jm.index else ""
                             if curr_notes in ["nan",""]: curr_notes=""
-                            st.markdown("**📝 ملاحظاتك الأولية:**")
-                            new_notes=st.text_area("",value=curr_notes,height=90,key=f"jury_notes_{jmid}_{role}")
-                            if st.button("💾 حفظ",key=f"save_jury_notes_{jmid}_{role}",use_container_width=True):
-                                ok,msg=save_notes_by_member(jmid,role,new_notes)
+                            disp_notes=curr_notes.split("]:")[1].strip() if "]:" in curr_notes else curr_notes
+                            new_notes=st.text_area("",value=disp_notes,height=100,
+                                placeholder="ملاحظاتك لن تظهر إلا للإدارة...",
+                                key=f"jury_notes_{jmid}_{role}")
+                            if st.button("💾 حفظ الملاحظات",key=f"save_obs_{jmid}_{role}",use_container_width=True):
+                                ok,msg=save_member_observations(jmid,prof_name,role,new_notes)
                                 if ok: st.success(msg); clear_cache_and_reload()
                                 else: st.error(msg)
 
@@ -1624,7 +1993,7 @@ elif st.session_state.user_type == "admin":
         st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
         st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">المذكرات</div></div><div class="kpi-card" style="border-top:3px solid #10B981;"><div class="kpi-value" style="color:#10B981;">{r_m}</div><div class="kpi-label">مسجلة</div></div><div class="kpi-card" style="border-top:3px solid #F59E0B;"><div class="kpi-value" style="color:#F59E0B;">{a_m}</div><div class="kpi-label">متاحة</div></div><div class="kpi-card" style="border-top:3px solid #10B981;"><div class="kpi-value" style="color:#10B981;">{reg_st}</div><div class="kpi-label">طلاب مسجلون</div></div><div class="kpi-card" style="border-top:3px solid #EF4444;"><div class="kpi-value" style="color:#EF4444;">{unreg_st}</div><div class="kpi-label">غير مسجلين</div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
-        tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8=st.tabs(["المذكرات","الطلاب","الأساتذة","تقارير","تحديث","الطلبات","📧 إيميلات","📅 جدولة"])
+        tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8,tab9=st.tabs(["المذكرات","الطلاب","الأساتذة","تقارير","تحديث","الطلبات","📧 إيميلات","🎓 لجان","📅 جدولة ذكية"])
         with tab1:
             st.subheader("جدول المذكرات")
             f_status=st.selectbox("تصفية:",["الكل","مسجلة","متاحة"])
@@ -1698,14 +2067,11 @@ elif st.session_state.user_type == "admin":
 
             df_memos_jury = load_memos()
             df_profs_jury = load_prof_memos()
-
-            # المذكرات المسجلة فقط
             registered_memos = df_memos_jury[df_memos_jury["تم التسجيل"].astype(str).str.strip() == "نعم"].copy()
 
             if registered_memos.empty:
                 st.warning("لا توجد مذكرات مسجلة بعد.")
             else:
-                # قائمة كل الأساتذة
                 all_profs = sorted(df_profs_jury["الأستاذ"].dropna().unique().tolist())
                 all_profs = [p for p in all_profs if p.strip() and p.strip().lower() != "nan"]
 
@@ -1713,61 +2079,40 @@ elif st.session_state.user_type == "admin":
                     import random
                     from collections import defaultdict
 
-                    # ══════════════════════════════════════════════
-                    # الخوارزمية الذكية المجمّعة
-                    # ══════════════════════════════════════════════
-                    # قراءة مجموعة كل أستاذ من العمود O في شيت الأساتذة
-                    # 1=يمين  2=يسار  3=حياد
                     prof_group = {}
                     for _, prow in df_profs_jury.iterrows():
                         pname = str(prow.get("الأستاذ", "")).strip()
                         grp = str(prow.get("المجموعة", "3")).strip()
                         if pname and pname.lower() != "nan":
-                            # نأخذ آخر قيمة غير فارغة لنفس الأستاذ
                             if grp in ["1", "2", "3"]:
                                 prof_group[pname] = grp
                             elif pname not in prof_group:
-                                prof_group[pname] = "3"  # افتراضي: حياد
+                                prof_group[pname] = "3"
 
                     right_profs   = [p for p in all_profs if prof_group.get(p) == "1"]
                     left_profs    = [p for p in all_profs if prof_group.get(p) == "2"]
                     neutral_profs = [p for p in all_profs if prof_group.get(p) == "3"]
                     unknown_profs = [p for p in all_profs if p not in prof_group]
-                    # المجهولون → حياد
                     neutral_profs = neutral_profs + unknown_profs
 
-                    # عدادات العبء
-                    load_right   = defaultdict(int)  # عبء اليمين
-                    load_left    = defaultdict(int)   # عبء اليسار
-                    load_n_right = defaultdict(int)   # عبء الحياد مع اليمين
-                    load_n_left  = defaultdict(int)   # عبء الحياد مع اليسار
+                    load_right   = defaultdict(int)
+                    load_left    = defaultdict(int)
+                    load_n_right = defaultdict(int)
+                    load_n_left  = defaultdict(int)
 
                     def weighted_pick(pool, load_dict, exclude, count):
-                        """
-                        اختيار عشوائي موزون:
-                        - الأقل عبئاً له وزن أعلى (1/(load+1))
-                        - لكن العشوائية تمنع الحتمية
-                        - exclude: لا نختار منهم
-                        """
                         candidates = [p for p in pool if p not in exclude]
-                        if not candidates:
-                            return []
+                        if not candidates: return []
                         weights = [1.0 / (load_dict[p] + 1) for p in candidates]
-                        chosen = []
-                        remaining = candidates[:]
-                        rem_weights = weights[:]
+                        chosen = []; remaining = candidates[:]; rem_weights = weights[:]
                         while len(chosen) < count and remaining:
                             picked = random.choices(remaining, weights=rem_weights, k=1)[0]
                             chosen.append(picked)
                             idx = remaining.index(picked)
-                            remaining.pop(idx)
-                            rem_weights.pop(idx)
+                            remaining.pop(idx); rem_weights.pop(idx)
                         return chosen
 
-                    rows_jury = []
-                    warnings_jury = []
-
-                    # خلط عشوائي للمذكرات
+                    rows_jury = []; warnings_jury = []
                     memos_list = [row for _, row in registered_memos.iterrows()]
                     random.shuffle(memos_list)
 
@@ -1775,128 +2120,68 @@ elif st.session_state.user_type == "admin":
                         supervisor = str(memo.get("الأستاذ", "")).strip()
                         memo_num   = str(memo.get("رقم المذكرة", "")).strip()
                         sup_group  = prof_group.get(supervisor, "3")
-
                         exclude_set = {supervisor}
 
                         if sup_group == "1":
-                            # مذكرة يمين → بركة: يمين + حياد
-                            base_pool    = [p for p in right_profs if p != supervisor]
-                            neutral_pool = neutral_profs[:]
-                            load_base    = load_right
-                            load_neutral = load_n_right
-                            side_key     = "right"
+                            base_pool=[ p for p in right_profs if p!=supervisor]; neutral_pool=neutral_profs[:]
+                            load_base=load_right; load_neutral=load_n_right; side_key="right"
                         elif sup_group == "2":
-                            # مذكرة يسار → بركة: يسار + حياد
-                            base_pool    = [p for p in left_profs if p != supervisor]
-                            neutral_pool = neutral_profs[:]
-                            load_base    = load_left
-                            load_neutral = load_n_left
-                            side_key     = "left"
+                            base_pool=[p for p in left_profs if p!=supervisor]; neutral_pool=neutral_profs[:]
+                            load_base=load_left; load_neutral=load_n_left; side_key="left"
                         else:
-                            # مذكرة حياد → بركة: الكل
-                            base_pool    = [p for p in all_profs if p != supervisor]
-                            neutral_pool = []
-                            load_base    = load_right  # نستخدم عداد عام
-                            load_neutral = defaultdict(int)
-                            side_key     = "neutral"
+                            base_pool=[p for p in all_profs if p!=supervisor]; neutral_pool=[]
+                            load_base=load_right; load_neutral=defaultdict(int); side_key="neutral"
 
-                        # ── الاختيار الذكي ──
-                        # نحدد كم نحتاج من كل بركة بشكل عشوائي ذكي:
-                        # إذا base_pool كافية → نأخذ 2 base + 1 neutral أو 3 base
-                        # القرار نفسه عشوائي موزون
                         chosen = []
-
                         if side_key == "neutral":
-                            # حياد: نختار 3 من الكل عشوائياً
                             chosen = weighted_pick(base_pool, load_base, exclude_set, 3)
                         else:
-                            # يمين أو يسار:
-                            # قرار عشوائي: كم نأخذ من الحياد (0, 1, أو 2)
-                            # لكن موزون: إذا الحياد أقل عبئاً → وزن أعلى
                             n_neutral_available = len([p for p in neutral_pool if p not in exclude_set])
                             n_base_available    = len([p for p in base_pool if p not in exclude_set])
-
-                            # حساب نسبة الحياد المطلوبة بشكل عشوائي
-                            if n_neutral_available == 0:
-                                n_from_neutral = 0
-                            elif n_base_available == 0:
-                                n_from_neutral = min(3, n_neutral_available)
+                            if n_neutral_available == 0: n_from_neutral = 0
+                            elif n_base_available == 0: n_from_neutral = min(3, n_neutral_available)
                             else:
-                                # عشوائي: 0, 1, أو 2 حياديين
-                                choices_n = [0, 1, 2]
-                                w_choices = [2.0, 3.0, 1.5]  # 1 حيادي هو الأكثر احتمالاً
-                                n_from_neutral = random.choices(choices_n, weights=w_choices, k=1)[0]
+                                n_from_neutral = random.choices([0,1,2], weights=[2.0,3.0,1.5], k=1)[0]
                                 n_from_neutral = min(n_from_neutral, n_neutral_available, 2)
-
                             n_from_base = 3 - n_from_neutral
-
-                            # اختيار من البركة الأساسية
                             base_chosen = weighted_pick(base_pool, load_base, exclude_set, n_from_base)
-                            chosen.extend(base_chosen)
-                            exclude_set.update(base_chosen)
-
-                            # اختيار من الحياد
+                            chosen.extend(base_chosen); exclude_set.update(base_chosen)
                             neutral_chosen = weighted_pick(neutral_pool, load_neutral, exclude_set, n_from_neutral)
-                            chosen.extend(neutral_chosen)
-                            exclude_set.update(neutral_chosen)
-
-                            # تكملة إن نقص
+                            chosen.extend(neutral_chosen); exclude_set.update(neutral_chosen)
                             if len(chosen) < 3:
-                                fallback = weighted_pick(base_pool + neutral_pool, load_base, exclude_set, 3 - len(chosen))
+                                fallback = weighted_pick(base_pool+neutral_pool, load_base, exclude_set, 3-len(chosen))
                                 chosen.extend(fallback)
 
-                        # تأكيد 3 أعضاء
                         if len(chosen) < 3:
                             fallback_all = [p for p in all_profs if p not in exclude_set]
                             random.shuffle(fallback_all)
-                            chosen.extend(fallback_all[:3 - len(chosen)])
-                            if len(chosen) < 3:
-                                warnings_jury.append(f"⚠️ مذكرة {memo_num}: لم يكتمل عدد اللجنة")
+                            chosen.extend(fallback_all[:3-len(chosen)])
+                            if len(chosen) < 3: warnings_jury.append(f"⚠️ مذكرة {memo_num}: لم يكتمل عدد اللجنة")
 
-                        president = chosen[0] if len(chosen) > 0 else "—"
-                        exam1     = chosen[1] if len(chosen) > 1 else "—"
-                        exam2     = chosen[2] if len(chosen) > 2 else "—"
+                        president = chosen[0] if len(chosen)>0 else "—"
+                        exam1     = chosen[1] if len(chosen)>1 else "—"
+                        exam2     = chosen[2] if len(chosen)>2 else "—"
 
-                        # تحديث العدادات
                         for member in [president, exam1, exam2]:
                             if member == "—": continue
                             m_group = prof_group.get(member, "3")
-                            if m_group == "1":
-                                load_right[member] += 1
-                            elif m_group == "2":
-                                load_left[member] += 1
+                            if m_group=="1": load_right[member]+=1
+                            elif m_group=="2": load_left[member]+=1
                             else:
-                                if side_key == "right":
-                                    load_n_right[member] += 1
-                                elif side_key == "left":
-                                    load_n_left[member] += 1
-                                else:
-                                    load_right[member] += 1
+                                if side_key=="right": load_n_right[member]+=1
+                                elif side_key=="left": load_n_left[member]+=1
+                                else: load_right[member]+=1
 
-                        rows_jury.append({
-                            "رقم المذكرة": memo_num,
-                            "عنوان المذكرة": str(memo.get("عنوان المذكرة", ""))[:50],
-                            "المشرف": supervisor,
-                            "مجموعة المشرف": {"1":"يمين","2":"يسار","3":"حياد"}.get(sup_group, "؟"),
-                            "الرئيس": president,
-                            "المناقش 1": exam1,
-                            "المناقش 2": exam2,
-                        })
+                        rows_jury.append({"رقم المذكرة":memo_num,"عنوان المذكرة":str(memo.get("عنوان المذكرة",""))[:50],"المشرف":supervisor,"مجموعة المشرف":sup_group,"الرئيس":president,"المناقش 1":exam1,"المناقش 2":exam2})
 
-                    # ترتيب حسب رقم المذكرة
                     rows_jury.sort(key=lambda x: normalize_text(x["رقم المذكرة"]))
-
                     st.session_state["jury_suggestion"] = rows_jury
-                    for w in warnings_jury:
-                        st.warning(w)
-                    st.success(f"✅ تم اقتراح لجان لـ {len(rows_jury)} مذكرة | يمين:{len(right_profs)} يسار:{len(left_profs)} حياد:{len(neutral_profs)}")
+                    for w in warnings_jury: st.warning(w)
+                    st.success(f"✅ تم اقتراح لجان لـ {len(rows_jury)} مذكرة")
                     st.rerun()
 
-                # عرض الجدول إن وُجد
                 if "jury_suggestion" in st.session_state and st.session_state["jury_suggestion"]:
                     df_jury = pd.DataFrame(st.session_state["jury_suggestion"])
-
-                    # جدول قابل للتعديل
                     edited_jury = st.data_editor(
                         df_jury,
                         column_config={
@@ -1908,78 +2193,65 @@ elif st.session_state.user_type == "admin":
                             "المناقش 1": st.column_config.SelectboxColumn("📋 المناقش 1", options=all_profs, width="medium"),
                             "المناقش 2": st.column_config.SelectboxColumn("📋 المناقش 2", options=all_profs, width="medium"),
                         },
-                        hide_index=True,
-                        use_container_width=True,
-                        height=min(500, 60 + len(df_jury) * 38),
-                        key="jury_editor"
+                        hide_index=True, use_container_width=True,
+                        height=min(500, 60+len(df_jury)*38), key="jury_editor"
                     )
 
-                    # تحقق من التعارضات
                     conflicts = []
                     for _, row_j in edited_jury.iterrows():
                         members = [str(row_j["المشرف"]).strip(), str(row_j["الرئيس"]).strip(),
                                    str(row_j.get("المناقش 1","")).strip(), str(row_j.get("المناقش 2","")).strip()]
                         members = [m for m in members if m and m != "nan"]
-                        if len(set(members)) < len(members):
-                            conflicts.append(str(row_j["رقم المذكرة"]))
+                        if len(set(members)) < len(members): conflicts.append(str(row_j["رقم المذكرة"]))
 
-                    if conflicts:
-                        st.error(f"⚠️ تعارض (عضو مكرر) في المذكرات: {', '.join(conflicts)}")
+                    if conflicts: st.error(f"⚠️ تعارض في المذكرات: {', '.join(conflicts)}")
 
-                    # إحصائيات توزيع الأدوار
                     with st.expander("📊 توزيع الأدوار على الأساتذة"):
                         from collections import Counter
                         role_stats = Counter()
                         for _, row_j in edited_jury.iterrows():
-                            role_stats[str(row_j["الرئيس"])] += 1
-                            role_stats[str(row_j["المناقش 1"])] += 1
-                            role_stats[str(row_j["المناقش 2"])] += 1
-                        stats_df = pd.DataFrame(list(role_stats.items()), columns=["الأستاذ", "عدد الأدوار"]).sort_values("عدد الأدوار", ascending=False)
-                        st.dataframe(stats_df, use_container_width=True, hide_index=True)
+                            role_stats[str(row_j["الرئيس"])]+=1
+                            role_stats[str(row_j["المناقش 1"])]+=1
+                            role_stats[str(row_j["المناقش 2"])]+=1
+                        stats_df=pd.DataFrame(list(role_stats.items()),columns=["الأستاذ","عدد الأدوار"]).sort_values("عدد الأدوار",ascending=False)
+                        st.dataframe(stats_df,use_container_width=True,hide_index=True)
 
-                    col_save, col_clear = st.columns(2)
+                    col_save,col_clear=st.columns(2)
                     with col_save:
-                        if st.button("💾 حفظ اللجان في الشيت", type="primary", use_container_width=True, key="save_jury_btn"):
-                            if conflicts:
-                                st.error("❌ يجب تصحيح التعارضات أولاً")
+                        if st.button("💾 حفظ اللجان في الشيت",type="primary",use_container_width=True,key="save_jury_btn"):
+                            if conflicts: st.error("❌ يجب تصحيح التعارضات أولاً")
                             else:
-                                df_memos_save = load_memos()
-                                updates_jury = []
-                                saved_count = 0
-                                for _, row_j in edited_jury.iterrows():
-                                    memo_num_j = normalize_text(str(row_j["رقم المذكرة"]))
-                                    memo_row_j = df_memos_save[df_memos_save["رقم المذكرة"].astype(str).apply(normalize_text) == memo_num_j]
+                                df_memos_save=load_memos(); updates_jury=[]; saved_count=0
+                                for _,row_j in edited_jury.iterrows():
+                                    memo_num_j=normalize_text(str(row_j["رقم المذكرة"]))
+                                    memo_row_j=df_memos_save[df_memos_save["رقم المذكرة"].astype(str).apply(normalize_text)==memo_num_j]
                                     if memo_row_j.empty: continue
-                                    row_idx_j = memo_row_j.index[0] + 2
-                                    updates_jury += [
-                                        {"range": f"Feuille 1!AC{row_idx_j}", "values": [[str(row_j["الرئيس"])]]},
-                                        {"range": f"Feuille 1!AD{row_idx_j}", "values": [[str(row_j["المناقش 1"])]]},
-                                        {"range": f"Feuille 1!AE{row_idx_j}", "values": [[str(row_j["المناقش 2"])]]},
+                                    row_idx_j=memo_row_j.index[0]+2
+                                    updates_jury+=[
+                                        {"range":f"Feuille 1!AC{row_idx_j}","values":[[str(row_j["الرئيس"])]]},
+                                        {"range":f"Feuille 1!AD{row_idx_j}","values":[[str(row_j["المناقش 1"])]]},
+                                        {"range":f"Feuille 1!AE{row_idx_j}","values":[[str(row_j["المناقش 2"])]]},
                                     ]
-                                    saved_count += 1
+                                    saved_count+=1
                                 if updates_jury:
-                                    sheets_service.spreadsheets().values().batchUpdate(
-                                        spreadsheetId=MEMOS_SHEET_ID,
-                                        body={"valueInputOption": "USER_ENTERED", "data": updates_jury}
-                                    ).execute()
+                                    sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID,body={"valueInputOption":"USER_ENTERED","data":updates_jury}).execute()
                                     clear_cache_and_reload()
-                                    st.success(f"✅ تم حفظ لجان {saved_count} مذكرة في الشيت (أعمدة AC AD AE)")
-                                    st.session_state.pop("jury_suggestion", None)
-                                    time.sleep(1)
-                                    st.rerun()
-                                else:
-                                    st.warning("لا يوجد شيء للحفظ")
+                                    st.success(f"✅ تم حفظ لجان {saved_count} مذكرة")
+                                    st.session_state.pop("jury_suggestion",None)
+                                    time_module.sleep(1); st.rerun()
+                                else: st.warning("لا يوجد شيء للحفظ")
                     with col_clear:
-                        if st.button("🗑️ مسح الاقتراح", use_container_width=True, key="clear_jury_btn"):
-                            st.session_state.pop("jury_suggestion", None)
-                            st.rerun()
+                        if st.button("🗑️ مسح الاقتراح",use_container_width=True,key="clear_jury_btn"):
+                            st.session_state.pop("jury_suggestion",None); st.rerun()
 
             st.markdown("---")
             if st.button("تحديث من Google Sheets"):
                 clear_cache_and_reload(); st.success("✅ تم التحديث"); st.rerun()
+
         with tab6:
             st.subheader("سجل الطلبات")
             st.dataframe(df_requests,use_container_width=True,height=500)
+
         with tab7:
             st.subheader("📧 إرسال إيميلات للأساتذة")
             mode_e=st.radio("نوع الإرسال:",["📩 أستاذ محدد","🚀 جميع الأساتذة"],horizontal=True)
@@ -2000,73 +2272,271 @@ elif st.session_state.user_type == "admin":
                     if failed>0: st.error(f"فشل لـ {failed} أستاذ.")
                     with st.expander("سجل العمليات"):
                         for log in logs: st.text(log)
-        with tab8:
-            st.subheader("📅 جدولة مواعيد المناقشات")
-            df_memos_fresh8=load_memos(); col_deposit="حالة الإيداع"
-            if col_deposit not in df_memos_fresh8.columns:
-                st.info("لم يُودَع أي ملف بعد.")
-            else:
-                total_deposited=len(df_memos_fresh8[df_memos_fresh8[col_deposit].astype(str).str.strip().isin(["مودعة","قابلة للمناقشة"])])
-                total_approved=len(df_memos_fresh8[df_memos_fresh8[col_deposit].astype(str).str.strip()=="قابلة للمناقشة"])
-                c1,c2,c3=st.columns(3)
-                with c1: st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color:#F59E0B;">{total_deposited}</div><div class="kpi-label">📤 مودعة</div></div>', unsafe_allow_html=True)
-                with c2: st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color:#10B981;">{total_approved}</div><div class="kpi-label">🟢 قابلة للمناقشة</div></div>', unsafe_allow_html=True)
-                defense_ready=df_memos_fresh8[df_memos_fresh8[col_deposit].astype(str).str.strip()=="قابلة للمناقشة"]
-                if defense_ready.empty:
-                    with c3: st.markdown('<div class="kpi-card"><div class="kpi-value">0</div><div class="kpi-label">📅 مجدولة</div></div>', unsafe_allow_html=True)
-                    st.info("⏳ لا توجد مذكرات معتمدة للمناقشة.")
-                else:
-                    already_sched=len(defense_ready[defense_ready.get("تاريخ المناقشة",pd.Series(dtype=str)).astype(str).str.strip().isin(["","nan"])==False]) if "تاريخ المناقشة" in defense_ready.columns else 0
-                    with c3: st.markdown(f'<div class="kpi-card"><div class="kpi-value" style="color:#FFD700;">{already_sched}</div><div class="kpi-label">📅 مجدولة</div></div>', unsafe_allow_html=True)
-                    st.markdown("### 🟢 تحديد موعد المناقشة")
-                    memo_options=defense_ready["رقم المذكرة"].astype(str).tolist()
-                    selected_memo_def=st.selectbox("اختر المذكرة:",memo_options,key="admin_defense_select")
-                    if selected_memo_def:
-                        sel_row=defense_ready[defense_ready["رقم المذكرة"].astype(str)==selected_memo_def].iloc[0]
-                        st.markdown(f"""<div class="card" style="border-top:3px solid #10B981;"><p>📄 <b>العنوان:</b> {sel_row.get('عنوان المذكرة','')}</p><p>👨‍🏫 <b>المشرف:</b> {sel_row.get('الأستاذ','')}</p><p>🎓 <b>التخصص:</b> {sel_row.get('التخصص','')}</p><p>👤 <b>الطالب الأول:</b> {sel_row.get('الطالب الأول','')}</p></div>""", unsafe_allow_html=True)
-                        dep_link_adm=str(sel_row.get("رابط الملف","")).strip()
-                        if dep_link_adm and dep_link_adm!="nan": st.markdown(f"📎 [عرض المذكرة المودعة]({dep_link_adm})")
-                        curr_date=str(sel_row.get("تاريخ المناقشة","")).strip(); curr_time=str(sel_row.get("توقيت المناقشة","")).strip(); curr_room=str(sel_row.get("القاعة","")).strip()
-                        ca,cb,cc=st.columns(3)
-                        with ca:
-                            try: default_date=datetime.strptime(curr_date,"%Y-%m-%d").date() if curr_date not in ["","nan"] else date.today()
-                            except: default_date=date.today()
-                            defense_date=st.date_input("📆 التاريخ",value=default_date,key=f"def_date_{selected_memo_def}")
-                        with cb:
-                            try: default_time_val=datetime.strptime(curr_time,"%H:%M").time() if curr_time not in ["","nan"] else datetime.strptime("09:00","%H:%M").time()
-                            except: default_time_val=datetime.strptime("09:00","%H:%M").time()
-                            defense_time=st.time_input("🕐 التوقيت",value=default_time_val,key=f"def_time_{selected_memo_def}")
-                        with cc: defense_room=st.text_input("🏛️ القاعة",value=curr_room if curr_room not in ["","nan"] else "",key=f"def_room_{selected_memo_def}",placeholder="مثال: A01")
-                        if st.button("💾 حفظ موعد المناقشة",type="primary",use_container_width=True,key=f"save_defense_{selected_memo_def}"):
-                            if not defense_room.strip(): st.error("⚠️ يرجى إدخال اسم القاعة.")
-                            else:
-                                ok,msg=save_defense_schedule(selected_memo_def,str(defense_date),str(defense_time),defense_room.strip())
-                                if ok:
-                                    df_sf=load_students(); df_sf['رقم التسجيل_norm']=df_sf['رقم التسجيل'].astype(str).apply(normalize_text)
-                                    sel_vals=sel_row.tolist() if hasattr(sel_row,'tolist') else list(sel_row.values())
-                                    r1d=normalize_text(sel_row.get("رقم تسجيل الطالب 1",sel_vals[18] if len(sel_vals)>18 else ""))
-                                    r2d=normalize_text(sel_row.get("رقم تسجيل الطالب 2",sel_vals[19] if len(sel_vals)>19 else ""))
-                                    s1d=s2d=None
-                                    if r1d and r1d not in ["","nan"]:
-                                        rr=df_sf[df_sf["رقم التسجيل_norm"]==r1d]
-                                        if not rr.empty: s1d=rr.iloc[0].to_dict()
-                                    if r2d and r2d not in ["","nan"]:
-                                        rr=df_sf[df_sf["رقم التسجيل_norm"]==r2d]
-                                        if not rr.empty: s2d=rr.iloc[0].to_dict()
-                                    email_ok,email_msg=send_defense_schedule_email(selected_memo_def,str(sel_row.get('عنوان المذكرة','')),str(sel_row.get('الأستاذ','')),str(defense_date),str(defense_time),defense_room.strip(),s1d,s2d)
-                                    if email_ok: st.info("📧 تم إرسال إشعار الموعد للطلبة.")
-                                    else: st.warning(f"تم الحفظ لكن فشل الإيميل: {email_msg}")
-                                    st.success(msg); clear_cache_and_reload(); time_module.sleep(1); st.rerun()
-                                else: st.error(msg)
-                st.markdown("---")
-                st.markdown("### 📋 جدول كامل بحالات الإيداع")
-                display_cols=[c for c in ["رقم المذكرة","عنوان المذكرة","الأستاذ","التخصص","حالة الإيداع","تاريخ إيداع المذكرة","تاريخ المناقشة","توقيت المناقشة","القاعة"] if c in df_memos_fresh8.columns]
-                filter_dep=st.selectbox("تصفية:",["الكل","مودعة","قابلة للمناقشة","لم تودَع"],key="filter_deposit_admin")
-                if filter_dep=="مودعة": show_df=df_memos_fresh8[df_memos_fresh8[col_deposit].astype(str).str.strip()=="مودعة"]
-                elif filter_dep=="قابلة للمناقشة": show_df=df_memos_fresh8[df_memos_fresh8[col_deposit].astype(str).str.strip()=="قابلة للمناقشة"]
-                elif filter_dep=="لم تودَع": show_df=df_memos_fresh8[~df_memos_fresh8[col_deposit].astype(str).str.strip().isin(["مودعة","قابلة للمناقشة"])]
-                else: show_df=df_memos_fresh8
-                st.dataframe(show_df[display_cols],use_container_width=True,height=400)
 
+        with tab9:
+            st.subheader("📅 جدولة المناقشات الذكية")
+            df_memos_j = load_memos()
+            
+            # المذكرات التي اكتملت لجانها
+            has_jury = (df_memos_j.get("AC", pd.Series(dtype=str)).astype(str).str.strip().apply(lambda x: x not in ["","nan"])) if "AC" in df_memos_j.columns else pd.Series([False]*len(df_memos_j))
+            is_registered = df_memos_j["تم التسجيل"].astype(str).str.strip()=="نعم"
+            ready_memos_j = df_memos_j[is_registered & has_jury].copy()
+            total_ready_j = len(ready_memos_j)
+            already_sched_j = len(ready_memos_j[ready_memos_j.get("تاريخ المناقشة",pd.Series(dtype=str)).astype(str).str.strip().apply(lambda x: x not in ["","nan"])]) if "تاريخ المناقشة" in ready_memos_j.columns else 0
+
+            c1j,c2j,c3j = st.columns(3)
+            with c1j: st.markdown(f'''<div class="kpi-card"><div class="kpi-value" style="color:#FFD700;">{total_ready_j}</div><div class="kpi-label">🎓 جاهزة للجدولة</div></div>''', unsafe_allow_html=True)
+            with c2j: st.markdown(f'''<div class="kpi-card"><div class="kpi-value" style="color:#10B981;">{already_sched_j}</div><div class="kpi-label">📅 مجدولة</div></div>''', unsafe_allow_html=True)
+            with c3j: st.markdown(f'''<div class="kpi-card"><div class="kpi-value" style="color:#F59E0B;">{total_ready_j - already_sched_j}</div><div class="kpi-label">⏳ متبقية</div></div>''', unsafe_allow_html=True)
+
+            if ready_memos_j.empty:
+                st.warning("⏳ لا توجد مذكرات مكتملة اللجان بعد.")
+            else:
+                st.markdown("---")
+                st.markdown("### ⚙️ إعداد معطيات الجدولة")
+                col_p1,col_p2 = st.columns(2)
+                with col_p1:
+                    st.markdown("**📆 الأيام**")
+                    num_days_j = st.number_input("عدد أيام المناقشات",min_value=3,max_value=15,value=7,key="j_ndays")
+                    base_date_j = st.date_input("تاريخ البداية",value=date.today(),key="j_basedate")
+                    import datetime as _dt
+                    gen_days_j = []
+                    d_j = base_date_j
+                    while len(gen_days_j) < num_days_j:
+                        if d_j.weekday() not in [4,5]: gen_days_j.append(d_j.strftime("%Y-%m-%d"))
+                        d_j += _dt.timedelta(days=1)
+                    st.info(f"الأيام: {' | '.join(gen_days_j)}")
+
+                with col_p2:
+                    st.markdown("**🕐 التوقيتات والقاعات**")
+                    _default_slots = "09:30\n11:30\n14:00\n16:00"
+                    slots_txt = st.text_area("التوقيتات (سطر لكل توقيت)",_default_slots,height=110,key="j_slots")
+                    _default_rooms = "\n".join([f"قاعة {i+1:02d}" for i in range(10)])
+                    rooms_txt = st.text_area("القاعات (سطر لكل قاعة)",_default_rooms,height=130,key="j_rooms")
+                    gen_slots_j = [s.strip() for s in slots_txt.strip().split("\n") if s.strip()]
+                    gen_rooms_j = [r.strip() for r in rooms_txt.strip().split("\n") if r.strip()]
+                    capacity = len(gen_days_j)*len(gen_slots_j)*len(gen_rooms_j)
+                    color_cap = "#10B981" if capacity >= total_ready_j else "#EF4444"
+                    st.markdown(f'''<div style="background:rgba(47,111,126,0.1);border:1px solid #2F6F7E;border-radius:10px;padding:10px 14px;margin-top:8px;">
+                        <span style="color:#ffffff;">الطاقة الكلية: </span>
+                        <strong style="color:{color_cap};font-size:1.1rem;">{capacity} خانة</strong>
+                        <span style="color:#E2E8F0;"> لـ </span>
+                        <strong style="color:#FFD700;">{total_ready_j} مذكرة</strong>
+                    </div>''', unsafe_allow_html=True)
+
+                st.markdown("---")
+                c_g1,c_g2,c_g3 = st.columns(3)
+                with c_g1:
+                    if st.button("🚀 توليد الجدول تلقائياً",type="primary",use_container_width=True,key="j_generate"):
+                        if capacity < total_ready_j:
+                            st.error(f"❌ الطاقة ({capacity}) أقل من عدد المذكرات ({total_ready_j}). زد الأيام أو القاعات.")
+                        else:
+                            with st.spinner("⏳ جاري بناء الجدول الأولي..."):
+                                memo_list_j, conflicts_j = build_conflict_matrix(ready_memos_j)
+                                slot_indices = list(range(len(gen_slots_j)))
+                                raw_sched = greedy_schedule(memo_list_j, conflicts_j, gen_days_j, slot_indices, gen_rooms_j)
+                                named_sched = {m:(s[0],gen_slots_j[s[1]],s[2]) if s else None for m,s in raw_sched.items()}
+                                score_j,unpl_j,idle_j = calc_score(raw_sched, ready_memos_j, conflicts_j, slot_indices)
+                                st.session_state["j_schedule"] = named_sched
+                                st.session_state["j_score"] = score_j
+                                st.session_state["j_unplaced"] = unpl_j
+                                st.session_state["j_slots"] = gen_slots_j
+                                st.session_state["j_days"] = gen_days_j
+                                st.session_state["j_rooms"] = gen_rooms_j
+                            st.success(f"✅ جدول أولي جاهز! الجودة: {score_j}%")
+                            st.rerun()
+                with c_g2:
+                    disabled_improve = "j_schedule" not in st.session_state
+                    if st.button("⚡ تحسين (Simulated Annealing)",use_container_width=True,key="j_improve",disabled=disabled_improve):
+                        with st.spinner("⚡ جاري التحسين المتقدم... (قد يستغرق 20 ثانية)"):
+                            cur_sched = st.session_state["j_schedule"]
+                            sl_j = st.session_state.get("j_slots",gen_slots_j)
+                            dy_j = st.session_state.get("j_days",gen_days_j)
+                            rm_j = st.session_state.get("j_rooms",gen_rooms_j)
+                            s2i = {s:i for i,s in enumerate(sl_j)}
+                            idx_sched = {m:(s[0],s2i.get(s[1],0),s[2]) if s else None for m,s in cur_sched.items()}
+                            memo_list_j2,conflicts_j2 = build_conflict_matrix(ready_memos_j)
+                            better_j,better_score_j = simulated_annealing(idx_sched,ready_memos_j,conflicts_j2,dy_j,list(range(len(sl_j))),rm_j,iterations=800)
+                            better_named_j = {m:(s[0],sl_j[s[1]],s[2]) if s else None for m,s in better_j.items()}
+                            _,unpl_j2,_ = calc_score(better_j,ready_memos_j,conflicts_j2,list(range(len(sl_j))))
+                            st.session_state["j_schedule"]=better_named_j
+                            st.session_state["j_score"]=better_score_j
+                            st.session_state["j_unplaced"]=unpl_j2
+                        st.success(f"✅ تم التحسين! الجودة الجديدة: {better_score_j}%")
+                        st.rerun()
+                with c_g3:
+                    if st.button("🗑️ مسح الجدول",use_container_width=True,key="j_reset"):
+                        for k in ["j_schedule","j_score","j_unplaced","j_slots","j_days","j_rooms","j_confirm_step"]:
+                            st.session_state.pop(k,None)
+                        st.rerun()
+
+                # ── عرض الجدول ──
+                if "j_schedule" in st.session_state:
+                    j_sched = st.session_state["j_schedule"]
+                    j_score = st.session_state.get("j_score",0)
+                    j_unpl = st.session_state.get("j_unplaced",0)
+                    j_sl = st.session_state.get("j_slots",gen_slots_j)
+                    j_dy = st.session_state.get("j_days",gen_days_j)
+                    j_rm = st.session_state.get("j_rooms",gen_rooms_j)
+
+                    sc_color = "#10B981" if j_score>=90 else "#F59E0B" if j_score>=70 else "#EF4444"
+                    st.markdown(f'''<div style="background:linear-gradient(135deg,#0F2942,#1A3A5C);border-radius:16px;padding:16px 24px;margin:16px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border:1px solid rgba(47,111,126,0.3);">
+                        <div>
+                            <div style="font-size:1.1rem;font-weight:800;color:#FFD700;">📊 جودة الجدول</div>
+                            <div style="color:#E2E8F0;font-size:0.85rem;margin-top:4px;">مجدول: {len(j_sched)-j_unpl}/{len(j_sched)} | غير مجدول: {j_unpl}</div>
+                        </div>
+                        <div style="font-size:3rem;font-weight:900;color:{sc_color};">{j_score}%</div>
+                    </div>''', unsafe_allow_html=True)
+
+                    sched_rows_j = schedule_to_rows(j_sched, ready_memos_j)
+                    df_sched_j = pd.DataFrame(sched_rows_j)
+
+                    t_grid,t_prof,t_unpl_tab = st.tabs(["📋 الجدول الكامل","👨‍🏫 حسب الأستاذ","⚠️ غير مجدولة"])
+
+                    with t_grid:
+                        st.markdown("**🖊️ يمكنك التعديل مباشرة — التحقق من التعارضات يتم تلقائياً:**")
+                        edited_j = st.data_editor(
+                            df_sched_j,
+                            column_config={
+                                "رقم المذكرة":st.column_config.TextColumn("رقم المذكرة",disabled=True,width="small"),
+                                "العنوان":st.column_config.TextColumn("العنوان",disabled=True,width="large"),
+                                "اليوم":st.column_config.SelectboxColumn("📆 اليوم",options=j_dy+["غير مجدول"],width="medium"),
+                                "التوقيت":st.column_config.SelectboxColumn("🕐 التوقيت",options=j_sl+[""],width="small"),
+                                "القاعة":st.column_config.SelectboxColumn("🏛️ القاعة",options=j_rm+[""],width="small"),
+                                "المشرف":st.column_config.TextColumn("المشرف",disabled=True,width="medium"),
+                                "الرئيس":st.column_config.TextColumn("الرئيس",disabled=True,width="medium"),
+                                "المناقش1":st.column_config.TextColumn("المناقش1",disabled=True,width="medium"),
+                                "المناقش2":st.column_config.TextColumn("المناقش2",disabled=True,width="medium"),
+                                "رابط الملف":st.column_config.LinkColumn("📄",width="small"),
+                            },
+                            hide_index=True,use_container_width=True,
+                            height=min(600,60+len(df_sched_j)*38),key="j_editor"
+                        )
+
+                        # تحقق تعارضات
+                        slot_groups_j = {}; conflicts_ui = []
+                        for _,re_j in edited_j.iterrows():
+                            if re_j["اليوم"]=="غير مجدول" or not re_j["التوقيت"]: continue
+                            key_j=(re_j["اليوم"],re_j["التوقيت"])
+                            profs_e=set(filter(None,[str(re_j.get(c,"")).strip() for c in ["المشرف","الرئيس","المناقش1","المناقش2"]]))-{"","nan"}
+                            for pm,pp in slot_groups_j.get(key_j,[]):
+                                shared=profs_e&pp
+                                if shared: conflicts_ui.append(f"⚠️ **{re_j['رقم المذكرة']}** و **{pm}** — نفس الأستاذ: *{list(shared)[0]}*")
+                            slot_groups_j.setdefault(key_j,[]).append((re_j["رقم المذكرة"],profs_e))
+
+                        if conflicts_ui:
+                            for cf in conflicts_ui[:8]: st.error(cf)
+                        else: st.success("✅ لا تعارضات في الجدول الحالي")
+
+                        if st.button("💾 حفظ التعديلات اليدوية",key="j_save_manual"):
+                            new_j_sched={}
+                            for _,re_j in edited_j.iterrows():
+                                m=str(re_j["رقم المذكرة"])
+                                if re_j["اليوم"]=="غير مجدول" or not re_j["التوقيت"]: new_j_sched[m]=None
+                                else: new_j_sched[m]=(re_j["اليوم"],re_j["التوقيت"],re_j["القاعة"])
+                            st.session_state["j_schedule"]=new_j_sched
+                            st.success("✅ تم حفظ التعديلات محلياً"); st.rerun()
+
+                    with t_prof:
+                        prof_set_j=set()
+                        memo_map_j={str(r["رقم المذكرة"]):r for _,r in ready_memos_j.iterrows()}
+                        for rw in sched_rows_j:
+                            if rw["اليوم"]=="غير مجدول": continue
+                            for ck in ["المشرف","الرئيس","المناقش1","المناقش2"]:
+                                v=str(rw.get(ck,"")).strip()
+                                if v and v!="nan": prof_set_j.add(v)
+                        for pj in sorted(prof_set_j):
+                            pitems=[]
+                            for rw in sched_rows_j:
+                                if rw["اليوم"]=="غير مجدول": continue
+                                role_j=None
+                                if str(rw.get("المشرف","")).strip()==pj: role_j="مشرف"
+                                elif str(rw.get("الرئيس","")).strip()==pj: role_j="رئيس لجنة"
+                                elif str(rw.get("المناقش1","")).strip()==pj: role_j="مناقش 1"
+                                elif str(rw.get("المناقش2","")).strip()==pj: role_j="مناقش 2"
+                                if role_j: pitems.append({**rw,"الصفة":role_j})
+                            if not pitems: continue
+                            days_pj=set(i["اليوم"] for i in pitems)
+                            with st.expander(f"👨‍🏫 {pj} — {len(pitems)} مناقشة في {len(days_pj)} يوم",expanded=False):
+                                by_day_pj={}
+                                for it in sorted(pitems,key=lambda x:(x["اليوم"],x["التوقيت"])):
+                                    by_day_pj.setdefault(it["اليوم"],[]).append(it)
+                                for dj,its in sorted(by_day_pj.items()):
+                                    st.markdown(f"**📅 {dj}**")
+                                    for it in its:
+                                        lnk=f" [📄]({it['رابط الملف']})" if it.get("رابط الملف","") not in ["","nan"] else ""
+                                        st.markdown(f"&nbsp;&nbsp;🕐 **{it['التوقيت']}** | 🏛️ {it['القاعة']} | {it['رقم المذكرة']} | **{it['الصفة']}**{lnk}")
+
+                    with t_unpl_tab:
+                        unpl_list_j=[r for r in sched_rows_j if r["اليوم"]=="غير مجدول"]
+                        if not unpl_list_j: st.success("✅ جميع المذكرات مجدولة!")
+                        else:
+                            st.warning(f"⚠️ {len(unpl_list_j)} مذكرة لم تُجدَّل")
+                            for u in unpl_list_j: st.markdown(f"- **{u['رقم المذكرة']}** — {u.get('العنوان','')[:50]}")
+                            st.info("💡 زد عدد الأيام أو القاعات ثم أعد التوليد")
+
+                    st.markdown("---")
+
+                    # ── التأكيد النهائي ──
+                    if not conflicts_ui:
+                        st.markdown('''<div style="background:linear-gradient(135deg,#0D2010,#0F2020);border:2px solid rgba(16,185,129,0.42);border-radius:18px;padding:20px 24px;margin:16px 0;">
+                            <div style="font-size:1.1rem;font-weight:800;color:#10B981;margin-bottom:8px;">🎯 تأكيد واعتماد البرنامج النهائي</div>
+                            <div style="color:#E2E8F0;font-size:0.85rem;">عند الضغط: ✅ حفظ في قاعدة البيانات + 📧 إيميل لكل أستاذ ببرنامجه + 📱 إشعار للطلبة بمواعيدهم</div>
+                        </div>''', unsafe_allow_html=True)
+                        if not st.session_state.get("j_confirm_step",False):
+                            if st.button("✅ تأكيد واعتماد البرنامج النهائي",type="primary",use_container_width=True,key="j_confirm_btn"):
+                                st.session_state["j_confirm_step"]=True; st.rerun()
+                        else:
+                            st.warning("⚠️ هذا الإجراء نهائي ولا يمكن التراجع عنه. هل أنت متأكد؟")
+                            ca_j,cb_j=st.columns(2)
+                            with ca_j:
+                                if st.button("✅ نعم، اعتمد البرنامج",type="primary",use_container_width=True,key="j_final_confirm"):
+                                    with st.spinner("⏳ جاري الحفظ وإرسال الإيميلات..."):
+                                        final_j=st.session_state["j_schedule"]
+                                        ok_j,msg_j=save_full_schedule_to_sheets(final_j,ready_memos_j)
+                                        if ok_j:
+                                            df_profs_j=load_prof_memos()
+                                            df_st_j=load_students()
+                                            df_st_j["رقم التسجيل_norm"]=df_st_j["رقم التسجيل"].astype(str).apply(normalize_text)
+                                            memo_map_fin={str(r["رقم المذكرة"]):r for _,r in ready_memos_j.iterrows()}
+                                            prof_prog={}
+                                            for mf,sf in final_j.items():
+                                                if not sf: continue
+                                                rf=memo_map_fin.get(mf,{})
+                                                lnk_f=str(rf.get("رابط الملف","")).strip() if hasattr(rf,"get") else ""
+                                                for ck,rk in [("الأستاذ","مشرف"),("AC","رئيس لجنة"),("AD","مناقش 1"),("AE","مناقش 2")]:
+                                                    pf=str(rf.get(ck,"")).strip() if hasattr(rf,"get") else ""
+                                                    if not pf or pf in ["","nan","—"]: continue
+                                                    prof_prog.setdefault(pf,[]).append({"رقم المذكرة":mf,"اليوم":sf[0],"التوقيت":sf[1],"القاعة":sf[2],"الصفة":rk,"رابط الملف":lnk_f})
+                                            sent_p=0
+                                            for pf,prog_f in prof_prog.items():
+                                                ok_p,_=send_prof_schedule_email(pf,prog_f,df_profs_j)
+                                                if ok_p: sent_p+=1
+                                                time_module.sleep(0.3)
+                                            sent_s=0
+                                            for mf,sf in final_j.items():
+                                                if not sf: continue
+                                                rf=memo_map_fin.get(mf,{})
+                                                if not hasattr(rf,"get"): continue
+                                                rv=rf.tolist() if hasattr(rf,"tolist") else []
+                                                r1f=normalize_text(rf.get("رقم تسجيل الطالب 1",rv[18] if len(rv)>18 else ""))
+                                                r2f=normalize_text(rf.get("رقم تسجيل الطالب 2",rv[19] if len(rv)>19 else ""))
+                                                for reg_f in [r1f,r2f]:
+                                                    if not reg_f or reg_f in ["","nan"]: continue
+                                                    sr=df_st_j[df_st_j["رقم التسجيل_norm"]==reg_f]
+                                                    if sr.empty: continue
+                                                    ok_s,_=send_student_schedule_email(sr.iloc[0].to_dict(),mf,sf[0],sf[1],sf[2])
+                                                    if ok_s: sent_s+=1
+                                                    time_module.sleep(0.2)
+                                            for k in ["j_schedule","j_score","j_unplaced","j_confirm_step"]:
+                                                st.session_state.pop(k,None)
+                                            st.success(f"🎉 تم اعتماد البرنامج! حُفظ في قاعدة البيانات | أُرسل لـ {sent_p} أستاذ | أُشعر {sent_s} طالب")
+                                            st.balloons(); clear_cache_and_reload(); time_module.sleep(2); st.rerun()
+                                        else: st.error(msg_j)
+                            with cb_j:
+                                if st.button("إلغاء",use_container_width=True,key="j_cancel_confirm"):
+                                    st.session_state["j_confirm_step"]=False; st.rerun()
+                    else:
+                        st.error("⛔ لا يمكن الاعتماد — صحّح التعارضات أولاً.")
 st.markdown("---")
 st.markdown('<div style="text-align:center;color:#ffffff;font-size:11px;padding:16px;">إشراف مسؤول الميدان البروفيسور لخضر رفاف ©</div>', unsafe_allow_html=True)
