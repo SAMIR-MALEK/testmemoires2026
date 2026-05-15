@@ -1006,17 +1006,17 @@ def build_conflict_matrix(df_memos):
     for i in range(len(rows_list)):
         _, row_i = rows_list[i]
         m_i = str(row_i["رقم المذكرة"])
-        profs_i = set(filter(None, [str(row_i.get("الأستاذ","")).strip(),str(row_i.get("AC","")).strip(),str(row_i.get("AD","")).strip(),str(row_i.get("AE","")).strip()])) - {"","nan","—"}
+        profs_i = set(filter(None, [str(row_i.get("الأستاذ","")).strip(),str(row_i.get("AA","")).strip(),str(row_i.get("AB","")).strip(),str(row_i.get("AC","")).strip()])) - {"","nan","—"}
         for j in range(i+1, len(rows_list)):
             _, row_j = rows_list[j]
             m_j = str(row_j["رقم المذكرة"])
-            profs_j = set(filter(None,[str(row_j.get("الأستاذ","")).strip(),str(row_j.get("AC","")).strip(),str(row_j.get("AD","")).strip(),str(row_j.get("AE","")).strip()])) - {"","nan","—"}
+            profs_j = set(filter(None,[str(row_j.get("الأستاذ","")).strip(),str(row_j.get("AA","")).strip(),str(row_j.get("AB","")).strip(),str(row_j.get("AC","")).strip()])) - {"","nan","—"}
             if profs_i & profs_j:
                 conflicts[m_i].add(m_j); conflicts[m_j].add(m_i)
     return memo_list, conflicts
 
 def get_memo_profs(row):
-    return set(filter(None,[str(row.get("الأستاذ","")).strip(),str(row.get("AC","")).strip(),str(row.get("AD","")).strip(),str(row.get("AE","")).strip()])) - {"","nan","—"}
+    return set(filter(None,[str(row.get("الأستاذ","")).strip(),str(row.get("AA","")).strip(),str(row.get("AB","")).strip(),str(row.get("AC","")).strip()])) - {"","nan","—"}
 
 def greedy_schedule(memo_list, conflicts, days, slots, rooms):
     import random
@@ -1096,7 +1096,7 @@ def schedule_to_rows(schedule, df_memos):
         r = {"رقم المذكرة": memo, "العنوان": str(row.get("عنوان المذكرة",""))[:40] if hasattr(row,"get") else ""}
         if slot: r.update({"اليوم":slot[0],"التوقيت":slot[1],"القاعة":slot[2]})
         else: r.update({"اليوم":"غير مجدول","التوقيت":"","القاعة":""})
-        for k,c in [("المشرف","الأستاذ"),("الرئيس","AC"),("المناقش1","AD"),("المناقش2","AE")]:
+        for k,c in [("المشرف","الأستاذ"),("الرئيس","AA"),("المناقش1","AB"),("المناقش2","AC")]:
             r[k] = str(row.get(c,"")).strip() if hasattr(row,"get") else ""
         r["رابط الملف"] = str(row.get("رابط الملف","")).strip() if hasattr(row,"get") else ""
         rows.append(r)
@@ -2278,16 +2278,21 @@ elif st.session_state.user_type == "admin":
             df_memos_j = load_memos()
             
             # المذكرات التي اكتملت لجانها
-            is_registered = df_memos_j["تم التسجيل"].astype(str).str.strip()=="نعم"
-            # مذكرة جاهزة للجدولة = مسجلة + لها مشرف على الأقل
-            def _has_jury(row):
-                sup = str(row.get("الأستاذ","")).strip()
-                ac  = str(row.get("AC","")).strip()
-                if sup and sup not in ["","nan","—"]: return True
-                if ac  and ac  not in ["","nan","—"]: return True
-                return False
-            has_jury = df_memos_j.apply(_has_jury, axis=1)
-            ready_memos_j = df_memos_j[is_registered & has_jury].copy()
+            # مذكرة جاهزة للجدولة:
+            # 1. معتمدة = حالة الإيداع = "قابلة للمناقشة"
+            # 2. لها لجنة كاملة: F=الأستاذ، AA=الرئيس، AB=المناقش1، AC=المناقش2
+            def _is_ready(row):
+                approved = str(row.get("حالة الإيداع","")).strip() == "قابلة للمناقشة"
+                def filled(val):
+                    v = str(val).strip()
+                    return v not in ["","nan","None","—"]
+                has_sup  = filled(row.get("الأستاذ",""))
+                has_pres = filled(row.get("AA",""))
+                has_ex1  = filled(row.get("AB",""))
+                has_ex2  = filled(row.get("AC",""))
+                return approved and has_sup and has_pres and has_ex1 and has_ex2
+            ready_mask = df_memos_j.apply(_is_ready, axis=1)
+            ready_memos_j = df_memos_j[ready_mask].copy()
             total_ready_j = len(ready_memos_j)
             already_sched_j = len(ready_memos_j[ready_memos_j.get("تاريخ المناقشة",pd.Series(dtype=str)).astype(str).str.strip().apply(lambda x: x not in ["","nan"])]) if "تاريخ المناقشة" in ready_memos_j.columns else 0
 
@@ -2517,7 +2522,7 @@ elif st.session_state.user_type == "admin":
                                             for mf,sf in final_j.items():
                                                 if not sf: continue
                                                 rf = memo_map_prev.get(mf,{})
-                                                for ck,rk in [("الأستاذ","مشرف"),("AC","رئيس لجنة"),("AD","مناقش 1"),("AE","مناقش 2")]:
+                                                for ck,rk in [("الأستاذ","مشرف"),("AA","رئيس لجنة"),("AB","مناقش 1"),("AC","مناقش 2")]:
                                                     pf = str(rf.get(ck,"")).strip() if hasattr(rf,"get") else ""
                                                     if not pf or pf in ["","nan","—"]: continue
                                                     prof_prog_prev.setdefault(pf,[]).append({"المذكرة":mf,"اليوم":sf[0],"التوقيت":sf[1],"القاعة":sf[2],"الصفة":rk})
@@ -2542,7 +2547,7 @@ elif st.session_state.user_type == "admin":
                                                     if not sf: continue
                                                     rf=memo_map_fin.get(mf,{})
                                                     lnk_f=str(rf.get("رابط الملف","")).strip() if hasattr(rf,"get") else ""
-                                                    for ck,rk in [("الأستاذ","مشرف"),("AC","رئيس لجنة"),("AD","مناقش 1"),("AE","مناقش 2")]:
+                                                    for ck,rk in [("الأستاذ","مشرف"),("AA","رئيس لجنة"),("AB","مناقش 1"),("AC","مناقش 2")]:
                                                         pf=str(rf.get(ck,"")).strip() if hasattr(rf,"get") else ""
                                                         if not pf or pf in ["","nan","—"]: continue
                                                         prof_prog.setdefault(pf,[]).append({"رقم المذكرة":mf,"اليوم":sf[0],"التوقيت":sf[1],"القاعة":sf[2],"الصفة":rk,"رابط الملف":lnk_f})
