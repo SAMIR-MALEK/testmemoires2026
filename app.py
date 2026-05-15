@@ -2278,8 +2278,15 @@ elif st.session_state.user_type == "admin":
             df_memos_j = load_memos()
             
             # المذكرات التي اكتملت لجانها
-            has_jury = (df_memos_j.get("AC", pd.Series(dtype=str)).astype(str).str.strip().apply(lambda x: x not in ["","nan"])) if "AC" in df_memos_j.columns else pd.Series([False]*len(df_memos_j))
             is_registered = df_memos_j["تم التسجيل"].astype(str).str.strip()=="نعم"
+            # مذكرة جاهزة للجدولة = مسجلة + لها مشرف على الأقل
+            def _has_jury(row):
+                sup = str(row.get("الأستاذ","")).strip()
+                ac  = str(row.get("AC","")).strip()
+                if sup and sup not in ["","nan","—"]: return True
+                if ac  and ac  not in ["","nan","—"]: return True
+                return False
+            has_jury = df_memos_j.apply(_has_jury, axis=1)
             ready_memos_j = df_memos_j[is_registered & has_jury].copy()
             total_ready_j = len(ready_memos_j)
             already_sched_j = len(ready_memos_j[ready_memos_j.get("تاريخ المناقشة",pd.Series(dtype=str)).astype(str).str.strip().apply(lambda x: x not in ["","nan"])]) if "تاريخ المناقشة" in ready_memos_j.columns else 0
