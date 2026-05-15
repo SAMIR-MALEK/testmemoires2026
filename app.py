@@ -2483,8 +2483,17 @@ elif st.session_state.user_type == "admin":
                             <div style="font-size:1.1rem;font-weight:800;color:#10B981;margin-bottom:8px;">🎯 تأكيد واعتماد البرنامج النهائي</div>
                             <div style="color:#E2E8F0;font-size:0.85rem;">عند الضغط: ✅ حفظ في قاعدة البيانات + 📧 إيميل لكل أستاذ ببرنامجه + 📱 إشعار للطلبة بمواعيدهم</div>
                         </div>''', unsafe_allow_html=True)
+                        test_mode = st.checkbox(
+                            "🧪 وضع التجربة — عرض النتائج فقط دون حفظ أو إرسال إيميلات",
+                            value=True,
+                            key="j_test_mode",
+                            help="فعّله أثناء الاختبار. أوقفه عند الاعتماد الرسمي."
+                        )
+                        if test_mode:
+                            st.info("🧪 أنت في وضع التجربة — لن يُحفظ شيء ولن يُرسل أي إيميل عند الضغط على التأكيد.")
                         if not st.session_state.get("j_confirm_step",False):
-                            if st.button("✅ تأكيد واعتماد البرنامج النهائي",type="primary",use_container_width=True,key="j_confirm_btn"):
+                            btn_label = "🧪 معاينة النتائج (وضع التجربة)" if test_mode else "✅ تأكيد واعتماد البرنامج النهائي"
+                            if st.button(btn_label,type="primary",use_container_width=True,key="j_confirm_btn"):
                                 st.session_state["j_confirm_step"]=True; st.rerun()
                         else:
                             st.warning("⚠️ هذا الإجراء نهائي ولا يمكن التراجع عنه. هل أنت متأكد؟")
@@ -2493,46 +2502,68 @@ elif st.session_state.user_type == "admin":
                                 if st.button("✅ نعم، اعتمد البرنامج",type="primary",use_container_width=True,key="j_final_confirm"):
                                     with st.spinner("⏳ جاري الحفظ وإرسال الإيميلات..."):
                                         final_j=st.session_state["j_schedule"]
-                                        ok_j,msg_j=save_full_schedule_to_sheets(final_j,ready_memos_j)
-                                        if ok_j:
-                                            df_profs_j=load_prof_memos()
-                                            df_st_j=load_students()
-                                            df_st_j["رقم التسجيل_norm"]=df_st_j["رقم التسجيل"].astype(str).apply(normalize_text)
-                                            memo_map_fin={str(r["رقم المذكرة"]):r for _,r in ready_memos_j.iterrows()}
-                                            prof_prog={}
+                                        test_mode_final = st.session_state.get("j_test_mode", True)
+                                        if test_mode_final:
+                                            # ── وضع التجربة: عرض فقط ──
+                                            memo_map_prev = {str(r["رقم المذكرة"]):r for _,r in ready_memos_j.iterrows()}
+                                            prof_prog_prev = {}
                                             for mf,sf in final_j.items():
                                                 if not sf: continue
-                                                rf=memo_map_fin.get(mf,{})
-                                                lnk_f=str(rf.get("رابط الملف","")).strip() if hasattr(rf,"get") else ""
+                                                rf = memo_map_prev.get(mf,{})
                                                 for ck,rk in [("الأستاذ","مشرف"),("AC","رئيس لجنة"),("AD","مناقش 1"),("AE","مناقش 2")]:
-                                                    pf=str(rf.get(ck,"")).strip() if hasattr(rf,"get") else ""
+                                                    pf = str(rf.get(ck,"")).strip() if hasattr(rf,"get") else ""
                                                     if not pf or pf in ["","nan","—"]: continue
-                                                    prof_prog.setdefault(pf,[]).append({"رقم المذكرة":mf,"اليوم":sf[0],"التوقيت":sf[1],"القاعة":sf[2],"الصفة":rk,"رابط الملف":lnk_f})
-                                            sent_p=0
-                                            for pf,prog_f in prof_prog.items():
-                                                ok_p,_=send_prof_schedule_email(pf,prog_f,df_profs_j)
-                                                if ok_p: sent_p+=1
-                                                time_module.sleep(0.3)
-                                            sent_s=0
-                                            for mf,sf in final_j.items():
-                                                if not sf: continue
-                                                rf=memo_map_fin.get(mf,{})
-                                                if not hasattr(rf,"get"): continue
-                                                rv=rf.tolist() if hasattr(rf,"tolist") else []
-                                                r1f=normalize_text(rf.get("رقم تسجيل الطالب 1",rv[18] if len(rv)>18 else ""))
-                                                r2f=normalize_text(rf.get("رقم تسجيل الطالب 2",rv[19] if len(rv)>19 else ""))
-                                                for reg_f in [r1f,r2f]:
-                                                    if not reg_f or reg_f in ["","nan"]: continue
-                                                    sr=df_st_j[df_st_j["رقم التسجيل_norm"]==reg_f]
-                                                    if sr.empty: continue
-                                                    ok_s,_=send_student_schedule_email(sr.iloc[0].to_dict(),mf,sf[0],sf[1],sf[2])
-                                                    if ok_s: sent_s+=1
-                                                    time_module.sleep(0.2)
-                                            for k in ["j_schedule","j_score","j_unplaced","j_confirm_step"]:
-                                                st.session_state.pop(k,None)
-                                            st.success(f"🎉 تم اعتماد البرنامج! حُفظ في قاعدة البيانات | أُرسل لـ {sent_p} أستاذ | أُشعر {sent_s} طالب")
-                                            st.balloons(); clear_cache_and_reload(); time_module.sleep(2); st.rerun()
-                                        else: st.error(msg_j)
+                                                    prof_prog_prev.setdefault(pf,[]).append({"المذكرة":mf,"اليوم":sf[0],"التوقيت":sf[1],"القاعة":sf[2],"الصفة":rk})
+                                            st.success(f"🧪 معاينة: سيُرسل إيميل لـ {len(prof_prog_prev)} أستاذ | سيُشعر {len([s for s in final_j.values() if s])*2} طالب (تقريباً)")
+                                            with st.expander("👨‍🏫 معاينة برامج الأساتذة"):
+                                                for pf,prog in sorted(prof_prog_prev.items()):
+                                                    st.markdown(f"**{pf}** — {len(prog)} مناقشة")
+                                                    for it in sorted(prog,key=lambda x:(x['اليوم'],x['التوقيت'])):
+                                                        st.markdown(f"&nbsp;&nbsp;📅 {it['اليوم']} | 🕐 {it['التوقيت']} | 🏛️ {it['القاعة']} | {it['المذكرة']} | *{it['الصفة']}*")
+                                            st.info("✅ الجدول صحيح. أوقف وضع التجربة ثم اضغط تأكيد للاعتماد الرسمي.")
+                                            st.session_state["j_confirm_step"] = False
+                                        else:
+                                            # ── الاعتماد الرسمي ──
+                                            ok_j,msg_j=save_full_schedule_to_sheets(final_j,ready_memos_j)
+                                            if ok_j:
+                                                df_profs_j=load_prof_memos()
+                                                df_st_j=load_students()
+                                                df_st_j["رقم التسجيل_norm"]=df_st_j["رقم التسجيل"].astype(str).apply(normalize_text)
+                                                memo_map_fin={str(r["رقم المذكرة"]):r for _,r in ready_memos_j.iterrows()}
+                                                prof_prog={}
+                                                for mf,sf in final_j.items():
+                                                    if not sf: continue
+                                                    rf=memo_map_fin.get(mf,{})
+                                                    lnk_f=str(rf.get("رابط الملف","")).strip() if hasattr(rf,"get") else ""
+                                                    for ck,rk in [("الأستاذ","مشرف"),("AC","رئيس لجنة"),("AD","مناقش 1"),("AE","مناقش 2")]:
+                                                        pf=str(rf.get(ck,"")).strip() if hasattr(rf,"get") else ""
+                                                        if not pf or pf in ["","nan","—"]: continue
+                                                        prof_prog.setdefault(pf,[]).append({"رقم المذكرة":mf,"اليوم":sf[0],"التوقيت":sf[1],"القاعة":sf[2],"الصفة":rk,"رابط الملف":lnk_f})
+                                                sent_p=0
+                                                for pf,prog_f in prof_prog.items():
+                                                    ok_p,_=send_prof_schedule_email(pf,prog_f,df_profs_j)
+                                                    if ok_p: sent_p+=1
+                                                    time_module.sleep(0.3)
+                                                sent_s=0
+                                                for mf,sf in final_j.items():
+                                                    if not sf: continue
+                                                    rf=memo_map_fin.get(mf,{})
+                                                    if not hasattr(rf,"get"): continue
+                                                    rv=rf.tolist() if hasattr(rf,"tolist") else []
+                                                    r1f=normalize_text(rf.get("رقم تسجيل الطالب 1",rv[18] if len(rv)>18 else ""))
+                                                    r2f=normalize_text(rf.get("رقم تسجيل الطالب 2",rv[19] if len(rv)>19 else ""))
+                                                    for reg_f in [r1f,r2f]:
+                                                        if not reg_f or reg_f in ["","nan"]: continue
+                                                        sr=df_st_j[df_st_j["رقم التسجيل_norm"]==reg_f]
+                                                        if sr.empty: continue
+                                                        ok_s,_=send_student_schedule_email(sr.iloc[0].to_dict(),mf,sf[0],sf[1],sf[2])
+                                                        if ok_s: sent_s+=1
+                                                        time_module.sleep(0.2)
+                                                for k in ["j_schedule","j_score","j_unplaced","j_confirm_step"]:
+                                                    st.session_state.pop(k,None)
+                                                st.success(f"🎉 تم اعتماد البرنامج! حُفظ في قاعدة البيانات | أُرسل لـ {sent_p} أستاذ | أُشعر {sent_s} طالب")
+                                                st.balloons(); clear_cache_and_reload(); time_module.sleep(2); st.rerun()
+                                            else: st.error(msg_j)
                             with cb_j:
                                 if st.button("إلغاء",use_container_width=True,key="j_cancel_confirm"):
                                     st.session_state["j_confirm_step"]=False; st.rerun()
