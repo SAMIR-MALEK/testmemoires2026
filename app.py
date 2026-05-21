@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 st.set_page_config(page_title="منصة مذكرات الماستر", page_icon="📘", layout="wide")
 
-DEPOSIT_DEADLINE = datetime(2026, 5, 14, 23, 59)
+DEPOSIT_DEADLINE = datetime(2026, 5, 23, 23, 59)
 REGISTRATION_DEADLINE = datetime(2027, 1, 28, 23, 59)
 
 def get_days_remaining():
@@ -49,7 +49,7 @@ def render_countdown_banner():
         urgency = "📌 آخر أجل لإيداع المذكرات: 14 ماي 2026"
         bg = "linear-gradient(135deg,#1A3A5C,#2F6F7E)"
         shadow = "rgba(47,111,126,0.4)"
-    st.markdown(f"""<div style="background:{bg};border-radius:16px;padding:16px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:0 8px 28px {shadow};"><div style="display:flex;align-items:center;gap:12px;"><span style="font-size:1.9rem;">⏳</span><div><div style="color:#fff;font-size:1.05rem;font-weight:800;">{urgency}</div><div style="color:rgba(255,255,255,0.9);font-size:0.8rem;margin-top:2px;">آخر أجل لإيداع المذكرات النهائية: 14 ماي 2026</div></div></div><div style="background:rgba(0,0,0,0.3);border:2px solid rgba(255,255,255,0.4);border-radius:12px;padding:8px 20px;text-align:center;"><div style="font-size:2.6rem;font-weight:900;color:#FFD700;line-height:1;text-shadow:0 0 20px rgba(255,215,0,0.5);">{days}</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.8);letter-spacing:1px;">يوم متبقي</div></div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div style="background:{bg};border-radius:16px;padding:16px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:0 8px 28px {shadow};"><div style="display:flex;align-items:center;gap:12px;"><span style="font-size:1.9rem;">⏳</span><div><div style="color:#fff;font-size:1.05rem;font-weight:800;">{urgency}</div><div style="color:rgba(255,255,255,0.9);font-size:0.8rem;margin-top:2px;">آخر أجل لإيداع المذكرات النهائية: 23 ماي 2026</div></div></div><div style="background:rgba(0,0,0,0.3);border:2px solid rgba(255,255,255,0.4);border-radius:12px;padding:8px 20px;text-align:center;"><div style="font-size:2.6rem;font-weight:900;color:#FFD700;line-height:1;text-shadow:0 0 20px rgba(255,215,0,0.5);">{days}</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.8);letter-spacing:1px;">يوم متبقي</div></div></div>""", unsafe_allow_html=True)
 
 
 st.markdown("""
@@ -87,6 +87,21 @@ div[data-testid="stFormSubmitButton"] button p { color: #ffffff !important; }
 .stTabs [data-baseweb="tab"] { background: transparent; color: #94A3B8; font-weight: 600; padding: 10px 20px; border-radius: 10px; border: 1px solid transparent; }
 .stTabs [data-baseweb="tab"]:hover { background: rgba(255,255,255,0.08); color: white; }
 .stTabs [aria-selected="true"] { background: rgba(47,111,126,0.2); color: #FFD700; border: 1px solid #2F6F7E; font-weight: bold; }
+[data-testid="stExpander"] { background-color: #1E293B !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 10px !important; }
+[data-testid="stExpander"] details { background-color: #1E293B !important; }
+[data-testid="stExpander"] details summary { background-color: #1E293B !important; color: #ffffff !important; }
+[data-testid="stExpander"] details summary:hover { background-color: #263548 !important; color: #FFD700 !important; }
+[data-testid="stExpander"] details summary:focus { background-color: #1E293B !important; color: #ffffff !important; outline: none !important; }
+[data-testid="stExpander"] details summary p,
+[data-testid="stExpander"] details summary span { color: #ffffff !important; background: transparent !important; }
+[data-testid="stExpander"] details summary:hover p,
+[data-testid="stExpander"] details summary:hover span { color: #FFD700 !important; }
+[data-testid="stExpander"] details summary:focus p,
+[data-testid="stExpander"] details summary:focus span { color: #ffffff !important; }
+[data-testid="stExpander"] details[open] summary { background-color: #1E293B !important; color: #FFD700 !important; }
+[data-testid="stExpander"] details[open] summary p,
+[data-testid="stExpander"] details[open] summary span { color: #FFD700 !important; }
+[data-testid="stExpander"] details[open] > div { background-color: #1A2A3D !important; }
 .students-grid { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin: 20px 0; }
 .student-card { flex:1; max-width:400px; min-width:260px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:22px; text-align:center; transition:all 0.3s; }
 .student-card:hover { background:rgba(255,255,255,0.06); border-color:#2F6F7E; }
@@ -671,11 +686,30 @@ def upload_memo_to_drive(pdf_bytes, memo_number, memo_title):
     if drive_service is None: return False, "", "❌ Drive غير متاح"
     try:
         safe_title = re.sub(r'[\\/:*?"<>|]','',str(memo_title).strip())
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # البحث عن النسخ القديمة لإعادة تسميتها كنسخ احتياطية
+        existing = drive_service.files().list(
+            q=f"'{DRIVE_UPLOAD_FOLDER_ID}' in parents and name contains '{memo_number}.' and not name contains '_v' and trashed=false",
+            fields="files(id,name)"
+        ).execute()
+        for f in existing.get('files',[]):
+            old_name = f.get('name','')
+            # إعادة تسمية الملف القديم كنسخة احتياطية فقط إذا كان نفس المذكرة
+            if old_name.startswith(f"{memo_number}."):
+                backup_name = old_name.replace('.pdf', f'_v{timestamp}.pdf')
+                drive_service.files().update(
+                    fileId=f['id'],
+                    body={'name': backup_name}
+                ).execute()
+
+        # رفع الملف الجديد
         file_name = f"{memo_number}.{safe_title}.pdf"
-        existing = drive_service.files().list(q=f"'{DRIVE_UPLOAD_FOLDER_ID}' in parents and name contains '{memo_number}.' and trashed=false", fields="files(id)").execute()
-        for f in existing.get('files',[]): drive_service.files().delete(fileId=f['id']).execute()
         media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype='application/pdf', resumable=True)
-        uploaded = drive_service.files().create(body={'name':file_name,'parents':[DRIVE_UPLOAD_FOLDER_ID]}, media_body=media, fields='id,webViewLink').execute()
+        uploaded = drive_service.files().create(
+            body={'name': file_name, 'parents': [DRIVE_UPLOAD_FOLDER_ID]},
+            media_body=media, fields='id,webViewLink'
+        ).execute()
         file_id = uploaded.get('id')
         drive_service.permissions().create(fileId=file_id, body={'type':'anyone','role':'reader'}).execute()
         link = uploaded.get('webViewLink', f"https://drive.google.com/file/d/{file_id}/view")
@@ -689,7 +723,7 @@ def save_memo_deposit(memo_number, file_link):
         if row.empty: return False, "❌ غير موجودة"
         row_idx = row.index[0]+2
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
-        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption":"USER_ENTERED","data":[{"range":f"Feuille 1!V{row_idx}","values":[["مودعة"]]},{"range":f"Feuille 1!W{row_idx}","values":[[file_link]]},{"range":f"Feuille 1!X{row_idx}","values":[[timestamp]]}]}).execute()
+        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption":"USER_ENTERED","data":[{"range":f"Feuille 1!T{row_idx}","values":[["مودعة"]]},{"range":f"Feuille 1!U{row_idx}","values":[[file_link]]},{"range":f"Feuille 1!V{row_idx}","values":[[timestamp]]}]}).execute()
         clear_cache_and_reload(); return True, "✅ تم حفظ الإيداع"
     except Exception as e: return False, f"❌ {str(e)}"
 
@@ -699,7 +733,7 @@ def save_approval_declaration(memo_number, prof_name, signature, declaration_tex
         row = df_memos[df_memos["رقم المذكرة"].astype(str).apply(normalize_text)==normalize_text(memo_number)]
         if row.empty: return False, "❌ غير موجودة"
         row_idx = row.index[0]+2
-        sheets_service.spreadsheets().values().update(spreadsheetId=MEMOS_SHEET_ID, range=f"Feuille 1!AB{row_idx}", valueInputOption="USER_ENTERED", body={"values":[[declaration_text]]}).execute()
+        sheets_service.spreadsheets().values().update(spreadsheetId=MEMOS_SHEET_ID, range=f"Feuille 1!Z{row_idx}", valueInputOption="USER_ENTERED", body={"values":[[declaration_text]]}).execute()
         return True, "✅ تم حفظ التصريح"
     except Exception as e: return False, f"❌ {str(e)}"
 
@@ -709,7 +743,7 @@ def approve_memo_for_defense(memo_number):
         row = df_memos[df_memos["رقم المذكرة"].astype(str).apply(normalize_text)==normalize_text(memo_number)]
         if row.empty: return False, "❌ غير موجودة"
         row_idx = row.index[0]+2
-        sheets_service.spreadsheets().values().update(spreadsheetId=MEMOS_SHEET_ID, range=f"Feuille 1!V{row_idx}", valueInputOption="USER_ENTERED", body={"values":[["قابلة للمناقشة"]]}).execute()
+        sheets_service.spreadsheets().values().update(spreadsheetId=MEMOS_SHEET_ID, range=f"Feuille 1!T{row_idx}", valueInputOption="USER_ENTERED", body={"values":[["قابلة للمناقشة"]]}).execute()
         clear_cache_and_reload(); return True, "✅ تمت الموافقة"
     except Exception as e: return False, f"❌ {str(e)}"
 
@@ -721,7 +755,7 @@ def reject_memo_and_reopen(memo_number, prof_name, rejection_reason):
         row_idx = row.index[0]+2
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
         rejection_full = f"مرفوضة بتاريخ {timestamp} | المشرف: {prof_name} | السبب: {rejection_reason}"
-        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption":"USER_ENTERED","data":[{"range":f"Feuille 1!V{row_idx}","values":[["مرفوضة"]]},{"range":f"Feuille 1!W{row_idx}","values":[[""]]},{"range":f"Feuille 1!X{row_idx}","values":[[""]]},{"range":f"Feuille 1!AB{row_idx}","values":[[rejection_full]]}]}).execute()
+        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption":"USER_ENTERED","data":[{"range":f"Feuille 1!T{row_idx}","values":[["مرفوضة"]]},{"range":f"Feuille 1!U{row_idx}","values":[[""]]},{"range":f"Feuille 1!V{row_idx}","values":[[""]]},{"range":f"Feuille 1!Z{row_idx}","values":[[rejection_full]]}]}).execute()
         clear_cache_and_reload(); return True, "✅ تم تسجيل الإعادة وفتح الإيداع"
     except Exception as e: return False, f"❌ {str(e)}"
 
@@ -733,7 +767,7 @@ def save_prof_notes(memo_number, prof_name, notes_text):
         row_idx = row.index[0]+2
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
         note_full = f"ملاحظات المشرف {prof_name} [{timestamp}]: {notes_text}"
-        sheets_service.spreadsheets().values().update(spreadsheetId=MEMOS_SHEET_ID, range=f"Feuille 1!AB{row_idx}", valueInputOption="USER_ENTERED", body={"values":[[note_full]]}).execute()
+        sheets_service.spreadsheets().values().update(spreadsheetId=MEMOS_SHEET_ID, range=f"Feuille 1!Z{row_idx}", valueInputOption="USER_ENTERED", body={"values":[[note_full]]}).execute()
         clear_cache_and_reload(); return True, "✅ تم حفظ الملاحظات"
     except Exception as e: return False, f"❌ {str(e)}"
 
@@ -743,7 +777,7 @@ def save_defense_schedule(memo_number, defense_date, defense_time, defense_room)
         row = df_memos[df_memos["رقم المذكرة"].astype(str).apply(normalize_text)==normalize_text(memo_number)]
         if row.empty: return False, "❌ غير موجودة"
         row_idx = row.index[0]+2
-        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption":"USER_ENTERED","data":[{"range":f"Feuille 1!Y{row_idx}","values":[[str(defense_date)]]},{"range":f"Feuille 1!Z{row_idx}","values":[[str(defense_time)]]},{"range":f"Feuille 1!AA{row_idx}","values":[[defense_room]]}]}).execute()
+        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption":"USER_ENTERED","data":[{"range":f"Feuille 1!W{row_idx}","values":[[str(defense_date)]]},{"range":f"Feuille 1!X{row_idx}","values":[[str(defense_time)]]},{"range":f"Feuille 1!Y{row_idx}","values":[[defense_room]]}]}).execute()
         clear_cache_and_reload(); return True, "✅ تم حفظ الموعد"
     except Exception as e: return False, f"❌ {str(e)}"
 
@@ -753,12 +787,12 @@ def save_jury(memo_number, president, exam1, exam2):
         row = df_memos[df_memos["رقم المذكرة"].astype(str).apply(normalize_text)==normalize_text(memo_number)]
         if row.empty: return False, "❌ غير موجودة"
         row_idx = row.index[0]+2
-        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption":"USER_ENTERED","data":[{"range":f"Feuille 1!AC{row_idx}","values":[[president]]},{"range":f"Feuille 1!AD{row_idx}","values":[[exam1]]},{"range":f"Feuille 1!AE{row_idx}","values":[[exam2]]}]}).execute()
+        sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption":"USER_ENTERED","data":[{"range":f"Feuille 1!AA{row_idx}","values":[[president]]},{"range":f"Feuille 1!AB{row_idx}","values":[[exam1]]},{"range":f"Feuille 1!AC{row_idx}","values":[[exam2]]}]}).execute()
         clear_cache_and_reload(); return True, "✅ تم حفظ اللجنة"
     except Exception as e: return False, f"❌ {str(e)}"
 
 def save_notes_by_member(memo_number, member_role, notes_text):
-    col_map = {"رئيس":"AG","مناقش1":"AH","مناقش2":"AI"}
+    col_map = {"رئيس لجنة":"AE","مناقش 1":"AF","مناقش 2":"AG"}
     col = col_map.get(member_role)
     if not col: return False, "دور غير معروف"
     try:
@@ -779,7 +813,7 @@ def publish_memos(memo_numbers=None):
             col = "حالة الإيداع"
             targets = df_memos[df_memos[col].astype(str).str.strip()=="قابلة للمناقشة"] if col in df_memos.columns else pd.DataFrame()
         if targets.empty: return False, "لا توجد مذكرات"
-        updates = [{"range":f"Feuille 1!AF{idx+2}","values":[["نعم"]]} for idx in targets.index]
+        updates = [{"range":f"Feuille 1!AD{idx+2}","values":[["نعم"]]} for idx in targets.index]
         sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID, body={"valueInputOption":"USER_ENTERED","data":updates}).execute()
         clear_cache_and_reload(); return True, f"✅ تم نشر {len(updates)} مذكرة"
     except Exception as e: return False, f"❌ {str(e)}"
@@ -1111,10 +1145,10 @@ def save_full_schedule_to_sheets(schedule, df_memos):
             if not slot: continue
             row_idx = i+2
             updates += [
-                {"range":f"Feuille 1!Y{row_idx}","values":[[slot[0]]]},
-                {"range":f"Feuille 1!Z{row_idx}","values":[[slot[1]]]},
-                {"range":f"Feuille 1!AA{row_idx}","values":[[slot[2]]]},
-                {"range":f"Feuille 1!AF{row_idx}","values":[["نعم"]]},
+                {"range":f"Feuille 1!W{row_idx}","values":[[slot[0]]]},
+                {"range":f"Feuille 1!X{row_idx}","values":[[slot[1]]]},
+                {"range":f"Feuille 1!Y{row_idx}","values":[[slot[2]]]},
+                {"range":f"Feuille 1!AD{row_idx}","values":[["نعم"]]},
             ]
         if updates:
             sheets_service.spreadsheets().values().batchUpdate(spreadsheetId=MEMOS_SHEET_ID,body={"valueInputOption":"USER_ENTERED","data":updates}).execute()
@@ -1172,6 +1206,64 @@ def save_member_observations(memo_number, prof_name, role, observations):
         sheets_service.spreadsheets().values().update(spreadsheetId=MEMOS_SHEET_ID,range=f"Feuille 1!{col}{row_idx}",valueInputOption="USER_ENTERED",body={"values":[[obs_full]]}).execute()
         clear_cache_and_reload(); return True,"✅ تم حفظ الملاحظات"
     except Exception as e: return False,f"❌ {str(e)}"
+
+def send_recovery_email_to_admin(memo_number, memo_title, student1_name, student2_name=None):
+    """إرسال إيميل للإدارة عند استرجاع مذكرة مفقودة"""
+    try:
+        s2 = f" / {student2_name}" if student2_name else ""
+        body = f'''<html dir="rtl"><head><meta charset="UTF-8">
+        <style>body{{font-family:Arial,sans-serif;direction:rtl;background:#f4f4f4;padding:20px}}
+        .c{{background:#fff;padding:28px;border-radius:12px;max-width:600px;margin:auto}}
+        .h{{background:linear-gradient(135deg,#0F2942,#1a472a);color:#fff;padding:20px;border-radius:8px;text-align:center;margin-bottom:18px}}
+        .badge{{background:#10B981;color:#fff;padding:4px 14px;border-radius:20px;font-weight:700;font-size:0.9rem}}
+        </style></head><body><div class="c">
+        <div class="h"><h2>✅ استرجاع مذكرة مفقودة</h2><p style="opacity:.9;margin:4px 0">منصة مذكرات الماستر</p></div>
+        <p>تمت إعادة رفع المذكرة التالية التي كانت مفقودة:</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0">
+            <tr style="background:#f8fafc"><td style="padding:10px;border:1px solid #e2e8f0;font-weight:700;width:40%">رقم المذكرة</td>
+                <td style="padding:10px;border:1px solid #e2e8f0"><span class="badge">{memo_number}</span></td></tr>
+            <tr><td style="padding:10px;border:1px solid #e2e8f0;font-weight:700">عنوان المذكرة</td>
+                <td style="padding:10px;border:1px solid #e2e8f0">{memo_title}</td></tr>
+            <tr style="background:#f8fafc"><td style="padding:10px;border:1px solid #e2e8f0;font-weight:700">الطالب(ة)</td>
+                <td style="padding:10px;border:1px solid #e2e8f0">{student1_name}{s2}</td></tr>
+            <tr><td style="padding:10px;border:1px solid #e2e8f0;font-weight:700">تاريخ الاسترجاع</td>
+                <td style="padding:10px;border:1px solid #e2e8f0">{datetime.now().strftime("%Y-%m-%d %H:%M")}</td></tr>
+        </table>
+        <div style="background:#f0fdf4;padding:14px;border-right:4px solid #10B981;border-radius:6px;margin-top:16px">
+            <p style="margin:0;color:#166534">✅ تم تحديث الرابط في قاعدة البيانات تلقائياً.</p>
+        </div>
+        <div style="text-align:center;margin-top:20px;color:#888;font-size:12px;border-top:1px solid #eee;padding-top:12px">
+            <p>جامعة محمد البشير الإبراهيمي — كلية الحقوق والعلوم السياسية</p>
+        </div></div></body></html>'''
+        msg = MIMEMultipart("alternative")
+        msg["From"] = EMAIL_SENDER
+        msg["To"] = EMAIL_SENDER
+        msg["Subject"] = f"✅ استرجاع مذكرة مفقودة — رقم {memo_number}"
+        msg.attach(MIMEText(body, "html", "utf-8"))
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+        return True, "✅ تم إرسال إشعار للإدارة"
+    except Exception as e:
+        return False, f"❌ {str(e)}"
+
+def clear_missing_flag(memo_number):
+    """إزالة علامة المفقودة بعد إعادة الرفع"""
+    try:
+        df_memos = load_memos()
+        row = df_memos[df_memos["رقم المذكرة"].astype(str).apply(normalize_text)==normalize_text(memo_number)]
+        if row.empty: return False
+        row_idx = row.index[0] + 2
+        sheets_service.spreadsheets().values().update(
+            spreadsheetId=MEMOS_SHEET_ID,
+            range=f"Feuille 1!AH{row_idx}",
+            valueInputOption="USER_ENTERED",
+            body={"values": [["0"]]}
+        ).execute()
+        clear_cache_and_reload()
+        return True
+    except: return False
 
 df_students = load_students(); df_memos = load_memos(); df_prof_memos = load_prof_memos(); df_requests = load_requests()
 if df_students.empty or df_memos.empty or df_prof_memos.empty:
@@ -1435,7 +1527,70 @@ elif st.session_state.user_type == "student":
             is_published   = str(memo_info.get("AF","")).strip()=="نعم" if "AF" in memo_info.index else False
             prof_name_m    = str(memo_info.get("الأستاذ","")).strip()
 
-            if deposit_status == "مرفوضة":
+            # ── تحقق من علامة المفقودة ──
+            is_missing = str(memo_info.get("مفقودة","")).strip() == "1" or str(memo_info.get("AH","")).strip() == "1"
+
+            if is_missing:
+                st.markdown("""
+                <div style="background:linear-gradient(135deg,#1a0a0a,#3d0f0f);border:4px solid #EF4444;
+                            border-radius:24px;padding:48px 36px;margin-bottom:28px;text-align:center;
+                            box-shadow:0 0 60px rgba(239,68,68,0.35);">
+                    <div style="font-size:5rem;margin-bottom:20px;">🚨</div>
+                    <div style="font-size:2.2rem;font-weight:900;color:#EF4444;margin-bottom:18px;line-height:1.4;">
+                        تعذّر الوصول إلى ملف مذكرتك
+                    </div>
+                    <div style="background:rgba(239,68,68,0.12);border-radius:14px;padding:22px;margin-bottom:20px;">
+                        <div style="font-size:1.25rem;color:#FCA5A5;line-height:2.2;">
+                            نتيجة لخلل تقني طرأ على المنظومة،<br>
+                            <strong style="color:#ffffff;font-size:1.35rem;">لم يعد بالإمكان الوصول إلى الملف الذي رفعته سابقاً.</strong>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,215,0,0.12);border:3px solid rgba(255,215,0,0.5);
+                                border-radius:14px;padding:22px;">
+                        <div style="font-size:1.5rem;font-weight:900;color:#FFD700;line-height:1.8;">
+                            ⬇️ يُرجى إعادة رفع مذكرتك فوراً<br>من هذه الصفحة
+                        </div>
+                    </div>
+                </div>""", unsafe_allow_html=True)
+
+                uploaded_recovery = st.file_uploader("📁 أعد رفع ملف المذكرة (PDF فقط)", type=["pdf"], key="upload_recovery_pdf")
+                if uploaded_recovery:
+                    rec_bytes = uploaded_recovery.read()
+                    size_mb = len(rec_bytes) / (1024*1024)
+                    uploaded_recovery.seek(0)
+                    st.info(f"📊 حجم الملف: {size_mb:.1f} MB")
+                    if size_mb > 20:
+                        st.error("❌ الحجم يتجاوز 20 MB")
+                    elif rec_bytes[:4] != b'%PDF':
+                        st.error("❌ الملف ليس PDF حقيقياً")
+                    else:
+                        if st.button("📤 إعادة رفع المذكرة", type="primary", use_container_width=True, key="btn_recovery_upload"):
+                            with st.spinner("⏳ جاري رفع الملف..."):
+                                ok, link, msg = upload_memo_to_drive(rec_bytes, note_num, memo_info["عنوان المذكرة"])
+                                if ok:
+                                    s, m = save_memo_deposit(note_num, link)
+                                    if s:
+                                        clear_missing_flag(note_num)
+                                        # إيميل للإدارة فقط
+                                        s1_ln, s1_fn = get_student_name_display(st.session_state.student1)
+                                        s1_display = f"{s1_ln} {s1_fn}".strip()
+                                        s2_display = ""
+                                        s2_obj = load_student2_for_memo(memo_info, normalize_text(st.session_state.student1.get("رقم التسجيل","")), load_students())
+                                        if s2_obj:
+                                            s2l, s2f = get_student_name_display(s2_obj)
+                                            s2_display = f"{s2l} {s2f}".strip()
+                                        send_recovery_email_to_admin(note_num, memo_info["عنوان المذكرة"], s1_display, s2_display)
+                                        st.success("✅ تمت إعادة رفع مذكرتك بنجاح!")
+                                        st.balloons()
+                                        clear_cache_and_reload()
+                                        time_module.sleep(2)
+                                        st.rerun()
+                                    else:
+                                        st.error(m)
+                                else:
+                                    st.error(msg)
+
+            elif deposit_status == "مرفوضة":
                 rejection_raw = str(memo_info.get("توقيع المشرف","")).strip()
                 reason_display = rejection_raw.split("السبب:")[-1].strip() if "السبب:" in rejection_raw else "يرجى مراجعة المشرف."
                 st.markdown(f"""<div class="notif-card notif-card-rejected"><div class="notif-icon">🔴</div><div><div class="notif-title notif-title-rejected">المذكرة بحاجة لمراجعة</div><div class="notif-desc"><strong>ملاحظات المشرف:</strong><br>{reason_display}</div></div></div>""", unsafe_allow_html=True)
@@ -1465,7 +1620,8 @@ elif st.session_state.user_type == "student":
                     if uploaded_pdf:
                         pdf_bytes = uploaded_pdf.read(); size_mb = len(pdf_bytes)/(1024*1024); uploaded_pdf.seek(0)
                         st.info(f"📊 حجم الملف: {size_mb:.1f} MB")
-                        if size_mb > 50: st.error("❌ الحجم يتجاوز 10 MB")
+                        if size_mb > 20: st.error("❌ الحجم يتجاوز 20 MB")
+                        elif pdf_bytes[:4] != b'%PDF': st.error("❌ الملف ليس PDF حقيقياً — تأكد من الملف")
                         else:
                             if st.button("📤 إيداع المذكرة الآن", type="primary", use_container_width=True):
                                 with st.spinner("⏳ جاري رفع الملف..."):
@@ -1486,7 +1642,7 @@ elif st.session_state.user_type == "student":
                                             st.balloons(); clear_cache_and_reload(); time_module.sleep(2); st.rerun()
                                         else: st.error(m)
                                     else: st.error(msg)
-            elif deposit_status == "مودعة":
+            elif deposit_status == "مودعة" and not is_missing:
                 st.markdown("""<div class="notif-card notif-card-waiting"><div class="notif-icon">🟡</div><div><div class="notif-title notif-title-waiting">مذكرتك مودعة — في انتظار مراجعة المشرف</div><div class="notif-desc">تم استلام ملفك. سيراجعه المشرف ويوافق أو يرسل ملاحظاته. ستتلقى إشعاراً فور اتخاذ القرار.</div></div></div>""", unsafe_allow_html=True)
                 if deposit_date and deposit_date not in ["","nan"]: st.caption(f"📅 تاريخ الإيداع: {deposit_date}")
                 if deposit_link and deposit_link not in ["","nan"]: st.markdown(f"📎 [عرض الملف المودع]({deposit_link})")
@@ -1497,7 +1653,7 @@ elif st.session_state.user_type == "student":
 
             if is_published and def_date_m and def_date_m not in ["","nan"]:
                 st.markdown(f"""<div class="defense-schedule-card"><h4 style="color:#818CF8!important;margin:0 0 6px;">📅 موعد مناقشتك</h4><div class="defense-info-grid"><div class="defense-info-item"><div class="defense-info-label">📆 التاريخ</div><div class="defense-info-value">{def_date_m}</div></div><div class="defense-info-item"><div class="defense-info-label">🕐 التوقيت</div><div class="defense-info-value">{def_time_m if def_time_m and def_time_m!='nan' else '—'}</div></div><div class="defense-info-item"><div class="defense-info-label">🏛️ القاعة</div><div class="defense-info-value">{def_room_m if def_room_m and def_room_m!='nan' else '—'}</div></div></div></div>""", unsafe_allow_html=True)
-                president_s = str(memo_info.get("AC","")).strip() if "AC" in memo_info.index else ""
+                president_s = str(memo_info.get("AE","")).strip() if "AE" in memo_info.index else ""
                 exam1_s     = str(memo_info.get("AD","")).strip() if "AD" in memo_info.index else ""
                 exam2_s     = str(memo_info.get("AE","")).strip() if "AE" in memo_info.index else ""
                 if president_s and president_s not in ["","nan"]:
@@ -1849,7 +2005,7 @@ elif st.session_state.user_type == "professor":
             st.markdown('</div>', unsafe_allow_html=True)
             if is_exhausted: st.markdown('<div class="alert-card">لقد استنفذت العناوين الأربعة المخصصة لك.</div>', unsafe_allow_html=True)
 
-            tab1,tab2,tab5=st.tabs(["المذكرات المسجلة","📅 جلسة إشراف","🎓 لجان المناقشة"])
+            tab1,tab5=st.tabs(["📄 المذكرات المسجلة","📅 برنامج المناقشات"])
             with tab1:
                 st.subheader("المذكرات المسجلة")
                 reg_memos=prof_memos[prof_memos["تم التسجيل"].astype(str).str.strip()=="نعم"]
@@ -1869,94 +2025,191 @@ elif st.session_state.user_type == "professor":
                                 st.session_state.selected_memo_id=memo['رقم المذكرة']; st.session_state.prof_action=None; st.rerun()
                 else: st.info("لا توجد مذكرات مسجلة.")
 
-            with tab2:
-                st.subheader("📅 جدولة جلسة إشراف")
-                with st.form("session_form"):
-                    c1,c2=st.columns(2)
-                    with c1: sel_date=st.date_input("تاريخ الجلسة",min_value=datetime.now().date())
-                    with c2:
-                        slots=[f"{h:02d}:{m:02d}" for h in range(8,16) for m in [0,30] if not (h==15 and m==30)]
-                        sel_time=st.selectbox("التوقيت",slots)
-                    if st.form_submit_button("📤 نشر الجلسة"):
-                        if sel_date.weekday() in [4,5]: st.error("❌ لا يمكن الجمعة أو السبت")
-                        else:
-                            session_str=format_datetime_ar(sel_date,sel_time); details=f"موعد الجلسة: {session_str}"
-                            students=get_students_of_professor(prof_name,df_m_fresh)
-                            if not students: st.warning("لا يوجد طلاب مسجلون")
-                            else:
-                                ok1,_=save_and_send_request("جلسة إشراف",prof_name,"جماعي","جلسة إشراف",details,status="منجز")
-                                update_session_date_in_sheets(prof_name,details)
-                                ok3,_=send_session_emails(students,details,prof_name)
-                                if ok1: st.success(f"✅ تم نشر الجلسة وإشعار {len(students)} طالب")
-                                else: st.error("خطأ في الحفظ")
-
             with tab5:
-                st.subheader("🎓 لجان المناقشة وبرنامجك")
-                df_m_jury=load_memos(); jury_memos=pd.DataFrame()
+                st.subheader("📅 برنامج المناقشات")
+                df_m_jury = load_memos()
+                jury_memos = pd.DataFrame()
+
                 if not df_m_jury.empty:
-                    masks=[]
-                    for cj,rj in [("الأستاذ","مشرف"),("AC","رئيس"),("AD","مناقش1"),("AE","مناقش2")]:
-                        if cj in df_m_jury.columns:
-                            mm=df_m_jury[df_m_jury[cj].astype(str).str.strip()==prof_name.strip()]
-                            if not mm.empty: mm=mm.copy(); mm['صفتي']=rj; masks.append(mm)
+                    masks = []
+                    for col_j, role_j in [("الأستاذ","مشرف"),("الرئيس","رئيس لجنة"),("المناقش1","مناقش"),("المناقش2","مناقش")]:
+                        if col_j in df_m_jury.columns:
+                            mm = df_m_jury[df_m_jury[col_j].astype(str).str.strip() == prof_name.strip()].copy()
+                            if not mm.empty:
+                                mm["الصفة"] = role_j
+                                masks.append(mm)
                     if masks:
-                        jury_memos=pd.concat(masks).drop_duplicates(subset=["رقم المذكرة"])
-                        if "AF" in jury_memos.columns:
-                            jury_memos=jury_memos[jury_memos["AF"].astype(str).str.strip()=="نعم"]
+                        jury_memos = pd.concat(masks).drop_duplicates(subset=["رقم المذكرة"])
+                        col_pub = "منشور" if "منشور" in jury_memos.columns else ("AD" if "AD" in jury_memos.columns else None)
+                        if col_pub:
+                            is_pub = jury_memos[col_pub].astype(str).str.strip() == "نعم"
+                            is_sup = jury_memos["الصفة"] == "مشرف"
+                            jury_memos = jury_memos[is_pub | is_sup]
+
                 if jury_memos.empty:
-                    st.info("⏳ لا توجد مذكرات منشورة تخصك كعضو لجنة.")
+                    st.info("⏳ لا توجد مناقشات منشورة تخصك حالياً.")
                 else:
-                    # ملخص برنامج الأستاذ
-                    has_date = jury_memos["تاريخ المناقشة"].astype(str).str.strip().apply(lambda x: x not in ["","nan"]) if "تاريخ المناقشة" in jury_memos.columns else pd.Series([False]*len(jury_memos))
-                    scheduled_count = has_date.sum()
-                    if scheduled_count > 0:
-                        sched_memos = jury_memos[has_date]
-                        days_set = set(sched_memos["تاريخ المناقشة"].astype(str).str.strip().tolist())
-                        st.markdown(f'''<div style="background:linear-gradient(135deg,#0F2942,#1A3A5C);border-radius:14px;padding:16px 20px;margin-bottom:18px;border:1px solid rgba(99,102,241,0.4);">
-                            <div style="font-size:1rem;font-weight:800;color:#818CF8;margin-bottom:6px;">📅 برنامجك المعتمد</div>
-                            <div style="color:#E2E8F0;font-size:0.88rem;">{scheduled_count} مناقشة في {len(days_set)} يوم</div>
-                        </div>''', unsafe_allow_html=True)
-                    for _,jm in jury_memos.iterrows():
-                        jmid=str(jm.get("رقم المذكرة","")).strip(); role=jm.get('صفتي','')
-                        dep_link_j=str(jm.get("رابط الملف","")).strip()
-                        def_date_j=str(jm.get("تاريخ المناقشة","")).strip()
-                        def_time_j=str(jm.get("توقيت المناقشة","")).strip()
-                        def_room_j=str(jm.get("القاعة","")).strip()
-                        has_schedule = def_date_j and def_date_j not in ["","nan"]
-                        exp_label = f"{'📅' if has_schedule else '⏳'} {jmid} — {role} {'| '+def_date_j+' '+def_time_j if has_schedule else '| موعد لم يُحدد بعد'}"
-                        with st.expander(exp_label, expanded=False):
-                            president_j=str(jm.get("AC","")).strip() if "AC" in jm.index else ""
-                            exam1_j=str(jm.get("AD","")).strip() if "AD" in jm.index else ""
-                            exam2_j=str(jm.get("AE","")).strip() if "AE" in jm.index else ""
-                            sup_j=str(jm.get("الأستاذ","")).strip()
-                            mem_html=f"""<div class="jury-member-card"><div class="jury-member-avatar avatar-supervisor">👨‍🏫</div><div class="jury-member-role role-supervisor">المشرف</div><div class="jury-member-name">{sup_j}</div></div>"""
-                            if president_j and president_j!='nan': mem_html=f"""<div class="jury-member-card"><div class="jury-member-avatar avatar-president">🏛️</div><div class="jury-member-role role-president">رئيس اللجنة</div><div class="jury-member-name">{president_j}</div></div>"""+mem_html
-                            if exam1_j and exam1_j!='nan': mem_html+=f"""<div class="jury-member-card"><div class="jury-member-avatar avatar-examiner">📋</div><div class="jury-member-role role-examiner">مناقش 1</div><div class="jury-member-name">{exam1_j}</div></div>"""
-                            if exam2_j and exam2_j not in ['','nan']: mem_html+=f"""<div class="jury-member-card"><div class="jury-member-avatar avatar-examiner">📋</div><div class="jury-member-role role-examiner">مناقش 2</div><div class="jury-member-name">{exam2_j}</div></div>"""
-                            defense_html=""
-                            if has_schedule:
-                                defense_html=f"""<div class="defense-schedule-card"><h4 style="color:#818CF8!important;margin:0 0 8px;">📅 موعد المناقشة</h4><div class="defense-info-grid"><div class="defense-info-item"><div class="defense-info-label">📆 التاريخ</div><div class="defense-info-value">{def_date_j}</div></div><div class="defense-info-item"><div class="defense-info-label">🕐 التوقيت</div><div class="defense-info-value">{def_time_j if def_time_j and def_time_j!='nan' else '—'}</div></div><div class="defense-info-item"><div class="defense-info-label">🏛️ القاعة</div><div class="defense-info-value">{def_room_j if def_room_j and def_room_j!='nan' else '—'}</div></div></div></div>"""
-                            st.markdown(f"""<div class="jury-card"><div class="jury-header"><div class="jury-header-icon">⚖️</div><div><div class="jury-header-title">لجنة مناقشة رقم {jmid}</div><div class="jury-header-sub" style="color:rgba(255,255,255,0.85)!important;">{str(jm.get('عنوان المذكرة',''))[:58]}</div></div></div><div class="jury-members-grid">{mem_html}</div>{defense_html}</div>""", unsafe_allow_html=True)
-                            if dep_link_j and dep_link_j!="nan":
-                                st.markdown(f'''<div style="text-align:center;margin:10px 0 16px;">
-                                    <a href="{dep_link_j}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#1E3A5F,#2F6F7E);color:#ffffff;padding:12px 28px;border-radius:11px;text-decoration:none;font-size:0.95rem;font-weight:700;box-shadow:0 6px 14px rgba(47,111,126,0.35);">
-                                        📄 معاينة المذكرة
-                                    </a>
-                                </div>''', unsafe_allow_html=True)
-                            st.markdown("---")
-                            st.markdown("**📝 ملاحظاتك على المذكرة** *(للإدارة فقط)*")
-                            notes_col_map={"مشرف":"AB","رئيس":"AG","مناقش1":"AH","مناقش2":"AI"}
-                            notes_col=notes_col_map.get(role,"AG")
-                            curr_notes=str(jm.get(notes_col,"")).strip() if notes_col in jm.index else ""
-                            if curr_notes in ["nan",""]: curr_notes=""
-                            disp_notes=curr_notes.split("]:")[1].strip() if "]:" in curr_notes else curr_notes
-                            new_notes=st.text_area("",value=disp_notes,height=100,
-                                placeholder="ملاحظاتك لن تظهر إلا للإدارة...",
-                                key=f"jury_notes_{jmid}_{role}")
-                            if st.button("💾 حفظ الملاحظات",key=f"save_obs_{jmid}_{role}",use_container_width=True):
-                                ok,msg=save_member_observations(jmid,prof_name,role,new_notes)
-                                if ok: st.success(msg); clear_cache_and_reload()
-                                else: st.error(msg)
+                    role_icons = {"مشرف":"👨‍🏫","رئيس لجنة":"🏛️","مناقش":"📋"}
+                    role_colors = {"مشرف":"#2F9EA0","رئيس لجنة":"#FFD700","مناقش":"#94A3B8"}
+                    role_counts = jury_memos["الصفة"].value_counts().to_dict()
+
+                    # ملخص
+                    summary = "   ".join([f"{role_icons.get(r,'')} {r}: **{n}**" for r,n in role_counts.items()])
+                    st.markdown(summary)
+
+                    # فلتر
+                    roles_list = ["الكل"] + [r for r in role_icons if r in role_counts]
+                    selected_role = st.selectbox("🔍 تصفية:", roles_list, key="jury_role_filter")
+                    filtered = jury_memos if selected_role == "الكل" else jury_memos[jury_memos["الصفة"] == selected_role]
+
+                    # ترتيب
+                    filtered = filtered.copy()
+                    filtered["_has_date"] = filtered["تاريخ المناقشة"].astype(str).str.strip().apply(lambda x: 0 if x and x not in ["","nan"] else 1)
+                    filtered = filtered.sort_values(["_has_date","تاريخ المناقشة"]).drop(columns=["_has_date"]).reset_index(drop=True)
+
+                    st.markdown(f"**{len(filtered)} مذكرة**")
+
+                    # البطاقات
+                    cards_html = ""
+                    for _, jm in filtered.iterrows():
+                        jmid  = str(jm.get("رقم المذكرة","")).strip()
+                        jtitle= str(jm.get("عنوان المذكرة","")).strip()
+                        jrole = str(jm.get("الصفة","")).strip()
+                        jlink = str(jm.get("رابط الملف","")).strip()
+                        jdate = str(jm.get("تاريخ المناقشة","")).strip()
+                        jtime = str(jm.get("توقيت المناقشة","")).strip()
+                        jroom = str(jm.get("القاعة","")).strip()
+
+                        has_date = jdate and jdate not in ["","nan"]
+                        has_time = jtime and jtime not in ["","nan"]
+                        has_room = jroom and jroom not in ["","nan"]
+                        has_link = jlink and jlink not in ["","nan"]
+
+                        r_color = role_colors.get(jrole,"#94A3B8")
+                        r_icon  = role_icons.get(jrole,"📄")
+
+                        preview_btn = f'<a href="{jlink}" target="_blank" style="background:#1E3A5F;color:#fff;padding:5px 14px;border-radius:8px;text-decoration:none;font-size:0.82rem;font-weight:700;">👁️ معاينة</a>' if has_link else '<span style="color:#475569;font-size:0.78rem;">لا ملف</span>'
+
+                        if has_date:
+                            schedule_line = f'''<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;">
+                                <span style="color:#10B981;font-weight:700;font-size:0.85rem;">📅 {jdate}</span>
+                                <span style="color:#94A3B8;font-size:0.85rem;">🕐 {jtime if has_time else "—"}</span>
+                                <span style="color:#94A3B8;font-size:0.85rem;">🏛️ {jroom if has_room else "—"}</span>
+                            </div>'''
+                        else:
+                            schedule_line = '<div style="margin-top:8px;"><span style="color:#F59E0B;font-size:0.82rem;">⏳ لم يُحدد موعد المناقشة بعد</span></div>'
+
+                        cards_html += f'''<div style="background:#1E293B;border:1px solid rgba(255,255,255,0.07);
+                                    border-right:4px solid {r_color};border-radius:12px;
+                                    padding:14px 16px;margin-bottom:10px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">
+                                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                    <span style="color:#FFD700;font-size:1rem;font-weight:900;">{jmid}</span>
+                                    <span style="color:{r_color};background:rgba(255,255,255,0.05);padding:2px 10px;
+                                        border-radius:20px;font-size:0.75rem;font-weight:700;
+                                        border:1px solid {r_color};">{r_icon} {jrole}</span>
+                                </div>
+                                {preview_btn}
+                            </div>
+                            <div style="color:#F1F5F9;font-size:0.9rem;font-weight:700;line-height:1.5;">
+                                {jtitle[:70]}{"..." if len(jtitle)>70 else ""}
+                            </div>
+                            {schedule_line}
+                        </div>'''
+
+                    st.markdown(cards_html, unsafe_allow_html=True)
+
+                    # تصدير HTML
+                    st.markdown("---")
+                    rows_html = ""
+                    for idx_r, jm_r in filtered.iterrows():
+                        jmid_r  = str(jm_r.get("رقم المذكرة","")).strip()
+                        jtitle_r= str(jm_r.get("عنوان المذكرة","")).strip()
+                        jrole_r = str(jm_r.get("الصفة","")).strip()
+                        jdate_r = str(jm_r.get("تاريخ المناقشة","")).strip()
+                        jtime_r = str(jm_r.get("توقيت المناقشة","")).strip()
+                        jroom_r = str(jm_r.get("القاعة","")).strip()
+                        jdate_r = jdate_r if jdate_r not in ["","nan"] else "—"
+                        jtime_r = jtime_r if jtime_r not in ["","nan"] else "—"
+                        jroom_r = jroom_r if jroom_r not in ["","nan"] else "—"
+                        bg = "#f8fafc" if idx_r % 2 == 0 else "#ffffff"
+                        rows_html += f'''<tr style="background:{bg};">
+                            <td style="padding:10px 14px;border:1px solid #e2e8f0;text-align:center;font-weight:700;color:#0F2942;">{jmid_r}</td>
+                            <td style="padding:10px 14px;border:1px solid #e2e8f0;text-align:right;">{jtitle_r}</td>
+                            <td style="padding:10px 14px;border:1px solid #e2e8f0;text-align:center;color:#2F6F7E;font-weight:600;">{jrole_r}</td>
+                            <td style="padding:10px 14px;border:1px solid #e2e8f0;text-align:center;color:#059669;font-weight:600;">{jdate_r}</td>
+                            <td style="padding:10px 14px;border:1px solid #e2e8f0;text-align:center;">{jtime_r}</td>
+                            <td style="padding:10px 14px;border:1px solid #e2e8f0;text-align:center;">{jroom_r}</td>
+                        </tr>'''
+
+                    html_export = f'''<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>برنامج مناقشة مذكرات الماستر 2025-2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  body {{ font-family:'Cairo', Arial, sans-serif; direction:rtl; background:#fff; color:#1e293b; padding:30px; }}
+  .header {{ text-align:center; margin-bottom:30px; padding-bottom:20px; border-bottom:3px solid #0F2942; }}
+  .univ {{ font-size:14px; font-weight:600; color:#64748b; margin-bottom:4px; }}
+  .faculty {{ font-size:13px; color:#94a3b8; margin-bottom:16px; }}
+  .title {{ font-size:22px; font-weight:900; color:#0F2942; margin-bottom:8px; }}
+  .prof-name {{ font-size:14px; color:#2F6F7E; font-weight:600; }}
+  .meta {{ font-size:12px; color:#94a3b8; margin-top:6px; }}
+  table {{ width:100%; border-collapse:collapse; margin-top:20px; }}
+  thead tr {{ background:#0F2942; color:#ffffff; }}
+  thead th {{ padding:12px 14px; text-align:center; font-size:13px; font-weight:700; border:1px solid #1e3a5c; }}
+  thead th:nth-child(2) {{ text-align:right; }}
+  tbody td {{ font-size:12px; color:#1e293b; }}
+  .footer {{ text-align:center; margin-top:30px; font-size:11px; color:#94a3b8; border-top:1px solid #e2e8f0; padding-top:16px; }}
+  @media print {{
+    body {{ padding:15px; }}
+    .no-print {{ display:none; }}
+  }}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="univ">🎓 جامعة محمد البشير الإبراهيمي — برج بوعريريج</div>
+  <div class="faculty">كلية الحقوق والعلوم السياسية</div>
+  <div class="title">برنامج مناقشة مذكرات الماستر 2025-2026</div>
+  <div class="prof-name">الأستاذ(ة): {prof_name}</div>
+  <div class="meta">عدد المذكرات: {len(filtered)} | تاريخ التصدير: {datetime.now().strftime("%Y-%m-%d %H:%M")}</div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:60px;">رقم</th>
+      <th style="text-align:right;">عنوان المذكرة</th>
+      <th style="width:110px;">الصفة</th>
+      <th style="width:120px;">تاريخ المناقشة</th>
+      <th style="width:80px;">التوقيت</th>
+      <th style="width:80px;">القاعة</th>
+    </tr>
+  </thead>
+  <tbody>
+    {rows_html}
+  </tbody>
+</table>
+
+<div class="footer">
+  <p>وثيقة رسمية صادرة عن منصة مذكرات الماستر — جامعة محمد البشير الإبراهيمي</p>
+</div>
+</body>
+</html>'''
+
+                    st.download_button(
+                        label="📄 تصدير البرنامج HTML (قابل للطباعة كـ PDF)",
+                        data=html_export.encode("utf-8"),
+                        file_name=f"programme_{prof_name.replace(' ','_')}.html",
+                        mime="text/html",
+                        key="dl_html_btn",
+                        use_container_width=True
+                    )
+
 
 
 # ================================================================
@@ -1993,7 +2246,7 @@ elif st.session_state.user_type == "admin":
         st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
         st.markdown(f'<div class="kpi-card"><div class="kpi-value">{st_s}</div><div class="kpi-label">الطلاب</div></div><div class="kpi-card"><div class="kpi-value">{t_p}</div><div class="kpi-label">الأساتذة</div></div><div class="kpi-card"><div class="kpi-value">{t_m}</div><div class="kpi-label">المذكرات</div></div><div class="kpi-card" style="border-top:3px solid #10B981;"><div class="kpi-value" style="color:#10B981;">{r_m}</div><div class="kpi-label">مسجلة</div></div><div class="kpi-card" style="border-top:3px solid #F59E0B;"><div class="kpi-value" style="color:#F59E0B;">{a_m}</div><div class="kpi-label">متاحة</div></div><div class="kpi-card" style="border-top:3px solid #10B981;"><div class="kpi-value" style="color:#10B981;">{reg_st}</div><div class="kpi-label">طلاب مسجلون</div></div><div class="kpi-card" style="border-top:3px solid #EF4444;"><div class="kpi-value" style="color:#EF4444;">{unreg_st}</div><div class="kpi-label">غير مسجلين</div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
-        tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8,tab9=st.tabs(["المذكرات","الطلاب","الأساتذة","تقارير","تحديث","الطلبات","📧 إيميلات","🎓 لجان","📅 جدولة ذكية"])
+        tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8,tab9,tab10=st.tabs(["المذكرات","الطلاب","الأساتذة","تقارير","تحديث","الطلبات","📧 إيميلات","🎓 لجان","📅 جدولة ذكية","📥 استيراد اللجان"])
         with tab1:
             st.subheader("جدول المذكرات")
             f_status=st.selectbox("تصفية:",["الكل","مسجلة","متاحة"])
@@ -2228,7 +2481,7 @@ elif st.session_state.user_type == "admin":
                                     if memo_row_j.empty: continue
                                     row_idx_j=memo_row_j.index[0]+2
                                     updates_jury+=[
-                                        {"range":f"Feuille 1!AC{row_idx_j}","values":[[str(row_j["الرئيس"])]]},
+                                        {"range":f"Feuille 1!AE{row_idx_j}","values":[[str(row_j["الرئيس"])]]},
                                         {"range":f"Feuille 1!AD{row_idx_j}","values":[[str(row_j["المناقش 1"])]]},
                                         {"range":f"Feuille 1!AE{row_idx_j}","values":[[str(row_j["المناقش 2"])]]},
                                     ]
@@ -2294,7 +2547,7 @@ elif st.session_state.user_type == "admin":
             ready_mask = df_memos_j.apply(_is_ready, axis=1)
             ready_memos_j = df_memos_j[ready_mask].copy()
             total_ready_j = len(ready_memos_j)
-            already_sched_j = len(ready_memos_j[ready_memos_j.get("تاريخ المناقشة",pd.Series(dtype=str)).astype(str).str.strip().apply(lambda x: x not in ["","nan"])]) if "تاريخ المناقشة" in ready_memos_j.columns else 0
+            already_sched_j = len(ready_memos_j[ready_memos_j["تاريخ المناقشة"].astype(str).str.strip().apply(lambda x: x not in ["","nan"])]) if "تاريخ المناقشة" in ready_memos_j.columns else 0
 
             c1j,c2j,c3j = st.columns(3)
             with c1j: st.markdown(f'''<div class="kpi-card"><div class="kpi-value" style="color:#FFD700;">{total_ready_j}</div><div class="kpi-label">🎓 جاهزة للجدولة</div></div>''', unsafe_allow_html=True)
@@ -2311,12 +2564,12 @@ elif st.session_state.user_type == "admin":
                     st.markdown("**📆 الأيام**")
                     num_days_j = st.number_input("عدد أيام المناقشات",min_value=3,max_value=15,value=7,key="j_ndays")
                     base_date_j = st.date_input("تاريخ البداية",value=date.today(),key="j_basedate")
-                    import datetime as _dt
+                    from datetime import timedelta as _td
                     gen_days_j = []
                     d_j = base_date_j
                     while len(gen_days_j) < num_days_j:
                         if d_j.weekday() not in [4,5]: gen_days_j.append(d_j.strftime("%Y-%m-%d"))
-                        d_j += _dt.timedelta(days=1)
+                        d_j += _td(days=1)
                     st.info(f"الأيام: {' | '.join(gen_days_j)}")
 
                 with col_p2:
@@ -2352,9 +2605,9 @@ elif st.session_state.user_type == "admin":
                                 st.session_state["j_schedule"] = named_sched
                                 st.session_state["j_score"] = score_j
                                 st.session_state["j_unplaced"] = unpl_j
-                                st.session_state["j_slots"] = gen_slots_j
-                                st.session_state["j_days"] = gen_days_j
-                                st.session_state["j_rooms"] = gen_rooms_j
+                                st.session_state["j_slots_list"] = gen_slots_j
+                                st.session_state["j_days_list"] = gen_days_j
+                                st.session_state["j_rooms_list"] = gen_rooms_j
                             st.success(f"✅ جدول أولي جاهز! الجودة: {score_j}%")
                             st.rerun()
                 with c_g2:
@@ -2362,9 +2615,9 @@ elif st.session_state.user_type == "admin":
                     if st.button("⚡ تحسين (Simulated Annealing)",use_container_width=True,key="j_improve",disabled=disabled_improve):
                         with st.spinner("⚡ جاري التحسين المتقدم... (قد يستغرق 20 ثانية)"):
                             cur_sched = st.session_state["j_schedule"]
-                            sl_j = st.session_state.get("j_slots",gen_slots_j)
-                            dy_j = st.session_state.get("j_days",gen_days_j)
-                            rm_j = st.session_state.get("j_rooms",gen_rooms_j)
+                            sl_j = st.session_state.get("j_slots_list",gen_slots_j)
+                            dy_j = st.session_state.get("j_days_list",gen_days_j)
+                            rm_j = st.session_state.get("j_rooms_list",gen_rooms_j)
                             s2i = {s:i for i,s in enumerate(sl_j)}
                             idx_sched = {m:(s[0],s2i.get(s[1],0),s[2]) if s else None for m,s in cur_sched.items()}
                             memo_list_j2,conflicts_j2 = build_conflict_matrix(ready_memos_j)
@@ -2387,9 +2640,9 @@ elif st.session_state.user_type == "admin":
                     j_sched = st.session_state["j_schedule"]
                     j_score = st.session_state.get("j_score",0)
                     j_unpl = st.session_state.get("j_unplaced",0)
-                    j_sl = st.session_state.get("j_slots",gen_slots_j)
-                    j_dy = st.session_state.get("j_days",gen_days_j)
-                    j_rm = st.session_state.get("j_rooms",gen_rooms_j)
+                    j_sl = st.session_state.get("j_slots_list",gen_slots_j)
+                    j_dy = st.session_state.get("j_days_list",gen_days_j)
+                    j_rm = st.session_state.get("j_rooms_list",gen_rooms_j)
 
                     sc_color = "#10B981" if j_score>=90 else "#F59E0B" if j_score>=70 else "#EF4444"
                     st.markdown(f'''<div style="background:linear-gradient(135deg,#0F2942,#1A3A5C);border-radius:16px;padding:16px 24px;margin:16px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border:1px solid rgba(47,111,126,0.3);">
@@ -2581,5 +2834,73 @@ elif st.session_state.user_type == "admin":
                                     st.session_state["j_confirm_step"]=False; st.rerun()
                     else:
                         st.error("⛔ لا يمكن الاعتماد — صحّح التعارضات أولاً.")
+        with tab10:
+            st.subheader("📥 استيراد لجان المناقشة من Excel")
+            st.info("ارفع ملف Excel يحتوي على: رقم المذكرة | المشرف | الرئيس | مناقش1 | مناقش2")
+
+            uploaded_jury_xl = st.file_uploader("📁 اختر ملف Excel", type=["xlsx","xls"], key="jury_xl_upload")
+
+            if uploaded_jury_xl:
+                try:
+                    import openpyxl as _opxl
+                    wb_j = _opxl.load_workbook(uploaded_jury_xl)
+                    ws_j = wb_j.active
+
+                    # قراءة البيانات
+                    jury_rows = []
+                    for row in ws_j.iter_rows(min_row=2, values_only=True):
+                        if not row[0]: continue
+                        jury_rows.append({
+                            "رقم المذكرة": str(row[0]).strip(),
+                            "المشرف":      str(row[1]).strip() if row[1] else "",
+                            "الرئيس":      str(row[2]).strip() if row[2] else "",
+                            "المناقش1":    str(row[3]).strip() if row[3] else "",
+                            "المناقش2":    str(row[4]).strip() if row[4] else "",
+                        })
+
+                    st.success(f"✅ تم قراءة {len(jury_rows)} مذكرة من الملف")
+
+                    # عرض معاينة
+                    df_preview = pd.DataFrame(jury_rows)
+                    st.dataframe(df_preview, use_container_width=True, hide_index=True)
+
+                    if st.button("💾 حفظ اللجان في قاعدة البيانات", type="primary", use_container_width=True, key="save_jury_import"):
+                        with st.spinner("⏳ جاري الحفظ..."):
+                            df_memos_import = load_memos()
+                            updates = []
+                            not_found = []
+                            saved = 0
+
+                            for jr in jury_rows:
+                                memo_num = jr["رقم المذكرة"]
+                                # البحث عن المذكرة في الشيت
+                                match = df_memos_import[df_memos_import["رقم المذكرة"].astype(str).apply(normalize_text) == normalize_text(memo_num)]
+                                if match.empty:
+                                    not_found.append(memo_num)
+                                    continue
+                                row_idx = match.index[0] + 2
+                                updates += [
+                                    {"range": f"Feuille 1!AA{row_idx}", "values": [[jr["الرئيس"]]]},
+                                    {"range": f"Feuille 1!AB{row_idx}", "values": [[jr["المناقش1"]]]},
+                                    {"range": f"Feuille 1!AC{row_idx}", "values": [[jr["المناقش2"]]]},
+                                ]
+                                saved += 1
+
+                            if updates:
+                                # حفظ دفعة واحدة
+                                for i in range(0, len(updates), 100):
+                                    batch = updates[i:i+100]
+                                    sheets_service.spreadsheets().values().batchUpdate(
+                                        spreadsheetId=MEMOS_SHEET_ID,
+                                        body={"valueInputOption":"USER_ENTERED","data":batch}
+                                    ).execute()
+                                clear_cache_and_reload()
+                                st.success(f"✅ تم حفظ لجان {saved} مذكرة بنجاح!")
+                                if not_found:
+                                    st.warning(f"⚠️ لم تُوجد {len(not_found)} مذكرة: {', '.join(not_found[:10])}")
+                            else:
+                                st.error("❌ لم يتم حفظ أي شيء")
+                except Exception as e:
+                    st.error(f"❌ {str(e)}")
 st.markdown("---")
 st.markdown('<div style="text-align:center;color:#ffffff;font-size:11px;padding:16px;">إشراف مسؤول الميدان البروفيسور لخضر رفاف ©</div>', unsafe_allow_html=True)
