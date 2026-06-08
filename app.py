@@ -5204,37 +5204,38 @@ elif st.session_state.user_type == "admin":
         c1,c2=st.columns([4,1])
         with c2:
             if st.button("خروج"): logout()
-        st.header("📊 لوحة تحكم الإدارة")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        df_prof_memos = load_prof_memos()
-        df_students = load_students()
-        df_memos = load_memos()
-        df_students = load_students()
-        st_s=len(df_students); t_m=len(df_memos); r_m=len(df_memos[df_memos["تم التسجيل"].astype(str).str.strip()=="نعم"])
-        df_prof_memos = load_prof_memos()
-        a_m=t_m-r_m; t_p=len(df_prof_memos["الأستاذ"].unique()) if "الأستاذ" in df_prof_memos.columns else 0
-        memo_col=df_students["رقم المذكرة"].astype(str).str.strip() if "رقم المذكرة" in df_students.columns else pd.Series(dtype=str)
-        reg_st=(memo_col!="").sum(); unreg_st=(memo_col=="").sum()
-        st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
-        # إحصائيات المناقشات
         if not st.session_state.get("is_library", False):
-            df_kpi = load_memos()
-            total_memos = len(df_kpi)
-            def _has_jury(r):
-                def f(v): return str(v).strip() not in ["","nan","—","None"]
-                return f(r.get("الرئيس","")) and f(r.get("المناقش1","")) and f(r.get("المناقش2",""))
-            has_jury_mask = df_kpi.apply(_has_jury, axis=1)
-            no_jury = (~has_jury_mask).sum()
-            scheduled = df_kpi["تاريخ المناقشة"].astype(str).str.strip().apply(lambda x: x not in ["","nan"]).sum() if "تاريخ المناقشة" in df_kpi.columns else 0
-            defended = df_kpi[df_kpi.get("حالة المناقشة", pd.Series(dtype=str)).astype(str).str.strip()=="تمت"].shape[0] if "حالة المناقشة" in df_kpi.columns else 0
-            st.markdown(f'''<div class="kpi-grid">
-                <div class="kpi-card"><div class="kpi-value">{total_memos}</div><div class="kpi-label">📚 إجمالي المذكرات</div></div>
-                <div class="kpi-card" style="border-top:3px solid #10B981;"><div class="kpi-value" style="color:#10B981;">{int(scheduled)}</div><div class="kpi-label">📅 مبرمجة</div></div>
-                <div class="kpi-card" style="border-top:3px solid #EF4444;"><div class="kpi-value" style="color:#EF4444;">{int(no_jury)}</div><div class="kpi-label">⚠️ ناقصة اللجان</div></div>
-                <div class="kpi-card" style="border-top:3px solid #FFD700;"><div class="kpi-value" style="color:#FFD700;">{total_memos - int(scheduled)}</div><div class="kpi-label">⏳ غير مبرمجة</div></div>
-            </div>''', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.header("📊 لوحة تحكم الإدارة")
+    
+            st.markdown("<br>", unsafe_allow_html=True)
+            df_prof_memos = load_prof_memos()
+            df_students = load_students()
+            df_memos = load_memos()
+            df_students = load_students()
+            st_s=len(df_students); t_m=len(df_memos); r_m=len(df_memos[df_memos["تم التسجيل"].astype(str).str.strip()=="نعم"])
+            df_prof_memos = load_prof_memos()
+            a_m=t_m-r_m; t_p=len(df_prof_memos["الأستاذ"].unique()) if "الأستاذ" in df_prof_memos.columns else 0
+            memo_col=df_students["رقم المذكرة"].astype(str).str.strip() if "رقم المذكرة" in df_students.columns else pd.Series(dtype=str)
+            reg_st=(memo_col!="").sum(); unreg_st=(memo_col=="").sum()
+            st.markdown('<div class="kpi-grid">', unsafe_allow_html=True)
+            # إحصائيات المناقشات
+            if not st.session_state.get("is_library", False):
+                df_kpi = load_memos()
+                total_memos = len(df_kpi)
+                def _has_jury(r):
+                    def f(v): return str(v).strip() not in ["","nan","—","None"]
+                    return f(r.get("الرئيس","")) and f(r.get("المناقش1","")) and f(r.get("المناقش2",""))
+                has_jury_mask = df_kpi.apply(_has_jury, axis=1)
+                no_jury = (~has_jury_mask).sum()
+                scheduled = df_kpi["تاريخ المناقشة"].astype(str).str.strip().apply(lambda x: x not in ["","nan"]).sum() if "تاريخ المناقشة" in df_kpi.columns else 0
+                defended = df_kpi[df_kpi.get("حالة المناقشة", pd.Series(dtype=str)).astype(str).str.strip()=="تمت"].shape[0] if "حالة المناقشة" in df_kpi.columns else 0
+                st.markdown(f'''<div class="kpi-grid">
+                    <div class="kpi-card"><div class="kpi-value">{total_memos}</div><div class="kpi-label">📚 إجمالي المذكرات</div></div>
+                    <div class="kpi-card" style="border-top:3px solid #10B981;"><div class="kpi-value" style="color:#10B981;">{int(scheduled)}</div><div class="kpi-label">📅 مبرمجة</div></div>
+                    <div class="kpi-card" style="border-top:3px solid #EF4444;"><div class="kpi-value" style="color:#EF4444;">{int(no_jury)}</div><div class="kpi-label">⚠️ ناقصة اللجان</div></div>
+                    <div class="kpi-card" style="border-top:3px solid #FFD700;"><div class="kpi-value" style="color:#FFD700;">{total_memos - int(scheduled)}</div><div class="kpi-label">⏳ غير مبرمجة</div></div>
+                </div>''', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
             _is_printer_user = st.session_state.get("is_printer", False)
         _is_library_user = st.session_state.get("is_library", False)
         if _is_library_user:
