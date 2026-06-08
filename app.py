@@ -5249,7 +5249,7 @@ elif st.session_state.user_type == "admin":
         # ================================================================
         # TAB جدولة ذكية
         # ================================================================
-        if not _is_printer_user and tab_siyar:
+        if not _is_printer_user and not _is_library_user and tab_siyar:
          with tab_siyar:
             st.subheader("📊 سير المناقشات")
 
@@ -5385,7 +5385,7 @@ elif st.session_state.user_type == "admin":
                 _siyar_show.columns = pd.io.common.dedup_names(_siyar_show.columns.tolist(), is_potential_multiindex=False) if hasattr(pd.io.common, 'dedup_names') else _siyar_show.columns
                 st.dataframe(_siyar_show, use_container_width=True, hide_index=True)
 
-        if not _is_printer_user and tab_seq:
+        if not _is_printer_user and not _is_library_user and tab_seq:
          with tab_seq:
             st.subheader("📥 استيراد أرقام المحاضر")
             st.info("ارفع ملف Excel فيه: **A = رقم المذكرة | B = رقم المحضر** — سيُكتب في عمود AM في شيت المذكرات")
@@ -5434,7 +5434,7 @@ elif st.session_state.user_type == "admin":
                 except Exception as _e_s:
                     st.error(f"❌ {_e_s}")
 
-        if not _is_printer_user and tab_stud:
+        if not _is_printer_user and not _is_library_user and tab_stud:
          with tab_stud:
             st.subheader("👥 استيراد أرقام ملفات الطلبة")
             st.info("ارفع ملف Excel فيه: **A = رقم التسجيل | B = رقم الملف** — المقارنة مع عمود C في شيت الطلبة، الكتابة في عمود V")
@@ -5489,7 +5489,7 @@ elif st.session_state.user_type == "admin":
                 except Exception as _e_t:
                     st.error(f"❌ {_e_t}")
 
-        if not _is_printer_user and tab_archive:
+        if not _is_printer_user and not _is_library_user and tab_archive:
          with tab_archive:
             st.info("📌 تم تنفيذ الجدولة — البرنامج محفوظ في الشيت.")
         if False:
@@ -6483,7 +6483,7 @@ elif st.session_state.user_type == "admin":
                 top20 = df_show.nlargest(20,"المجموع").set_index("الأستاذ")[["مشرف","رئيس","مناقش"]]
                 st.bar_chart(top20, color=["#2F9EA0","#FFD700","#818CF8"])
 
-        if tab_mahdar:
+        if tab_mahdar and not _is_library_user:
          with tab_mahdar:
             st.subheader("📄 توليد محاضر المناقشة")
 
@@ -6730,7 +6730,7 @@ elif st.session_state.user_type == "admin":
                                         clear_cache_and_reload()
                                         st.success(f"✅ تبرئة المكتبة لمذكرة {_lmid}"); st.rerun()
 
-        if not _is_printer_user and tab_takleef:
+        if not _is_printer_user and not _is_library_user and tab_takleef:
          with tab_takleef:
             st.subheader("📋 التكاليف والتحقق من التعارضات")
 
