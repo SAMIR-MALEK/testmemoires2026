@@ -3749,19 +3749,10 @@ def validate_schedule(schedule, memo_members, days, slots_per_day):
 
 
 import io, zipfile, re as _re_mahdar, tempfile as _tempfile
-import qrcode as _qrcode
 
 def generate_qr_png(url):
-    """توليد QR Code يرمز لرابط Drive المذكرة"""
-    qr = _qrcode.QRCode(version=2, box_size=4, border=2,
-        error_correction=_qrcode.constants.ERROR_CORRECT_M)
-    qr.add_data(url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buf = io.BytesIO()
-    img.save(buf, format='PNG')
-    return buf.getvalue()
-
+    """QR Code معطّل"""
+    return b""
 def generate_mahdar(memo_data, seq_num, template_bytes):
     """توليد محضر مناقشة من القالب بـ placeholders"""
     import io as _io
