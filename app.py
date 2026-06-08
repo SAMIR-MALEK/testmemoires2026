@@ -391,7 +391,7 @@ def upload_to_drive(file_bytes, filename, folder_id, mimetype='application/pdf')
         from googleapiclient.discovery import build as _gbuild
         from googleapiclient.http import MediaIoBaseUpload as _MIU
         import io as _io_d
-        drive_service = _gbuild('drive', 'v3', credentials=creds)
+        drive_service = _gbuild('drive', 'v3', credentials=drive_credentials)
         file_meta = {'name': filename, 'parents': [folder_id]}
         media = _MIU(_io_d.BytesIO(file_bytes), mimetype=mimetype, resumable=True)
         f = drive_service.files().create(body=file_meta, media_body=media, fields='id,webViewLink').execute()
@@ -406,7 +406,7 @@ def upload_mahdar_pdf(file_bytes, filename, folder_id=MAHDAR_FOLDER_ID):
         from googleapiclient.discovery import build as _gbuild
         from googleapiclient.http import MediaIoBaseUpload as _MIU
         import io as _io_d
-        drive_service = _gbuild('drive', 'v3', credentials=creds)
+        drive_service = _gbuild('drive', 'v3', credentials=drive_credentials)
         file_meta = {'name': filename, 'parents': [folder_id]}
         media = _MIU(_io_d.BytesIO(file_bytes), mimetype='application/pdf', resumable=True)
         f = drive_service.files().create(body=file_meta, media_body=media, fields='id,webViewLink').execute()
