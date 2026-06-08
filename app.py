@@ -4175,6 +4175,10 @@ elif st.session_state.user_type == "student":
             # عمود نشر البرنامج — يتحكم في ظهور الموعد للطالب
             _pub_status = str(memo_info.get("نشر البرنامج","")).strip()
             _show_schedule = _pub_status.lower() in ["نعم","yes","1","true"]
+            # إذا تمت المناقشة لا نعرض بطاقة الموعد
+            _hal_done = str(memo_info.get("الحالة","") if memo_info is not None else "").strip()
+            if _hal_done == "تمت المناقشة":
+                _show_schedule = False
 
             if _show_schedule and def_date_m and def_date_m not in ["","nan"]:
                 st.markdown(f'''<div style="background:linear-gradient(135deg,#0a1f12,#0f2d1a);
@@ -4334,10 +4338,11 @@ elif st.session_state.user_type == "student":
                 # تحقق من حالة المناقشة
                 _hal_check = str(memo_info.get("الحالة","") if memo_info is not None else "").strip()
                 if _hal_check == "تمت المناقشة":
-                    st.markdown("""<div class="notif-card notif-card-approved"><div class="notif-icon">🎓</div><div><div class="notif-title notif-title-approved">تمت مناقشة مذكرتك</div><div class="notif-desc">يجب عليك القيام بالإيداع النهائي للحصول على تبرئة المكتبة الضرورية للحصول على الشهادة.</div></div></div>""", unsafe_allow_html=True)
+                    pass  # البطاقة الرئيسية تظهر أعلى
                 else:
-                    st.markdown("""<div class="notif-card notif-card-approved"><div class="notif-icon">🟢</div><div><div class="notif-title notif-title-approved">مذكرتك معتمدة — قابلة للمناقشة ✓</div><div class="notif-desc">وافق المشرف على مذكرتك رسمياً. ستتلقى إشعاراً من الإدارة بموعد المناقشة قريباً.</div></div></div>""", unsafe_allow_html=True)
-                    if deposit_link and deposit_link not in ["","nan"]: st.markdown(f"📎 [عرض الملف المودع]({deposit_link})")
+                    if _hal_done != "تمت المناقشة":
+                        st.markdown("""<div class="notif-card notif-card-approved"><div class="notif-icon">🟢</div><div><div class="notif-title notif-title-approved">مذكرتك معتمدة — قابلة للمناقشة ✓</div><div class="notif-desc">وافق المشرف على مذكرتك رسمياً. ستتلقى إشعاراً من الإدارة بموعد المناقشة قريباً.</div></div></div>""", unsafe_allow_html=True)
+                        if deposit_link and deposit_link not in ["","nan"]: st.markdown(f"📎 [عرض الملف المودع]({deposit_link})")
 
             _hal_check2 = str(memo_info.get("الحالة","") if memo_info is not None else "").strip()
             if _hal_check2 == "تمت المناقشة":
