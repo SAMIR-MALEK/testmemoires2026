@@ -4350,30 +4350,19 @@ elif st.session_state.user_type == "student":
             tab_memo, tab_track, tab_notify = st.tabs(["📄 مذكرتي", "📂 ملف الشهادة", "🔔 الإشعارات"])
 
             with tab_memo:
-                session_date = memo_info.get("موعد الجلسة القادمة","")
-                session_html = f"<p>📅 <b>موعد الجلسة القادمة:</b> {session_date}</p>" if session_date and str(session_date) not in ["","nan"] else ""
-                st.markdown(f"""<div class="card" style="border-top:3px solid #FFD700;"><h3>✅ مذكرتك المسجلة</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {prof_name_m}</p><p><b>التخصص:</b> {memo_info['التخصص']}</p>{session_html}</div>""", unsafe_allow_html=True)
-                s1_ln,s1_fn=get_student_name_display(s1); s1_email=get_email_smart(s1)
-                st.markdown(f"""<div class="card"><h4 style="color:#FFD700;">👤 الطالب الأول</h4><p><b>اللقب:</b> {s1_ln}</p><p><b>الإسم:</b> {s1_fn}</p><p><b>رقم التسجيل:</b> {s1.get('رقم التسجيل','')}</p><p><b>البريد:</b> {s1_email}</p></div>""", unsafe_allow_html=True)
-                if s2:
-                    s2_ln,s2_fn=get_student_name_display(s2); s2_email=get_email_smart(s2)
-                    st.markdown(f"""<div class="card"><h4 style="color:#FFD700;">👤 الطالب الثاني</h4><p><b>اللقب:</b> {s2_ln}</p><p><b>الإسم:</b> {s2_fn}</p><p><b>رقم التسجيل:</b> {s2.get('رقم التسجيل','')}</p><p><b>البريد:</b> {s2_email}</p></div>""", unsafe_allow_html=True)
-
-
-                # ── الإيداع النهائي ──
                 import datetime as _dti_idaa
                 _memo_row_idaa = memo_info
-                _ridx = list(_memo_row_idaa.keys()) if isinstance(_memo_row_idaa, dict) else []
                 _hal_idaa = str(_memo_row_idaa.get("الحالة","")).strip()
                 _aq_idaa  = str(_memo_row_idaa.get("رابط المذكرة النهائية","")).strip()
                 _ar_idaa  = str(_memo_row_idaa.get("رابط الملخص النهائي","")).strip()
                 _as_idaa  = str(_memo_row_idaa.get("موافقة المشرف","")).strip()
                 _at_idaa  = str(_memo_row_idaa.get("موافقة رئيس القسم","")).strip()
                 _au_idaa  = str(_memo_row_idaa.get("تبرئة المكتبة","")).strip()
+
                 if _hal_idaa == "تمت المناقشة":
-                    st.markdown("---")
+                    # الإيداع النهائي فقط
                     st.markdown("### 📥 الإيداع النهائي")
-                    def _step(_l,_d): return f'<span style="color:{"#10B981" if _d else "#94A3B8"};font-size:0.85rem;">{"✅" if _d else "⏳"} {_l}</span>'
+                    def _step(_l,_d): return f'<span style="color:{"#10B981" if _d else "#94A3B8"};font-size:0.88rem;">{"✅" if _d else "⏳"} {_l}</span>'
                     st.markdown(" &nbsp;→&nbsp; ".join([
                         _step("رُفعت الملفات", bool(_aq_idaa and _aq_idaa not in ["","nan"])),
                         _step("موافقة المشرف", _as_idaa=="نعم"),
@@ -4384,6 +4373,7 @@ elif st.session_state.user_type == "student":
                         st.success("🎉 اكتمل الإيداع النهائي!")
                     elif not (_aq_idaa and _aq_idaa not in ["","nan"]):
                         _mid_i = str(_memo_row_idaa.get("رقم المذكرة","")).strip()
+                        st.info("📤 يُرجى رفع ملفَي الإيداع النهائي:")
                         _upl_pdf_i = st.file_uploader("📄 المذكرة النهائية (PDF):", type=["pdf"], key=f"idaa_pdf_{_mid_i}")
                         _upl_wrd_i = st.file_uploader("📝 ملف الملخص (عربي+إنجليزي):", type=["docx","doc"], key=f"idaa_word_{_mid_i}")
                         if st.button("📤 إيداع الملفات", type="primary", use_container_width=True, key=f"do_idaa_{_mid_i}"):
@@ -4415,9 +4405,20 @@ elif st.session_state.user_type == "student":
                                         if not _ok1: st.error(f"❌ {_l1}")
                                         if not _ok2: st.error(f"❌ {_l2}")
                     else:
-                        st.info("✅ تم رفع الملفات")
+                        st.info("✅ تم رفع الملفات — في انتظار الموافقات")
                         if _aq_idaa not in ["","nan"]: st.markdown(f"[📄 تحميل المذكرة النهائية]({_aq_idaa})")
                         if _ar_idaa not in ["","nan"]: st.markdown(f"[📝 تحميل الملخص]({_ar_idaa})")
+
+                else:
+                    # ما قبل المناقشة — المعلومات العادية
+                    session_date = memo_info.get("موعد الجلسة القادمة","")
+                    session_html = f"<p>📅 <b>موعد الجلسة القادمة:</b> {session_date}</p>" if session_date and str(session_date) not in ["","nan"] else ""
+                    st.markdown(f"""<div class="card" style="border-top:3px solid #FFD700;"><h3>✅ مذكرتك المسجلة</h3><p><b>رقم المذكرة:</b> {memo_info['رقم المذكرة']}</p><p><b>العنوان:</b> {memo_info['عنوان المذكرة']}</p><p><b>المشرف:</b> {prof_name_m}</p><p><b>التخصص</b></p>{session_html}</div>""", unsafe_allow_html=True)
+                    s1_ln,s1_fn=get_student_name_display(s1); s1_email=get_email_smart(s1)
+                    st.markdown(f"""<div class="card"><h4 style="color:#FFD700;">👤 الطالب الأول</h4><p><b>{s1_ln} {s1_fn}</b></p></div>""", unsafe_allow_html=True)
+                    if s2:
+                        s2_ln,s2_fn=get_student_name_display(s2); s2_email=get_email_smart(s2)
+                        st.markdown(f"""<div class="card"><h4 style="color:#FFD700;">👤 الطالب الثاني</h4><p><b>{s2_ln} {s2_fn}</b></p></div>""", unsafe_allow_html=True)
 
             with tab_track:
                 st.subheader("📂 حالة ملف التخرج")
