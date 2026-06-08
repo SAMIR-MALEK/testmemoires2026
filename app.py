@@ -5250,6 +5250,62 @@ elif st.session_state.user_type == "admin":
             tab_takleef,tab_mahdar,tab_siyar,tab_seq,tab_stud,tab_archive=st.tabs(["📋 التكاليف والتحقق","📄 المحاضر","📊 سير المناقشات","📥 استيراد أرقام المحاضر","👥 استيراد أرقام ملفات الطلبة","🗂️ أرشيف (جدولة ذكية)"])
             tab_maktaba = None
 
+        if _is_library_user and tab_maktaba:
+         with tab_maktaba:
+            st.subheader("📚 الإيداع النهائي — مسؤول المكتبة")
+            _df_lib = load_memos()
+            _lib_col_as = "موافقة المشرف" if "موافقة المشرف" in _df_lib.columns else None
+            _lib_col_aq = "رابط المذكرة النهائية" if "رابط المذكرة النهائية" in _df_lib.columns else None
+            _lib_col_ar = "رابط الملخص النهائي" if "رابط الملخص النهائي" in _df_lib.columns else None
+            _lib_col_au = "تبرئة المكتبة" if "تبرئة المكتبة" in _df_lib.columns else None
+
+            if _lib_col_as and _lib_col_aq:
+                _lib_memos = _df_lib[
+                    (_df_lib[_lib_col_as].astype(str).str.strip() == "نعم") &
+                    (_df_lib[_lib_col_aq].astype(str).str.strip().apply(lambda x: x not in ["","nan"]))
+                ].copy()
+            else:
+                _lib_memos = pd.DataFrame()
+
+            if _lib_memos.empty:
+                st.info("⏳ لا توجد مذكرات في انتظار تبرئة المكتبة بعد")
+            else:
+                st.success(f"📋 {len(_lib_memos)} مذكرة في انتظار المراجعة")
+                for _, _lrow in _lib_memos.iterrows():
+                    _lmid = str(_lrow.get("رقم المذكرة","")).strip()
+                    _ltitle = str(_lrow.get("عنوان المذكرة","")).strip()[:60]
+                    _ls1 = str(_lrow.get("الطالب الأول","")).strip()
+                    _laq = str(_lrow.get(_lib_col_aq,"")).strip() if _lib_col_aq else ""
+                    _lar = str(_lrow.get(_lib_col_ar,"")).strip() if _lib_col_ar else ""
+                    _lau = str(_lrow.get(_lib_col_au,"")).strip() if _lib_col_au else ""
+                    with st.expander(f"مذكرة {_lmid} — {_ls1}"):
+                        st.markdown(f"**{_ltitle}**")
+                        _lc1,_lc2 = st.columns(2)
+                        with _lc1:
+                            if _laq not in ["","nan"]: st.markdown(f"[📄 تحميل المذكرة النهائية]({_laq})")
+                        with _lc2:
+                            if _lar not in ["","nan"]: st.markdown(f"[📝 تحميل الملخص]({_lar})")
+                        if _lau == "نعم":
+                            st.success("✅ تمت تبرئة المكتبة")
+                        else:
+                            if st.button("✅ منح تبرئة المكتبة", type="primary", key=f"lib_{_lmid}", use_container_width=True):
+                                with st.spinner("⏳ جاري الحفظ..."):
+                                    _all_lib=load_memos(); _rn_lib=None
+                                    for _il,(_, _rl) in enumerate(_all_lib.iterrows()):
+                                        _mkl=str(_rl.get("رقم المذكرة","")).strip()
+                                        try: _mkl=str(int(float(_mkl)))
+                                        except: pass
+                                        if _mkl==str(int(float(_lmid))): _rn_lib=_il+2; break
+                                    if _rn_lib:
+                                        sheets_service.spreadsheets().values().batchUpdate(
+                                            spreadsheetId=MEMOS_SHEET_ID,
+                                            body={"valueInputOption":"USER_ENTERED","data":[
+                                                {"range":f"Feuille 1!AU{_rn_lib}","values":[["نعم"]]}
+                                            ]}
+                                        ).execute()
+                                        clear_cache_and_reload()
+                                        st.success(f"✅ تبرئة المكتبة لمذكرة {_lmid}"); st.rerun()
+
         # ================================================================
         # TAB جدولة ذكية
         # ================================================================
