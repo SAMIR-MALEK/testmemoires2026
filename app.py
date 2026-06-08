@@ -6483,7 +6483,8 @@ elif st.session_state.user_type == "admin":
                 top20 = df_show.nlargest(20,"المجموع").set_index("الأستاذ")[["مشرف","رئيس","مناقش"]]
                 st.bar_chart(top20, color=["#2F9EA0","#FFD700","#818CF8"])
 
-        with tab_mahdar:
+        if tab_mahdar:
+         with tab_mahdar:
             st.subheader("📄 توليد محاضر المناقشة")
 
             df_memos_m = load_memos()
