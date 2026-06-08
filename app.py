@@ -5236,7 +5236,7 @@ elif st.session_state.user_type == "admin":
                     <div class="kpi-card" style="border-top:3px solid #FFD700;"><div class="kpi-value" style="color:#FFD700;">{total_memos - int(scheduled)}</div><div class="kpi-label">⏳ غير مبرمجة</div></div>
                 </div>''', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
-            _is_printer_user = st.session_state.get("is_printer", False)
+        _is_printer_user = st.session_state.get("is_printer", False)
         _is_library_user = st.session_state.get("is_library", False)
         if _is_library_user:
             st.markdown('<h2 style="color:#FFD700;">📚 فضاء المكتبة</h2>', unsafe_allow_html=True)
