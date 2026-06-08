@@ -4332,14 +4332,14 @@ elif st.session_state.user_type == "student":
                 st.markdown("""<div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:11px 15px;margin-top:9px;"><p style="color:#EF4444!important;margin:0;font-size:0.86rem;">⛔ لقد قمت بإيداع مذكرتك؛ لا يمكنك إيداع نسخة أخرى.</p></div>""", unsafe_allow_html=True)
             elif deposit_status == "قابلة للمناقشة":
                 # تحقق من حالة المناقشة
-                _hal_check = str(memo_info.get("الحالة","")).strip() if memo_info else ""
+                _hal_check = str(memo_info.get("الحالة","") if memo_info is not None else "").strip()
                 if _hal_check == "تمت المناقشة":
                     st.markdown("""<div class="notif-card notif-card-approved"><div class="notif-icon">🎓</div><div><div class="notif-title notif-title-approved">تمت مناقشة مذكرتك</div><div class="notif-desc">يجب عليك القيام بالإيداع النهائي للحصول على تبرئة المكتبة الضرورية للحصول على الشهادة.</div></div></div>""", unsafe_allow_html=True)
                 else:
                     st.markdown("""<div class="notif-card notif-card-approved"><div class="notif-icon">🟢</div><div><div class="notif-title notif-title-approved">مذكرتك معتمدة — قابلة للمناقشة ✓</div><div class="notif-desc">وافق المشرف على مذكرتك رسمياً. ستتلقى إشعاراً من الإدارة بموعد المناقشة قريباً.</div></div></div>""", unsafe_allow_html=True)
                     if deposit_link and deposit_link not in ["","nan"]: st.markdown(f"📎 [عرض الملف المودع]({deposit_link})")
 
-            _hal_check2 = str(memo_info.get("الحالة","")).strip() if memo_info else ""
+            _hal_check2 = str(memo_info.get("الحالة","") if memo_info is not None else "").strip()
             if is_published and def_date_m and def_date_m not in ["","nan"] and _hal_check2 != "تمت المناقشة":
                 st.markdown(f"""<div class="defense-schedule-card"><h4 style="color:#818CF8!important;margin:0 0 6px;">📅 موعد مناقشتك</h4><div class="defense-info-grid"><div class="defense-info-item"><div class="defense-info-label">📆 التاريخ</div><div class="defense-info-value">{def_date_m}</div></div><div class="defense-info-item"><div class="defense-info-label">🕐 التوقيت</div><div class="defense-info-value">{def_time_m if def_time_m and def_time_m!='nan' else '—'}</div></div><div class="defense-info-item"><div class="defense-info-label">🏛️ القاعة</div><div class="defense-info-value">{def_room_m if def_room_m and def_room_m!='nan' else '—'}</div></div></div></div>""", unsafe_allow_html=True)
                 president_s = str(memo_info.get("AE","")).strip() if "AE" in memo_info.index else ""
