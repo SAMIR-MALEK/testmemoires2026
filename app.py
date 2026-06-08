@@ -4359,6 +4359,66 @@ elif st.session_state.user_type == "student":
                     s2_ln,s2_fn=get_student_name_display(s2); s2_email=get_email_smart(s2)
                     st.markdown(f"""<div class="card"><h4 style="color:#FFD700;">👤 الطالب الثاني</h4><p><b>اللقب:</b> {s2_ln}</p><p><b>الإسم:</b> {s2_fn}</p><p><b>رقم التسجيل:</b> {s2.get('رقم التسجيل','')}</p><p><b>البريد:</b> {s2_email}</p></div>""", unsafe_allow_html=True)
 
+
+                # ── الإيداع النهائي ──
+                import datetime as _dti_idaa
+                _memo_row_idaa = memo_info
+                _ridx = list(_memo_row_idaa.keys()) if isinstance(_memo_row_idaa, dict) else []
+                _hal_idaa = str(_memo_row_idaa.get("الحالة","")).strip()
+                _aq_idaa  = str(_memo_row_idaa.get("رابط المذكرة النهائية","")).strip()
+                _ar_idaa  = str(_memo_row_idaa.get("رابط الملخص النهائي","")).strip()
+                _as_idaa  = str(_memo_row_idaa.get("موافقة المشرف","")).strip()
+                _at_idaa  = str(_memo_row_idaa.get("موافقة رئيس القسم","")).strip()
+                _au_idaa  = str(_memo_row_idaa.get("تبرئة المكتبة","")).strip()
+                if _hal_idaa == "تمت المناقشة":
+                    st.markdown("---")
+                    st.markdown("### 📥 الإيداع النهائي")
+                    def _step(_l,_d): return f'<span style="color:{"#10B981" if _d else "#94A3B8"};font-size:0.85rem;">{"✅" if _d else "⏳"} {_l}</span>'
+                    st.markdown(" &nbsp;→&nbsp; ".join([
+                        _step("رُفعت الملفات", bool(_aq_idaa and _aq_idaa not in ["","nan"])),
+                        _step("موافقة المشرف", _as_idaa=="نعم"),
+                        _step("موافقة رئيس القسم", _at_idaa=="نعم"),
+                        _step("تبرئة المكتبة", _au_idaa=="نعم"),
+                    ]), unsafe_allow_html=True)
+                    if _au_idaa == "نعم":
+                        st.success("🎉 اكتمل الإيداع النهائي!")
+                    elif not (_aq_idaa and _aq_idaa not in ["","nan"]):
+                        _mid_i = str(_memo_row_idaa.get("رقم المذكرة","")).strip()
+                        _upl_pdf_i = st.file_uploader("📄 المذكرة النهائية (PDF):", type=["pdf"], key=f"idaa_pdf_{_mid_i}")
+                        _upl_wrd_i = st.file_uploader("📝 ملف الملخص (عربي+إنجليزي):", type=["docx","doc"], key=f"idaa_word_{_mid_i}")
+                        if st.button("📤 إيداع الملفات", type="primary", use_container_width=True, key=f"do_idaa_{_mid_i}"):
+                            if not _upl_pdf_i or not _upl_wrd_i:
+                                st.error("❌ يجب رفع الملفين معاً")
+                            else:
+                                with st.spinner("⏳ جاري الرفع..."):
+                                    _ok1,_l1 = upload_to_drive(_upl_pdf_i.read(), f"مذكرة_نهائية_{_mid_i}.pdf", IDAA_FOLDER_ID, "application/pdf")
+                                    _ok2,_l2 = upload_to_drive(_upl_wrd_i.read(), f"ملخص_{_mid_i}.docx", IDAA_FOLDER_ID, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                                    if _ok1 and _ok2:
+                                        _all_mi=load_memos(); _rni=None
+                                        for _ii,(_, _rri) in enumerate(_all_mi.iterrows()):
+                                            _mki=str(_rri.get("رقم المذكرة","")).strip()
+                                            try: _mki=str(int(float(_mki)))
+                                            except: pass
+                                            if _mki==str(int(float(_mid_i))): _rni=_ii+2; break
+                                        if _rni:
+                                            sheets_service.spreadsheets().values().batchUpdate(
+                                                spreadsheetId=MEMOS_SHEET_ID,
+                                                body={"valueInputOption":"USER_ENTERED","data":[
+                                                    {"range":f"Feuille 1!AQ{_rni}","values":[[_l1]]},
+                                                    {"range":f"Feuille 1!AR{_rni}","values":[[_l2]]},
+                                                    {"range":f"Feuille 1!AV{_rni}","values":[[_dti_idaa.datetime.now().strftime("%Y-%m-%d")]]},
+                                                ]}
+                                            ).execute()
+                                            clear_cache_and_reload()
+                                            st.success("✅ تم الإيداع — في انتظار موافقة المشرف"); st.rerun()
+                                    else:
+                                        if not _ok1: st.error(f"❌ {_l1}")
+                                        if not _ok2: st.error(f"❌ {_l2}")
+                    else:
+                        st.info("✅ تم رفع الملفات")
+                        if _aq_idaa not in ["","nan"]: st.markdown(f"[📄 تحميل المذكرة النهائية]({_aq_idaa})")
+                        if _ar_idaa not in ["","nan"]: st.markdown(f"[📝 تحميل الملخص]({_ar_idaa})")
+
             with tab_track:
                 st.subheader("📂 حالة ملف التخرج")
                 df_students = load_students()
@@ -4408,65 +4468,6 @@ elif st.session_state.user_type == "student":
                                 rv=str(r.iloc[8]).strip()
                                 if rv and rv.lower() not in ['nan','none']: details=rv
                             st.markdown(f"""<div class="card" style="border-right:4px solid #F59E0B;"><h4>{rt}</h4><p>الحالة: <b>{r.get('الحالة','—')}</b></p>{'<p>'+details+'</p>' if details else ''}</div>""", unsafe_allow_html=True)
-
-                    # ── الإيداع النهائي ──
-                    import datetime as _dti_idaa
-                    _hal_idaa = str(r.get("الحالة","")).strip() if "الحالة" in r else ""
-                    _aq_idaa = str(r.get("رابط المذكرة النهائية","")).strip() if "رابط المذكرة النهائية" in r else ""
-                    _ar_idaa = str(r.get("رابط الملخص النهائي","")).strip() if "رابط الملخص النهائي" in r else ""
-                    _as_idaa = str(r.get("موافقة المشرف","")).strip() if "موافقة المشرف" in r else ""
-                    _at_idaa = str(r.get("موافقة رئيس القسم","")).strip() if "موافقة رئيس القسم" in r else ""
-                    _au_idaa = str(r.get("تبرئة المكتبة","")).strip() if "تبرئة المكتبة" in r else ""
-
-                    if _hal_idaa == "تمت المناقشة":
-                        st.markdown("---")
-                        st.markdown("### 📥 الإيداع النهائي")
-                        def _step(_l,_d): return f'<span style="color:{"#10B981" if _d else "#94A3B8"};font-size:0.85rem;">{"✅" if _d else "⏳"} {_l}</span>'
-                        st.markdown(" &nbsp;→&nbsp; ".join([
-                            _step("رُفعت الملفات", bool(_aq_idaa and _aq_idaa not in ["","nan"])),
-                            _step("موافقة المشرف", _as_idaa=="نعم"),
-                            _step("موافقة رئيس القسم", _at_idaa=="نعم"),
-                            _step("تبرئة المكتبة", _au_idaa=="نعم"),
-                        ]), unsafe_allow_html=True)
-                        if _au_idaa == "نعم":
-                            st.success("🎉 اكتمل الإيداع النهائي!")
-                        elif not (_aq_idaa and _aq_idaa not in ["","nan"]):
-                            st.markdown("**📄 رفع المذكرة النهائية (PDF) وملف الملخصين (Word):**")
-                            _upl_pdf_i = st.file_uploader("المذكرة النهائية (PDF):", type=["pdf"], key=f"idaa_pdf_{r.get('رقم المذكرة','')}")
-                            _upl_wrd_i = st.file_uploader("ملف الملخص عربي+إنجليزي (Word):", type=["docx","doc"], key=f"idaa_word_{r.get('رقم المذكرة','')}")
-                            if st.button("📤 إيداع الملفات", type="primary", use_container_width=True, key=f"do_idaa_{r.get('رقم المذكرة','')}"):
-                                if not _upl_pdf_i or not _upl_wrd_i:
-                                    st.error("❌ يجب رفع الملفين معاً")
-                                else:
-                                    with st.spinner("⏳ جاري الرفع..."):
-                                        _mid_i = str(r.get("رقم المذكرة","")).strip()
-                                        _ok1,_l1 = upload_to_drive(_upl_pdf_i.read(), f"مذكرة_نهائية_{_mid_i}.pdf", IDAA_FOLDER_ID, 'application/pdf')
-                                        _ok2,_l2 = upload_to_drive(_upl_wrd_i.read(), f"ملخص_{_mid_i}.docx", IDAA_FOLDER_ID, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-                                        if _ok1 and _ok2:
-                                            _all_mi = load_memos(); _rni = None
-                                            for _ii,(_, _rri) in enumerate(_all_mi.iterrows()):
-                                                _mki = str(_rri.get("رقم المذكرة","")).strip()
-                                                try: _mki = str(int(float(_mki)))
-                                                except: pass
-                                                if _mki == str(int(float(_mid_i))): _rni=_ii+2; break
-                                            if _rni:
-                                                sheets_service.spreadsheets().values().batchUpdate(
-                                                    spreadsheetId=MEMOS_SHEET_ID,
-                                                    body={"valueInputOption":"USER_ENTERED","data":[
-                                                        {"range":f"Feuille 1!AQ{_rni}","values":[[_l1]]},
-                                                        {"range":f"Feuille 1!AR{_rni}","values":[[_l2]]},
-                                                        {"range":f"Feuille 1!AV{_rni}","values":[[_dti_idaa.datetime.now().strftime("%Y-%m-%d")]]},
-                                                    ]}
-                                                ).execute()
-                                                clear_cache_and_reload()
-                                                st.success("✅ تم الإيداع — في انتظار موافقة المشرف"); st.rerun()
-                                        else:
-                                            if not _ok1: st.error(f"❌ فشل PDF: {_l1}")
-                                            if not _ok2: st.error(f"❌ فشل Word: {_l2}")
-                        else:
-                            st.info("✅ تم رفع الملفات")
-                            if _aq_idaa not in ["","nan"]: st.markdown(f"📄 [تحميل المذكرة النهائية]({_aq_idaa})")
-                            if _ar_idaa not in ["","nan"]: st.markdown(f"📝 [تحميل الملخص]({_ar_idaa})")
 
 
 # ================================================================
